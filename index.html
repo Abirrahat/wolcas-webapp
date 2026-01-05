@@ -1,445 +1,324 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Work Order Linked Cost Allocation Standings (WOLCAS)</title>
+  <title>Work Order Linked Cost Allocation Standings</title>
+  <link rel="preconnect" href="https://alcdn.msauth.net"/>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net"/>
   <style>
-    :root { --primary:#1E3A8A; --secondary:#475569; --accent:#F97316; --bg:#F8FAFC; --text:#0F172A; --card:#ffffff; --border:#e5e7eb; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial; color:var(--text); background:var(--bg); padding-bottom:72px; overflow-x:hidden; }
-    header.sticky { position:sticky; top:0; z-index:1000; background:var(--card); border-bottom:1px solid var(--border); }
-    .header-inner { display:flex; align-items:center; gap:12px; padding:10px 16px; }
-    .app-title { font-weight:700; color:var(--primary); }
-    .company { margin-left:auto; display:flex; align-items:center; gap:8px; color:var(--secondary); font-size:0.95rem; }
-    .company img { width:24px; height:24px; border-radius:4px; object-fit:cover; border:1px solid var(--border); }
+    :root {
+      --bg:#f6f7fb; --card:#ffffff; --text:#1b1d2a; --muted:#697386; --primary:#0d6efd; --border:#e7e9ef;
+      --shadow:0 2px 8px rgba(0,0,0,0.06);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial; background:var(--bg); color:var(--text); }
+    header.appbar { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; font-weight:600; font-size:14px; }
+    .brand { color:#0b3; }
+    .company { display:flex; align-items:center; gap:8px; }
+    .company img { height:22px; width:auto; border-radius:4px; }
 
-    .container { width:min(100%, 1100px); margin-inline:auto; padding:16px; }
-    h1,h2,h3 { margin:8px 0; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.04); padding:16px; width:100%; overflow-wrap:anywhere; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:16px; align-items:start; }
-    .btn { display:inline-flex; align-items:center; gap:6px; padding:10px 14px; border-radius:10px; border:1px solid var(--border); cursor:pointer; text-decoration:none; font-weight:600; }
-    .btn.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
-    .btn.secondary { background:#fff; color:var(--primary); }
-    .btn.small { padding:6px 10px; font-size:0.9rem; }
-    .btn.link { background:transparent; border-color:transparent; color:var(--primary); }
-    .badge { display:inline-block; padding:6px 10px; border-radius:999px; font-size:0.9rem; border:1px solid var(--border); background:#fff; }
-    .badge.active { color:#065f46; background:#ecfdf5; border-color:#a7f3d0; }
-    .badge.completed { color:#1f2937; background:#e5e7eb; border-color:#d1d5db; }
+    .container { max-width:1000px; margin:0 auto; padding: 8px 14px 76px; }
 
-    .input-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .input-row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
-    label { font-weight:600; font-size:0.9rem; color:var(--secondary); }
-    input[type=text], input[type=date], textarea { width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:#fff; font-size:1rem; }
-    textarea { min-height:72px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); padding:16px; margin-bottom:16px; }
+    .hero h1 { margin:0 0 6px 0; font-size:22px; font-weight:800; }
+    .hero p { margin:0; color:var(--muted); }
+    .btn { display:inline-flex; align-items:center; gap:8px; background:var(--primary); color:#fff; border:none; border-radius:10px; padding:8px 12px; cursor:pointer; font-weight:600; box-shadow:var(--shadow); }
+    .btn.secondary { background:#6c757d; }
+    .btn.ghost { background:#eef3ff; color:#1b3; }
 
-    /* Bottom nav */
-    .bottom-nav { position:fixed; bottom:0; left:0; right:0; height:64px; border-top:1px solid var(--border); background:#fff; display:flex; justify-content:space-around; align-items:center; z-index:1000; }
-    .bottom-nav a { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:var(--secondary); text-decoration:none; font-weight:600; }
-    .bottom-nav a.active { color:var(--primary); }
+    .pill { display:inline-block; padding:4px 10px; border-radius:999px; background:#eef2f8; color:#445; font-size:12px; border:1px solid var(--border); }
+    .pill.success { background:#e9f7ef; color:#0a7; border-color:#cdebd7; }
+    .pill.warn { background:#fff4e5; color:#c77; border-color:#ffe0b3; }
 
-    #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#111827; color:#fff; padding:10px 14px; border-radius:10px; display:none; z-index:1100; }
+    .grid { display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .metric h3 { margin:0 0 6px 0; font-size:14px; color:#445; }
+    .metric .value { font-size:20px; font-weight:800; }
 
-    /* Project sub-tab bar */
-    .subtabs { position:sticky; top:52px; background:#fff; border-bottom:1px solid var(--border); padding:8px; display:flex; gap:8px; z-index:900; }
-    .subtabs button { padding:8px 12px; border-radius:999px; border:1px solid var(--border); background:#fff; cursor:pointer; }
-    .subtabs button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
-    .scroll-panel { max-height:52vh; overflow:auto; padding:12px 0; }
+    .project-card { border:1px solid var(--border); border-radius:12px; padding:12px; box-shadow:var(--shadow); background:#fff; max-width:380px; }
+    .project-card h4 { margin:0; font-size:15px; font-weight:800; }
+    .small { color:var(--muted); font-size:12px; }
 
-    .preview { max-width:120px; max-height:120px; border-radius:8px; border:1px solid var(--border); object-fit:cover; }
-    .sheet-photo { max-width:80px; max-height:80px; border-radius:6px; border:1px solid var(--border); }
+    /* Tabs bottom navbar */
+    nav.tabs { position:fixed; bottom:0; left:0; right:0; border-top:1px solid var(--border); background:#fff; display:grid; grid-template-columns: repeat(4, 1fr); }
+    nav.tabs a { text-decoration:none; color:#444; font-size:12px; text-align:center; padding:10px 0; }
+    nav.tabs a.active { color:var(--primary); font-weight:700; }
+    .tab-icon { display:block; font-size:18px; }
 
-    /* Centered modal */
-    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.2); display:none; align-items:center; justify-content:center; z-index:1050; }
-    .modal { width:min(840px, 92vw); }
-    .modal .card { border-radius:16px; }
-    .modal-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .hidden { display:none; }
+    input[type="search"], input[type="text"], input[type="date"], input[type="number"], textarea, select { width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; }
 
-    /* Tables */
-    table { width:100%; border-collapse:collapse; }
-    th, td { border:1px solid var(--border); padding:8px; text-align:left; }
-    th { background:#f3f4f6; position:sticky; top:0; z-index:1; }
+    /* Modals */
+    .modal { position:fixed; inset:0; background:rgba(0,0,0,0.35); display:none; align-items:center; justify-content:center; }
+    .modal.show { display:flex; }
+    .panel { background:#fff; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.25); width:760px; max-width:95vw; }
+    .panel header { padding:10px 14px; background:#f5f7ff; border-radius:12px 12px 0 0; font-weight:700; }
+    .panel .body { padding:14px; max-height:70vh; overflow:auto; }
+    .panel .footer { padding:10px 14px; display:flex; justify-content:flex-end; gap:8px; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
 
-    .muted { color:#6b7280; }
-
-    /* Accessible custom dropdown */
-    .dropdown { position:relative; }
-    .dropdown-btn { width:100%; text-align:left; }
-    .dropdown-menu { position:absolute; top:calc(100% + 4px); inset-inline:0; background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.08); max-height:40vh; overflow:auto; z-index:950; }
-    .dropdown-option { padding:10px 12px; cursor:pointer; }
-    .dropdown-option[aria-selected=true], .dropdown-option:hover { background:#eef2ff; }
-    .dropdown-empty { padding:10px 12px; color:#6b7280; }
-
-    /* Reports table */
-    .report-table { min-width: 1100px; border-collapse: collapse; }
-    .report-table th, .report-table td { white-space: nowrap; }
-
-    /* Confirm actions */
-    .confirm-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
-
-    /* --- Project info pills used in PDF header --- */
-    .report-meta { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:10px 14px; }
-    .report-meta .item { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #e5e7eb; border-radius:999px; padding:4px 8px; font-weight:600; }
-    .report-meta .item .label { color:#6b7280; font-weight:600; }
-    .report-meta .item .value { color:#111827; }
-    .report-meta .item svg { width:12px; height:12px; flex:0 0 12px; color:#1E3A8A; display:inline-block; }
-
-    /* --- NEW: status row / non-wrapping status pill --- */
-    .status-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-    .status-text { flex:1 1 auto; min-width:0; }
-    .status-pill { display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); background:#fff; font-weight:700; border-radius:999px; height:34px; padding:0 14px; white-space:nowrap; line-height:1; flex:0 0 auto; }
-    .status-pill.active { color:#065f46; background:#ecfdf5; border-color:#a7f3d0; }
-    .status-pill.completed { color:#1f2937; background:#e5e7eb; border-color:#d1d5db; }
+    .role-pill { margin-left:6px; }
+    .muted { color:var(--muted); }
   </style>
+  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </head>
 <body>
-  <header class="sticky">
-    <div class="header-inner">
-      <div class="app-title">Work Order Linked Cost Allocation Standings</div>
-      <div class="company"><img id="companyLogo" alt="logo" /><span id="companyName">Company</span></div>
+  <header class="appbar">
+    <div class="brand">Work Order Linked Cost Allocation Standings</div>
+    <div class="company">
+      <img id="company-logo" alt="Company" />
+      <span id="company-name" class="muted">Company</span>
+      <span id="user-info" class="pill">Not signed in</span>
+      <button class="btn" onclick="signIn()">Sign in</button>
+      <button class="btn secondary" onclick="signOut()">Sign out</button>
     </div>
   </header>
 
-  <main id="views">
+  <div class="container">
     <!-- HOME -->
-    <section id="home" class="container" hidden>
-      <div class="card">
+    <section id="home" class="tab">
+      <div class="card hero">
         <h1>Welcome to Work Order Linked Cost Allocation Standings</h1>
-        <p class="muted">Create and track work orders, tasks, allocations, photos, and reports — all offline in one file.</p>
-        <div style="display:flex; gap:8px; margin-top:8px;">
-          <button class="btn primary" id="btnNewOrder">New Order</button>
-          <a href="#projects" class="btn secondary">View Projects</a>
+        <p>Create and track work orders, tasks, allocations, photos, and reports — all offline in one file.</p>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <button class="btn" onclick="openTaskModal()">New Order</button>
+          <button class="btn secondary" onclick="goTab('projects')">View Projects</button>
         </div>
       </div>
-      <div class="card" style="margin-top:12px;">
-        <h2>Recent projects</h2>
-        <div id="homeRecent" class="grid"></div>
+      <div class="card">
+        <h3 style="margin:0 0 8px 0;">Recent projects</h3>
+        <div id="recent-projects"></div>
       </div>
     </section>
 
     <!-- PROJECTS -->
-    <section id="projects" class="container" hidden>
+    <section id="projects" class="tab hidden">
       <div class="card">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <img id="projectsLogo" style="width:24px;height:24px;border-radius:4px;border:1px solid var(--border);object-fit:cover" alt="logo" />
-          <h2 style="margin:0">Projects</h2>
-        </div>
-        <div style="margin-top:12px;" class="input-row">
-          <div>
-            <label>Search</label>
-            <input id="projSearch" type="text" placeholder="Search by address or description" />
-          </div>
-        </div>
-        <div id="projectsGrid" class="grid" style="margin-top:12px;"></div>
-      </div>
-    </section>
-
-    <!-- PROJECT DETAILS -->
-    <section id="projectView" class="container" hidden>
-      <div class="card" id="projectHeader"></div>
-      <div class="subtabs">
-        <button data-tab="view" class="active">View</button>
-        <button data-tab="add">Add Task</button>
-        <button data-tab="edit">Edit Task</button>
-        <button data-tab="photos">Photos</button>
-        <button id="btnSpreadsheet" class="btn small secondary" style="margin-left:auto">Reports</button>
-      </div>
-      <div id="projectPanels">
-        <div id="panel-view" class="scroll-panel"></div>
-        <div id="panel-add" class="scroll-panel" hidden>
-          <div class="card">
-            <div class="input-row">
-              <div><label>Task name</label><input id="add-name" type="text"/></div>
-              <div><label>Date</label><input id="add-date" type="date"/></div>
-            </div>
-            <div class="input-row">
-              <div><label>Description</label><textarea id="add-desc"></textarea></div>
-              <div><label>Notes</label><textarea id="add-notes"></textarea></div>
-            </div>
-            <div class="input-row3">
-              <div><label>Quantity (text)</label><input id="add-qty" type="text"/></div>
-              <div><label>Unit Cost (text)</label><input id="add-unit" type="text"/></div>
-              <div><label>Total Cost (text)</label><input id="add-total" type="text"/></div>
-            </div>
-            <div class="input-row3">
-              <div><label>Allocation ($)</label><input id="add-allocation" type="text" placeholder="$"/></div>
-              <div><label>Sprint</label><input id="add-sprint" type="text"/></div>
-              <div><label>Assignee</label><input id="add-assignee" type="text"/></div>
-            </div>
-            <div style="margin-top:8px"><label>Photos</label><input id="add-photos" type="file" multiple accept="image/*" /><div id="add-previews" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px"></div></div>
-            <div style="margin-top:12px; display:flex; gap:8px;"><button class="btn primary" id="btnSaveTask">Save</button></div>
-          </div>
-        </div>
-        <div id="panel-edit" class="scroll-panel" hidden>
-          <div class="card">
-            <div><label>Select a task to edit</label>
-              <div class="dropdown" id="taskDropdown">
-                <button id="taskDropdownBtn" class="btn dropdown-btn" aria-haspopup="listbox" aria-expanded="false">— Select —</button>
-                <div id="taskDropdownMenu" class="dropdown-menu" role="listbox" aria-label="Select a task" tabindex="0" hidden></div>
-              </div>
-            </div>
-            <div class="input-row" style="margin-top:8px;">
-              <div><label>Task name</label><input id="edit-name" type="text"/></div>
-              <div><label>Date</label><input id="edit-date" type="date"/></div>
-            </div>
-            <div class="input-row">
-              <div><label>Description</label><textarea id="edit-desc"></textarea></div>
-              <div><label>Notes</label><textarea id="edit-notes"></textarea></div>
-            </div>
-            <div class="input-row3">
-              <div><label>Quantity (text)</label><input id="edit-qty" type="text"/></div>
-              <div><label>Unit Cost (text)</label><input id="edit-unit" type="text"/></div>
-              <div><label>Total Cost (text)</label><input id="edit-total" type="text"/></div>
-            </div>
-            <div class="input-row3">
-              <div><label>Allocation ($)</label><input id="edit-allocation" type="text"/></div>
-              <div><label>Sprint</label><input id="edit-sprint" type="text"/></div>
-              <div><label>Assignee</label><input id="edit-assignee" type="text"/></div>
-            </div>
-            <div style="margin-top:8px"><label>Add more photos</label><input id="edit-photos" type="file" multiple accept="image/*" /></div>
-            <div id="edit-thumbs" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px"></div>
-            <div style="margin-top:12px; display:flex; gap:8px;"><button class="btn primary" id="btnUpdateTask">Save changes</button></div>
-          </div>
-        </div>
-        <div id="panel-photos" class="scroll-panel" hidden><div id="photosGrid" class="grid"></div></div>
+        <h3 style="margin:0 0 8px 0;">Projects</h3>
+        <label class="small">Search</label>
+        <input id="project-search" type="search" placeholder="Search by address or description" />
+        <div id="project-list" style="margin-top:10px;"></div>
       </div>
     </section>
 
     <!-- DASHBOARD -->
-    <section id="dashboard" class="container" hidden>
+    <section id="dashboard" class="tab hidden">
       <div class="card">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <img id="dashLogo" style="width:24px;height:24px;border-radius:4px;border:1px solid var(--border);object-fit:cover" alt="logo" />
-          <h2 style="margin:0">Dashboard</h2>
+        <h3>Dashboard <span class="pill role-pill" id="role-label">viewer</span></h3>
+        <div class="grid" style="margin-top:10px;">
+          <div class="card metric"><h3>Total Projects</h3><div class="value" id="metric-projects">—</div></div>
+          <div class="card metric"><h3>Active Projects</h3><div class="value" id="metric-active">—</div></div>
+          <div class="card metric"><h3>Completed Projects</h3><div class="value" id="metric-completed">—</div></div>
+          <div class="card metric"><h3>Total Costs (tasks)</h3><div class="value" id="metric-totalcost">—</div></div>
+          <div class="card metric"><h3>Total Sales (expected)</h3><div class="value" id="metric-sales">—</div></div>
         </div>
-        <div class="grid" style="margin-top:12px;">
-          <div class="card"><h3>Total Projects</h3><div id="mTotalProjects" class="badge"></div></div>
-          <div class="card"><h3>Active Projects</h3><div id="mActiveProjects" class="badge active"></div></div>
-          <div class="card"><h3>Completed Projects</h3><div id="mCompletedProjects" class="badge completed"></div></div>
-          <div class="card"><h3>Total Costs (tasks)</h3><div id="mTotalCosts" class="badge"></div></div>
-          <div class="card"><h3>Total Sales (expected)</h3><div id="mTotalSales" class="badge"></div></div>
+        <div class="card" style="margin-top:12px;">
+          <h3 style="margin:0 0 8px 0;">Recent Activity</h3>
+          <ul id="recent-activity" class="small"></ul>
         </div>
-        <div class="card" style="margin-top:12px;"><h3>Recent Activity</h3><ul id="activityList" style="padding-left:18px"></ul></div>
       </div>
     </section>
 
     <!-- SETTINGS -->
-    <section id="settings" class="container" hidden>
+    <section id="settings" class="tab hidden">
       <div class="card">
-        <h2>Settings</h2>
-        <div class="input-row"><div><label>Company name</label><input id="set-name" type="text"/></div><div><label>Logo</label><input id="set-logo" type="file" accept="image/*"/></div></div>
-        <div style="margin-top:12px;"><button class="btn primary" id="btnSaveSettings">Save</button></div>
+        <h3>Settings</h3>
+        <div class="form-row">
+          <div>
+            <label>Company name</label>
+            <input id="set-company-name" type="text" placeholder="Company" />
+          </div>
+          <div>
+            <label>Logo</label>
+            <input id="set-logo" type="file" accept="image/*" />
+          </div>
+        </div>
+        <button class="btn" onclick="saveSettings()">Save</button>
       </div>
     </section>
-  </main>
 
-  <!-- Bottom navigation -->
-  <nav class="bottom-nav" aria-label="Bottom navigation">
-    <a href="#home" id="nav-home"><span>🏠</span><span>Home</span></a>
-    <a href="#projects" id="nav-projects"><span>🗂️</span><span>Projects</span></a>
-    <a href="#dashboard" id="nav-dashboard"><span>📊</span><span>Dashboard</span></a>
-    <a href="#settings" id="nav-settings"><span>⚙️</span><span>Settings</span></a>
+    <!-- TASK MODAL -->
+    <div id="task-modal" class="modal">
+      <div class="panel">
+        <header><h3 id="task-modal-title">Edit Task</h3></header>
+        <div class="body">
+          <div class="form-row"><div><label>Title</label><input id="t_title"/></div><div><label>Address</label><input id="t_address"/></div></div>
+          <div class="form-row"><div><label>Start Date</label><input id="t_start" type="date"/></div><div><label>End Date</label><input id="t_end" type="date"/></div></div>
+          <div class="form-row"><div><label>Quantity</label><input id="t_qty" type="number" step="0.01"/></div><div><label>Unit Cost</label><input id="t_uc" type="number" step="0.01"/></div></div>
+          <div class="form-row"><div><label>Total Cost</label><input id="t_tc" type="number" step="0.01"/></div><div><label>Allocation</label><input id="t_alloc" type="number" step="0.01"/></div></div>
+          <div class="form-row"><div><label>Sprint</label><input id="t_sprint"/></div><div><label>Assignee</label><input id="t_assign"/></div></div>
+          <div class="form-row"><div><label>Description</label><textarea id="t_desc"></textarea></div><div><label>Notes</label><textarea id="t_notes"></textarea></div></div>
+          <div class="form-row"><div><label>Photo (optional)</label><input id="t_photo" type="file" accept="image/*"/></div><div><small>Uploaded photo URL saved to "Photos".</small></div></div>
+        </div>
+        <div class="footer">
+          <button id="btn-task-delete" class="btn danger">Delete</button>
+          <button class="btn secondary" onclick="closeTaskModal()">Cancel</button>
+          <button id="btn-task-save" class="btn">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECT MODAL -->
+    <div id="project-modal" class="modal">
+      <div class="panel">
+        <header><h3 id="project-modal-title">Edit Project</h3></header>
+        <div class="body">
+          <div class="form-row"><div><label>Title</label><input id="p_title"/></div><div><label>Owner</label><input id="p_owner"/></div></div>
+          <div class="form-row"><div><label>Start Date</label><input id="p_start" type="date"/></div><div><label>Expected Sales</label><input id="p_sales" type="number" step="0.01"/></div></div>
+          <div class="form-row"><div><label>Active</label><select id="p_active"><option value="true">Yes</option><option value="false">No</option></select></div></div>
+        </div>
+        <div class="footer">
+          <button id="btn-project-delete" class="btn danger">Delete</button>
+          <button class="btn secondary" onclick="closeProjectModal()">Cancel</button>
+          <button id="btn-project-save" class="btn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom tabs -->
+  <nav class="tabs">
+    <a id="tab-home" href="javascript:goTab('home')" class="active"><span class="tab-icon">🏠</span>Home</a>
+    <a id="tab-projects" href="javascript:goTab('projects')"><span class="tab-icon">📁</span>Projects</a>
+    <a id="tab-dashboard" href="javascript:goTab('dashboard')"><span class="tab-icon">📊</span>Dashboard</a>
+    <a id="tab-settings" href="javascript:goTab('settings')"><span class="tab-icon">⚙️</span>Settings</a>
   </nav>
 
-  <div id="toast"></div>
-  <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="card" id="modalCard"></div></div></div>
+<script>
+const CONFIG = {
+  msal: { clientId: "827656f8-3a21-4d69-b6e5-c35e2ec2fb71", authority: "https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45", redirectUri: "https://abirrahat.github.io/wolcas-webapp/auth" },
+  graphScopes: ["User.Read","Sites.ReadWrite.All","Files.ReadWrite.All","Group.Read.All"],
+  sharepoint: { host: "architektica-my.sharepoint.com", sitePath: "/personal/abir_architektica_com", taskListName: "Task", projectListName: "Project" },
+  photos: { folder: "TaskPhotos" }, appRoot: "https://abirrahat.github.io/wolcas-webapp/"
+};
 
-  <script>
-  /* ---------- Storage & Helpers ---------- */
-  const LS_KEY='wo-lcas-data'; const DB_NAME='wo-lcas-single-tabs'; const STORE_NAME='task-images';
-  function loadData(){ try{ const raw=localStorage.getItem(LS_KEY); if(!raw){ const seed={projects:[{id:'p1',address:'48 John Street, Lockport NY 14094',owner_name:'Asif',status:'active',start_date:'2025-12-19',est_cost:'4000',sales:'5000',description:'Example seeded project',tasks:[]}],activity:[],company:{name:'Company',logo:''}}; localStorage.setItem(LS_KEY, JSON.stringify(seed)); return seed; } const data=JSON.parse(raw); data.projects.forEach(p=>{ p.tasks ||= []; p.est_cost=(p.est_cost??'').toString(); p.sales=(p.sales??'').toString(); p.owner_name=(p.owner_name??'').toString(); p.status=p.status==='completed'?'completed':'active'; }); return data; } catch(e){ console.warn(e); return {projects:[],activity:[],company:{name:'',logo:''}}; } }
-  function saveData(d){ localStorage.setItem(LS_KEY, JSON.stringify(d)); }
-  function addActivity(text){ const d=loadData(); d.activity.unshift({text,ts:Date.now()}); saveData(d); }
-  function fmtMoney(v){ const n=parseFloat((v??'').toString().replace(/[^0-9.-]/g,'')); if(isNaN(n)) return v||''; return n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
-  function sumNumeric(arr){ return arr.reduce((acc,v)=>{ const n=parseFloat((v??'').toString().replace(/[^0-9.-]/g,'')); return acc+(isNaN(n)?0:n); },0); }
-  function parseNumberText(s){ const n=parseFloat((s??'').toString().replace(/[^0-9.-]/g,'')); return isNaN(n)?0:n; }
-  function updateProjectMetrics(p){ if(!p) return; p.tasks_count=(p.tasks||[]).length; p.total_cost_sum=(p.tasks||[]).reduce((a,t)=>{ const n=parseFloat((t.totalCost??'').toString().replace(/[^0-9.-]/g,'')); return a+(isNaN(n)?0:n); },0); p.expected_sales_parsed=parseNumberText(p.sales); p.expected_cost_parsed=parseNumberText(p.est_cost); }
-  function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>{ t.style.display='none'; }, 2000); }
-
-  const idb={ db:null, async open(){ return new Promise((res,rej)=>{ const req=indexedDB.open(DB_NAME,1); req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME,{keyPath:'id'}); }; req.onsuccess=()=>{ idb.db=req.result; res(); }; req.onerror=()=> rej(req.error); }); }, async add(taskId,dataUrl){ return new Promise((res,rej)=>{ const tx=idb.db.transaction(STORE_NAME,'readwrite'); const st=tx.objectStore(STORE_NAME); st.add({id:crypto.randomUUID(),taskId,dataUrl}); tx.oncomplete=()=>res(); tx.onerror=e=>rej(tx.error||e); tx.onabort=e=>rej(tx.error||e); }); }, async list(taskId){ return new Promise((res,rej)=>{ const tx=idb.db.transaction(STORE_NAME,'readonly'); const st=tx.objectStore(STORE_NAME); const rq=st.getAll(); rq.onsuccess=()=>{ const all=rq.result||[]; res(all.filter(r=> r.taskId===taskId)); }; rq.onerror=()=> rej(rq.error); }); }, async listByProject(project){ return new Promise((res,rej)=>{ const tx=idb.db.transaction(STORE_NAME,'readonly'); const st=tx.objectStore(STORE_NAME); const rq=st.getAll(); rq.onsuccess=()=>{ const all=rq.result||[]; const byTask={}; (project.tasks||[]).forEach(t=> byTask[t.id]=[]); all.forEach(r=>{ if(byTask[r.taskId]) byTask[r.taskId].push(r); }); res(byTask); }; rq.onerror=()=> rej(rq.error); }); } };
-
-  /* ---------- Router ---------- */
-  function setScrollableHeights(){ try{ const headerH=document.querySelector('header.sticky')?.offsetHeight||0; const bottomH=document.querySelector('.bottom-nav')?.offsetHeight||0; const subtabsH=document.querySelector('.subtabs')?.offsetHeight||0; const available=Math.max(240, window.innerHeight - headerH - bottomH - subtabsH - 24); document.querySelectorAll('.scroll-panel').forEach(p=>{ p.style.maxHeight=available+'px'; p.style.overflow='auto'; }); const menu=document.getElementById('taskDropdownMenu'); if(menu){ menu.style.maxHeight=Math.floor(available*0.8)+'px'; } } catch(e){ console.warn(e); } }
-  function setActiveNav(hash){ document.querySelectorAll('.bottom-nav a').forEach(a=> a.classList.toggle('active', a.getAttribute('href')===hash)); }
-  function showView(id){ document.querySelectorAll('main > section').forEach(s=> s.hidden=(s.id!==id)); }
-  function route(){ setScrollableHeights(); const h=location.hash||'#home'; setActiveNav(h); const d=loadData(); document.getElementById('companyLogo').src=d.company.logo||''; document.getElementById('companyName').textContent=d.company.name||'Company'; document.getElementById('projectsLogo').src=d.company.logo||''; document.getElementById('dashLogo').src=d.company.logo||''; if(h==='#home'){ showView('home'); initHome(); } else if(h==='#projects'){ showView('projects'); initProjects(); } else if(h.startsWith('#project:')){ showView('projectView'); initProject(h.split(':')[1]); } else if(h==='#dashboard'){ showView('dashboard'); initDashboard(); } else if(h==='#settings'){ showView('settings'); initSettings(); } }
-  window.addEventListener('hashchange', ()=>{ route(); setScrollableHeights(); }); window.addEventListener('resize', setScrollableHeights); document.addEventListener('DOMContentLoaded', async ()=>{ await idb.open(); route(); setScrollableHeights(); });
-
-  /* ---------- Home ---------- */
-  function initHome(){ const d=loadData(); const container=document.getElementById('homeRecent'); container.innerHTML=''; const recent=d.projects.slice().reverse().slice(0,6); if(!recent.length){ container.innerHTML='<div class="muted">No projects yet</div>'; }
-    recent.forEach(p=>{ const totalCost=sumNumeric(p.tasks.map(t=> t.totalCost)); const card=document.createElement('div'); card.className='card';
-      card.innerHTML=`
-        <div class="status-row">
-          <div class="status-text">
-            <h3 style="margin:0">${escapeHtml(p.address||p.name||'Untitled')}</h3>
-            <div class="muted">Owner: ${escapeHtml(p.owner_name||'')}</div>
-          </div>
-          <span class="status-pill ${p.status==='completed'?'completed':'active'}">${p.status}</span>
-        </div>
-        <div style="margin-top:8px" class="muted">${escapeHtml(p.description||'')}</div>
-        <div style="margin-top:8px; display:flex; gap:12px; flex-wrap:wrap;">
-          <div><strong>Expected cost:</strong> ${escapeHtml(p.est_cost||'')}</div>
-          <div><strong>Expected sales:</strong> ${escapeHtml(p.sales||'')}</div>
-          <div><strong>Start:</strong> ${escapeHtml(p.start_date||'')}</div>
-          <div><strong>Total cost:</strong> ${fmtMoney(totalCost)}</div>
-        </div>
-        <div style="margin-top:8px"><a class="btn small secondary" href="#project:${p.id}">Open</a></div>`;
-      container.appendChild(card);
-    });
-    document.getElementById('btnNewOrder').onclick=()=> openNewProjectModal(); }
-
-  /* ---------- New Project modal ---------- */
-  function openNewProjectModal(existing){ const backdrop=document.getElementById('modalBackdrop'); const card=document.getElementById('modalCard'); backdrop.style.display='flex'; const isEdit=!!existing; card.innerHTML=`<div class="modal-header"><h3 style="margin:0">${isEdit?'Edit Project':'Create New Project'}</h3><button class="btn small link" id="btnCloseModal">✖</button></div><div class="input-row"><div style="grid-column:1/-1"><label>Project address</label><input id="np-address" type="text" value="${escapeAttr(existing?.address||'')}"/></div></div><div class="input-row"><div><label>Description</label><textarea id="np-desc">${escapeHtml(existing?.description||'')}</textarea></div><div><label>Project owner</label><input id="np-owner" type="text" value="${escapeAttr(existing?.owner_name||'')}"/></div></div><div class="input-row3"><div><label>Expected cost (text)</label><input id="np-cost" type="text" value="${escapeAttr(existing?.est_cost||'')}"/></div><div><label>Start date</label><input id="np-start" type="date" value="${escapeAttr(existing?.start_date||'')}"/></div><div><label>Expected sales (text)</label><input id="np-sales" type="text" value="${escapeAttr(existing?.sales||'')}"/></div></div><div style="margin-top:12px; display:flex; gap:8px;">${isEdit?'<button class="btn primary" id="np-save">Save</button>':'<button class="btn primary" id="np-create">Create</button>'}</div>`; document.getElementById('btnCloseModal').onclick=closeModal; (isEdit?document.getElementById('np-save'):document.getElementById('np-create')).onclick=()=>{ const d=loadData(); const p=existing || {id:crypto.randomUUID(), tasks:[], status:'active'}; p.name=(document.getElementById('np-address').value||'').trim(); p.address=(document.getElementById('np-address').value||'').trim(); p.description=(document.getElementById('np-desc').value||'').trim(); p.owner_name=(document.getElementById('np-owner').value||'').trim(); p.est_cost=(document.getElementById('np-cost').value||'').trim(); p.start_date=document.getElementById('np-start').value||''; p.sales=(document.getElementById('np-sales').value||'').trim(); if(isEdit){ const idx=d.projects.findIndex(x=> x.id===p.id); if(idx>=0) d.projects[idx]=p; addActivity(`Edited project: ${p.address}`); updateProjectMetrics(p); saveData(d); closeModal(); initProjects(); toast('Project updated'); } else { d.projects.push(p); updateProjectMetrics(p); saveData(d); addActivity(`Created project: ${p.address}`); closeModal(); location.hash=`#project:${p.id}`; toast('Project created'); } }; }
-  function closeModal(){ const backdrop=document.getElementById('modalBackdrop'); backdrop.style.display='none'; document.getElementById('modalCard').innerHTML=''; }
-
-  /* ---------- Projects ---------- */
-  function initProjects(){ const d=loadData(); const grid=document.getElementById('projectsGrid'); const q=(document.getElementById('projSearch').value||'').toLowerCase(); grid.innerHTML=''; const items=d.projects.filter(p=>{ const hay=`${p.address||''} ${p.name||''} ${p.description||''}`.toLowerCase(); return hay.includes(q); }); if(!items.length){ grid.innerHTML='<div class="muted">No projects</div>'; }
-    items.forEach(p=> grid.appendChild(renderProjectCard(p)));
-    document.getElementById('projSearch').oninput=()=> initProjects(); }
-
-  function renderProjectCard(p){ const totalCost=sumNumeric(p.tasks.map(t=> t.totalCost)); const el=document.createElement('div'); el.className='card'; el.innerHTML=`
-      <div class="status-row">
-        <div class="status-text">
-          <h3 style="margin:0">${escapeHtml(p.address||p.name||'Untitled')}</h3>
-          <div class="muted">Owner: ${escapeHtml(p.owner_name||'')}</div>
-        </div>
-        <span class="status-pill ${p.status==='completed'?'completed':'active'}">${p.status}</span>
-      </div>
-      <div style="margin-top:6px" class="muted">${escapeHtml(p.description||'')}</div>
-      <div style="margin-top:8px; display:flex; gap:12px; flex-wrap:wrap;">
-        <div><strong>Expected cost:</strong> ${escapeHtml(p.est_cost||'')}</div>
-        <div><strong>Expected sales:</strong> ${escapeHtml(p.sales||'')}</div>
-        <div><strong>Start:</strong> ${escapeHtml(p.start_date||'')}</div>
-        <div><strong>Total cost:</strong> ${fmtMoney(totalCost)}</div>
-      </div>
-      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn small secondary" href="#project:${p.id}">Open</a>
-        <button class="btn small" data-action="edit">Edit</button>
-        <button class="btn small" data-action="delete">Delete</button>
-        <button class="btn small" data-action="mark-active">Mark Active</button>
-        <button class="btn small" data-action="mark-complete">Mark Complete</button>
-      </div>`; el.querySelector('[data-action="edit"]').onclick=()=> openNewProjectModal(p); el.querySelector('[data-action="delete"]').onclick=async ()=>{ const ok=await confirmDialog('Delete Project', `Are you sure you want to delete: ${escapeHtml(p.address||p.name||'Untitled')}?`); if(!ok) return; const d=loadData(); const idx=d.projects.findIndex(x=> x.id===p.id); if(idx>=0){ d.projects.splice(idx,1); saveData(d); addActivity(`Deleted project: ${p.address}`); initProjects(); toast('Project deleted'); } }; el.querySelector('[data-action="mark-active"]').onclick=()=>{ const d=loadData(); const pr=d.projects.find(x=> x.id===p.id); if(pr){ pr.status='active'; updateProjectMetrics(pr); saveData(d); addActivity(`Marked active: ${p.address}`); initProjects(); } }; el.querySelector('[data-action="mark-complete"]').onclick=()=>{ const d=loadData(); const pr=d.projects.find(x=> x.id===p.id); if(pr){ pr.status='completed'; updateProjectMetrics(pr); saveData(d); addActivity(`Marked complete: ${p.address}`); initProjects(); } }; return el; }
-
-  /* ---------- Project ---------- */
-  let currentProjectId=null; let editSelectedTaskId='';
-  function initProject(id){ currentProjectId=id; const d=loadData(); const p=d.projects.find(x=> x.id===id); updateProjectMetrics(p); saveData(d); if(!p){ document.getElementById('projectHeader').innerHTML='<div class="muted">Project not found</div>'; return; } const totalCost=sumNumeric(p.tasks.map(t=> t.totalCost)); const header=document.getElementById('projectHeader'); header.innerHTML=`<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;"><div><h2 style="margin:0">${escapeHtml(p.address||p.name||'Untitled')}</h2><div class="muted">Owner: ${escapeHtml(p.owner_name||'')}</div><div style="margin-top:6px; display:flex; gap:12px; flex-wrap:wrap;"><span class="badge ${p.status==='completed'?'completed':'active'}">${p.status}</span><span class="badge">Tasks: ${p.tasks.length}</span><span class="badge">Total Cost: ${fmtMoney(totalCost)}</span><span class="badge">Expected Sales: ${escapeHtml(p.sales||'')}</span><span class="badge">Expected Cost: ${escapeHtml(p.est_cost||'')}</span><span class="badge">Start: ${escapeHtml(p.start_date||'')}</span></div></div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="btn small" id="pMarkActive">Mark Active</button><button class="btn small" id="pMarkComplete">Mark Complete</button></div></div>`; document.getElementById('pMarkActive').onclick=()=>{ p.status='active'; updateProjectMetrics(p); saveData(d); addActivity(`Marked active: ${p.address}`); initProject(id); }; document.getElementById('pMarkComplete').onclick=()=>{ p.status='completed'; updateProjectMetrics(p); saveData(d); addActivity(`Marked complete: ${p.address}`); initProject(id); };
-    document.querySelectorAll('.subtabs button[data-tab]').forEach(b=>{ b.onclick=()=>{ document.querySelectorAll('.subtabs button').forEach(x=> x.classList.toggle('active', x===b)); document.querySelectorAll('#projectPanels > div').forEach(div=> div.hidden=(div.id!==`panel-${b.dataset.tab}`)); setScrollableHeights(); }; }); renderTasksList(p); buildTaskDropdown(p); renderPhotosTab(p);
-    const photoInput=document.getElementById('add-photos'); const previewWrap=document.getElementById('add-previews'); photoInput.onchange=()=>{ previewWrap.innerHTML=''; [...photoInput.files].forEach(file=>{ const img=document.createElement('img'); img.className='preview'; const fr=new FileReader(); fr.onload=e=> img.src=e.target.result; fr.readAsDataURL(file); previewWrap.appendChild(img); }); };
-    document.getElementById('btnSaveTask').onclick=async ()=>{ const t={ id:crypto.randomUUID(), name:document.getElementById('add-name').value||'', date:document.getElementById('add-date').value||'', description:document.getElementById('add-desc').value||'', quantity:document.getElementById('add-qty').value||'', unitCost:document.getElementById('add-unit').value||'', totalCost:document.getElementById('add-total').value||'', allocation:document.getElementById('add-allocation').value||'', sprint:document.getElementById('add-sprint').value||'', assignee:document.getElementById('add-assignee').value||'', notes:document.getElementById('add-notes').value||'' }; p.tasks.push(t); updateProjectMetrics(p); saveData(d); addActivity(`Task added: ${t.name} in ${p.address}`); const files=document.getElementById('add-photos').files; if(files && files.length){ const readers=[]; for(const f of files){ readers.push(new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=async e=>{ try{ await idb.add(t.id, e.target.result); res(); } catch(err){ rej(err); } }; fr.onerror=rej; fr.readAsDataURL(f); })); } try{ await Promise.all(readers); } catch(err){ console.error(err); } } ['add-name','add-date','add-desc','add-qty','add-unit','add-total','add-allocation','add-sprint','add-assignee','add-notes'].forEach(i=>{ const el=document.getElementById(i); if(el) el.value=''; }); document.getElementById('add-photos').value=''; document.getElementById('add-previews').innerHTML=''; initProject(p.id); toast('Task saved'); document.querySelector('.subtabs button[data-tab="view"]').click(); };
-    document.getElementById('btnSpreadsheet').onclick = ()=> openReportsModal(p);
-    document.getElementById('btnUpdateTask').onclick=async ()=>{ const t=p.tasks.find(x=> x.id===editSelectedTaskId); if(!t) return; t.name=document.getElementById('edit-name').value||''; t.date=document.getElementById('edit-date').value||''; t.description=document.getElementById('edit-desc').value||''; t.quantity=document.getElementById('edit-qty').value||''; t.unitCost=document.getElementById('edit-unit').value||''; t.totalCost=document.getElementById('edit-total').value||''; t.allocation=document.getElementById('edit-allocation').value||''; t.sprint=document.getElementById('edit-sprint').value||''; t.assignee=document.getElementById('edit-assignee').value||''; t.notes=document.getElementById('edit-notes').value||''; updateProjectMetrics(p); saveData(d); addActivity(`Task updated: ${t.name} in ${p.address}`); const files=document.getElementById('edit-photos').files; if(files && files.length){ const readers=[]; for(const f of files){ readers.push(new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=async e=>{ try{ await idb.add(t.id, e.target.result); res(); } catch(err){ rej(err); } }; fr.onerror=rej; fr.readAsDataURL(f); })); } try{ await Promise.all(readers); } catch(err){ console.error(err); } } initProject(p.id); toast('Task updated'); document.querySelector('.subtabs button[data-tab="view"]').click(); };
+const COLUMN_MAP = {
+  Task: {
+    Title:"Title", Address:"Address", StartDate:"Start_x0020_Date", EndDate:"End_x0020_Date",
+    Quantity:"Quantity", UnitCost:"Unit_x0020_Cost", TotalCost:"Total_x0020_Cost", Allocation:"Allocation",
+    Sprint:"Sprint", Assignee:"Assignee", Description:"Description", Notes:"Notes", Photos:"Photos"
+  },
+  Project: {
+    Title:"Title", Owner:"Owner", StartDate:"Start_x0020_Date", ExpectedSales:"Expected_x0020_Sales", Active:"Active"
   }
+};
 
-  function renderTasksList(p){ const panel=document.getElementById('panel-view'); panel.innerHTML=''; if(p.tasks.length===0){ panel.innerHTML='<div class="muted">No tasks yet</div>'; return; } p.tasks.forEach(t=>{ const row=document.createElement('div'); row.className='card'; const allocFmt=t.allocation?('$'+fmtMoney(t.allocation)) : ''; row.innerHTML=`<div style="display:flex; justify-content:space-between; align-items:center;"><div><strong>${escapeHtml(t.name||'Untitled')}</strong><span class="badge" style="margin-left:6px">${escapeHtml(t.assignee||'')}</span></div><div style="display:flex; gap:8px;"><button class="btn small" data-action="view">View</button><button class="btn small" data-action="delete">Delete</button></div></div><div class="muted" style="margin-top:4px">${escapeHtml(t.description||'')}</div><div style="margin-top:6px; display:flex; gap:12px; flex-wrap:wrap;"><div><strong>Date:</strong> ${escapeHtml(t.date||'')}</div><div><strong>Qty:</strong> ${escapeHtml(t.quantity||'')}</div><div><strong>Unit:</strong> ${escapeHtml(t.unitCost||'')}</div><div><strong>Total:</strong> ${escapeHtml(t.totalCost||'')}</div><div><strong>Allocation:</strong> ${allocFmt}</div><div><strong>Sprint:</strong> ${escapeHtml(t.sprint||'')}</div></div><div class="muted" style="margin-top:6px">Photos:</div><div class="thumbs" style="display:flex; gap:6px; flex-wrap:wrap;" data-task="${t.id}"></div>`; row.querySelector('[data-action="view"]').onclick=()=> openTaskDetails(t); row.querySelector('[data-action="delete"]').onclick=async ()=>{ const ok=await confirmDialog('Delete Task', `Are you sure you want to delete task: ${escapeHtml(t.name||'(Untitled)')}?`); if(!ok) return; const d=loadData(); const pr=d.projects.find(x=> x.id===p.id); const idx=pr.tasks.findIndex(x=> x.id===t.id); if(idx>=0){ pr.tasks.splice(idx,1); updateProjectMetrics(pr); saveData(d); addActivity(`Deleted task: ${t.name} in ${p.address}`); initProject(p.id); toast('Task deleted'); } }; panel.appendChild(row); idb.list(t.id).then(images=>{ const wrap=row.querySelector('.thumbs'); if(!images.length){ wrap.textContent='No photos'; return; } images.forEach(rec=>{ const img=document.createElement('img'); img.className='preview'; img.src=rec.dataUrl; wrap.appendChild(img); }); }); }); }
+function goTab(id) {
+  document.querySelectorAll('.tab').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  document.querySelectorAll('nav.tabs a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+}
 
-  /* ---------- Custom dropdown ---------- */
-  function buildTaskDropdown(p){ editSelectedTaskId=''; const btn=document.getElementById('taskDropdownBtn'); const menu=document.getElementById('taskDropdownMenu'); const dd=document.getElementById('taskDropdown'); btn.textContent='— Select —'; menu.innerHTML=''; if(!p.tasks.length){ const empty=document.createElement('div'); empty.className='dropdown-empty'; empty.textContent='No tasks'; menu.appendChild(empty); } p.tasks.forEach((t, idx)=>{ const opt=document.createElement('div'); opt.className='dropdown-option'; opt.setAttribute('role','option'); opt.dataset.id=t.id; opt.textContent=t.name||'(Untitled)'; opt.setAttribute('aria-selected','false'); opt.onclick=()=> selectTaskOption(p, t.id); opt.onmouseenter=()=> setActiveOption(opt); menu.appendChild(opt); if(idx===0) setActiveOption(opt); }); btn.onclick=(e)=>{ e.stopPropagation(); const open=!menu.hasAttribute('hidden'); if(open){ closeMenu(); } else { openMenu(); } }; function openMenu(){ menu.removeAttribute('hidden'); btn.setAttribute('aria-expanded','true'); menu.focus(); setScrollableHeights(); } function closeMenu(){ menu.setAttribute('hidden',''); btn.setAttribute('aria-expanded','false'); } document.addEventListener('click',(ev)=>{ if(!dd.contains(ev.target)) closeMenu(); }); menu.addEventListener('keydown',(ev)=>{ const opts=[...menu.querySelectorAll('.dropdown-option')]; const active=menu.querySelector('.dropdown-option[aria-selected=true]'); const idx=opts.indexOf(active); if(ev.key==='ArrowDown'){ ev.preventDefault(); const next=opts[Math.min(opts.length-1, idx+1)]; if(next) setActiveOption(next); next?.scrollIntoView({block:'nearest'}); } else if(ev.key==='ArrowUp'){ ev.preventDefault(); const prev=opts[Math.max(0, idx-1)]; if(prev) setActiveOption(prev); prev?.scrollIntoView({block:'nearest'}); } else if(ev.key==='Home'){ ev.preventDefault(); const first=opts[0]; if(first) setActiveOption(first); first?.scrollIntoView({block:'nearest'}); } else if(ev.key==='End'){ ev.preventDefault(); const last=opts[opts.length-1]; if(last) setActiveOption(last); last?.scrollIntoView({block:'nearest'}); } else if(ev.key==='Enter'){ ev.preventDefault(); const sel=menu.querySelector('.dropdown-option[aria-selected=true]'); if(sel) selectTaskOption(p, sel.dataset.id); closeMenu(); } else if(ev.key==='Escape'){ ev.preventDefault(); closeMenu(); btn.focus(); } }); function setActiveOption(opt){ menu.querySelectorAll('.dropdown-option').forEach(o=> o.setAttribute('aria-selected','false')); opt.setAttribute('aria-selected','true'); } }
-  function selectTaskOption(p, taskId){ editSelectedTaskId=taskId; const t=p.tasks.find(x=> x.id===taskId); const btn=document.getElementById('taskDropdownBtn'); btn.textContent=t?.name || '(Untitled)'; document.getElementById('edit-name').value=t?.name||''; document.getElementById('edit-date').value=t?.date||''; document.getElementById('edit-desc').value=t?.description||''; document.getElementById('edit-qty').value=t?.quantity||''; document.getElementById('edit-unit').value=t?.unitCost||''; document.getElementById('edit-total').value=t?.totalCost||''; document.getElementById('edit-allocation').value=t?.allocation||''; document.getElementById('edit-sprint').value=t?.sprint||''; document.getElementById('edit-assignee').value=t?.assignee||''; document.getElementById('edit-notes').value=t?.notes||''; const thumbs=document.getElementById('edit-thumbs'); thumbs.innerHTML=''; idb.list(t.id).then(images=>{ if(!images.length){ thumbs.textContent='No photos'; return; } images.forEach(r=>{ const img=document.createElement('img'); img.className='preview'; img.src=r.dataUrl; thumbs.appendChild(img); }); }); }
+(function initSettings(){
+  const name = localStorage.getItem('wolcas.companyName')||'Company';
+  document.getElementById('company-name').textContent = name;
+  document.getElementById('set-company-name').value = name;
+  const logo = localStorage.getItem('wolcas.companyLogo');
+  if (logo) document.getElementById('company-logo').src = logo;
+})();
 
-  /* ---------- Photos tab ---------- */
-  function renderPhotosTab(p){ const grid=document.getElementById('photosGrid'); grid.innerHTML=''; if(p.tasks.length===0){ grid.innerHTML='<div class="muted">No tasks yet</div>'; return; } idb.listByProject(p).then(byTask=>{ p.tasks.forEach(t=>{ const card=document.createElement('div'); card.className='card'; card.innerHTML=`<h3 style="margin-top:0">${escapeHtml(t.name||'(Untitled)')}</h3>`; const wrap=document.createElement('div'); wrap.style.cssText='display:flex; gap:6px; flex-wrap:wrap;'; const imgs=byTask[t.id]||[]; if(!imgs.length){ wrap.textContent='No photos'; } else imgs.forEach(r=>{ const img=document.createElement('img'); img.className='preview'; img.src=r.dataUrl; wrap.appendChild(img); }); card.appendChild(wrap); grid.appendChild(card); }); }); }
-
-  /* ---------- Confirm dialog ---------- */
-  async function confirmDialog(title, message, confirmText='Delete', cancelText='Cancel'){ return new Promise((resolve)=>{ const backdrop=document.getElementById('modalBackdrop'); const card=document.getElementById('modalCard'); backdrop.style.display='flex'; card.innerHTML=`<div class="modal-header"><h3 style="margin:0">${escapeHtml(title)}</h3><button class="btn small link" id="btnCloseModal">✖</button></div><div>${escapeHtml(message)}</div><div class="confirm-actions"><button class="btn" id="btnCancel">${escapeHtml(cancelText)}</button><button class="btn primary" id="btnConfirm">${escapeHtml(confirmText)}</button></div>`; document.getElementById('btnCloseModal').onclick=()=>{ closeModal(); resolve(false); }; document.getElementById('btnCancel').onclick=()=>{ closeModal(); resolve(false); }; document.getElementById('btnConfirm').onclick=()=>{ closeModal(); resolve(true); }; }); }
-
-  /* ---------- Task details ---------- */
-  function openTaskDetails(t){ const backdrop=document.getElementById('modalBackdrop'); const card=document.getElementById('modalCard'); backdrop.style.display='flex'; card.innerHTML=`<div class="modal-header"><h3 style="margin:0">Task Details</h3><button class="btn small link" id="btnCloseModal">✖</button></div><table style="margin-top:8px"><tbody><tr><th>Name</th><td>${escapeHtml(t.name||'')}</td></tr><tr><th>Date</th><td>${escapeHtml(t.date||'')}</td></tr><tr><th>Description</th><td>${escapeHtml(t.description||'')}</td></tr><tr><th>Quantity</th><td>${escapeHtml(t.quantity||'')}</td></tr><tr><th>Unit Cost</th><td>${escapeHtml(t.unitCost||'')}</td></tr><tr><th>Total Cost</th><td>${escapeHtml(t.totalCost||'')}</td></tr><tr><th>Allocation ($)</th><td>${escapeHtml(t.allocation||'')}</td></tr><tr><th>Sprint</th><td>${escapeHtml(t.sprint||'')}</td></tr><tr><th>Assignee</th><td>${escapeHtml(t.assignee||'')}</td></tr><tr><th>Notes</th><td>${escapeHtml(t.notes||'')}</td></tr></tbody></table><div style="margin-top:8px" id="td-photos"></div>`; document.getElementById('btnCloseModal').onclick=closeModal; idb.list(t.id).then(imgs=>{ const wrap=document.createElement('div'); wrap.style.cssText='display:flex; gap:6px; flex-wrap:wrap;'; if(!imgs.length){ wrap.textContent='No photos'; } else imgs.forEach(r=>{ const img=document.createElement('img'); img.className='preview'; img.src=r.dataUrl; wrap.appendChild(img); }); document.getElementById('td-photos').appendChild(wrap); }); }
-
-  /* ---------- Reports modal (exports) ---------- */
-  function openReportsModal(p){
-    const backdrop=document.getElementById('modalBackdrop'); const card=document.getElementById('modalCard'); backdrop.style.display='flex';
-
-    const rows=(p.tasks||[]).map(t=> `
-      <tr>
-        <td>${escapeHtml(t.name||'')}</td>
-        <td>${escapeHtml(t.date||'')}</td>
-        <td>${escapeHtml(t.description||'')}</td>
-        <td>${escapeHtml(t.quantity||'')}</td>
-        <td>${escapeHtml(t.unitCost||'')}</td>
-        <td>${escapeHtml(t.totalCost||'')}</td>
-        <td>${escapeHtml(t.allocation||'')}</td>
-        <td>${escapeHtml(t.assignee||'')}</td>
-        <td>${escapeHtml(t.sprint||'')}</td>
-        <td>${escapeHtml(t.notes||'')}</td>
-        <td data-photos-for="${t.id}"></td>
-      </tr>`).join('');
-
-    card.innerHTML=`<div class="modal-header"><h3 style="margin:0">Reports</h3><button class="btn small link" id="btnCloseModal">✖</button></div>
-      <div style="max-height:50vh; overflow:auto; overflow-x:auto; margin-top:8px;">
-        <table id="sheetTable" class="report-table">
-          <thead><tr>
-            <th>Task Name</th><th>Date</th><th>Description</th><th>Quantity</th><th>Unit Cost</th><th>Total</th><th>Allocation ($)</th><th>Assignee</th><th>Sprint</th><th>Notes</th><th>Photos</th>
-          </tr></thead>
-          <tbody>
-            ${rows}
-          </tbody>
-        </table>
-      </div>
-      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="btn secondary" id="btnExportCSV">Export CSV</button>
-        <button class="btn secondary" id="btnExportXLS">Export XLS</button>
-        <button class="btn secondary" id="btnExportPDF">Export PDF</button>
-      </div>`;
-    document.getElementById('btnCloseModal').onclick=closeModal;
-
-    // Photos thumbnails in the table
-    Promise.all((p.tasks||[]).map(t=> idb.list(t.id))).then(group=>{
-      group.forEach((imgs, idx)=>{
-        const t=p.tasks[idx]; const cell=card.querySelector(`[data-photos-for="${t.id}"]`);
-        if(!cell) return; if(!imgs.length){ cell.textContent='No photos'; return; }
-        imgs.forEach(r=>{ const im=document.createElement('img'); im.className='sheet-photo'; im.src=r.dataUrl; cell.appendChild(im); });
-      });
-    });
-
-    // CSV Export (table only)
-    document.getElementById('btnExportCSV').onclick=()=>{
-      const rowsDom=[...document.querySelectorAll('#sheetTable tr')].map(tr=> [...tr.children].map(td=> td.textContent.trim()));
-      const csv=rowsDom.map(r=> r.map(cell=> `"${cell.replace(/"/g,'""')}"`).join(',')).join('\n');
-      const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a');
-      a.href=URL.createObjectURL(blob); a.download=`${safeFileName(p.address||'project')}.csv`; a.click();
-    };
-
-    // XLS Export (table only)
-    document.getElementById('btnExportXLS').onclick=()=>{
-      const table=document.getElementById('sheetTable'); const htmlStr='<table>'+table.outerHTML+'</table>';
-      const uri='data:application/vnd.ms-excel,'+encodeURIComponent(htmlStr);
-      const a=document.createElement('a'); a.href=uri; a.download=`${safeFileName(p.address||'project')}.xls`; a.click();
-    };
-
-    // PDF Export (prepend project details above the table)
-    document.getElementById('btnExportPDF').onclick=()=>{
-      const tableHTML=document.getElementById('sheetTable').outerHTML;
-      const w=window.open('', '_blank');
-      const css=`<style>
-        table{border-collapse:collapse} table, th, td{border:1px solid #d1d5db}
-        .report-meta{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px 14px}
-        .report-meta .item{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e7eb;border-radius:999px;padding:4px 8px;font-weight:600}
-        .report-meta .item svg{width:12px;height:12px;color:#0F172A;display:inline-block}
-        img.sheet-photo{max-width:80px;max-height:80px;border:1px solid #e5e7eb;border-radius:6px}
-      </style>`;
-      const meta=`<div class="report-meta">
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 21h16v-2H4v2zm2-4h12V5a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v12zm2-8h2V7H8v2zm0 4h2v-2H8v2zm4-4h2V7h-2v2zm0 4h2v-2h-2v2z"/></svg><span class="label">Project:</span> <span class="value">${escapeHtml(p.address||p.name||'Untitled')}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5z"/></svg><span class="label">Owner:</span> <span class="value">${escapeHtml(p.owner_name||'')}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h2v2h6V2h2v2h3a1 1 0 0 1 1 1v15a1 1 0  0 1-1 1H4a1 1 0  0 1-1-1V5a1 1 0  0 1 1-1h3V2zm13 6H4v12h16V8z"/></svg><span class="label">Start date:</span> <span class="value">${escapeHtml(p.start_date||'')}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 0 1 1 1v1.06c1.73.22 3 1.42 3  2.94h-2c0-.55-.67-1-1.5-1S10 8 10 8.5s.67.88 1.5 1.07l1 .23c2 .47 3.5 1.6 3.5 3.2 0 1.74-1.53 3.14-3.5 3.36V18a1  1 0  0 1-2 0v-1.06c-1.73-.22-3-1.42-3-2.94h2c0 .55.67 1 1.5 1s1.5-.45 1.5-.95-.67-.88-1.5-1.07l-1-.23C9.5 12.28 8 11.15 8 9.55 8 7.81 9.53 6.41 11.5 6.19V5a1  1 0  0 1 1-1z"/></svg><span class="label">Expected Cost:</span> <span class="value">${escapeHtml(p.est_cost||'')}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17h18v2H3v-2zm2-6 4 4 4-4 4 4 3-3V7h-5l-3 3-4-4-5 5z"/></svg><span class="label">Expected Sales:</span> <span class="value">${escapeHtml(p.sales||'')}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 5h11v2H9V5zM4 7l2-2 2 2-2 2L4 7zm1 5h15v2H5v-2zm0 6h15v2H5v-2z"/></svg><span class="label">Tasks:</span> <span class="value">${(p.tasks||[]).length}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12a1 1 0  0 1 1 1v18l-3-2-3 2-3-2-3 2V3a1  1 0  0 1 1-1zm2 5h8v2H8V7zm0 4h8v2H8v-2zm0 4h5v2H8v-2z"/></svg><span class="label">Total Cost:</span> <span class="value">${fmtMoney(sumNumeric((p.tasks||[]).map(t=> t.totalCost)))}</span></span>
-          </div>`;
-      w.document.write('<html><head><title>Reports</title>'+css+'</head><body>'+meta+tableHTML+'</body></html>'); w.document.close(); w.print();
-    };
+function saveSettings(){
+  const name = document.getElementById('set-company-name').value||'Company';
+  localStorage.setItem('wolcas.companyName', name);
+  document.getElementById('company-name').textContent = name;
+  const file = document.getElementById('set-logo').files?.[0];
+  if (file){
+    const reader = new FileReader();
+    reader.onload = () => { localStorage.setItem('wolcas.companyLogo', reader.result); document.getElementById('company-logo').src = reader.result; };
+    reader.readAsDataURL(file);
   }
+  alert('Saved');
+}
 
-  /* ---------- Dashboard ---------- */
-  function initDashboard(){ const d=loadData(); const totalProjects=d.projects.length; const activeProjects=d.projects.filter(p=> p.status==='active').length; const completedProjects=d.projects.filter(p=> p.status==='completed').length; const totalCosts=sumNumeric(d.projects.flatMap(p=> p.tasks.map(t=> t.totalCost))); const totalSales=sumNumeric(d.projects.map(p=> p.sales)); document.getElementById('mTotalProjects').textContent=totalProjects; document.getElementById('mActiveProjects').textContent=activeProjects; document.getElementById('mCompletedProjects').textContent=completedProjects; document.getElementById('mTotalCosts').textContent=fmtMoney(totalCosts); document.getElementById('mTotalSales').textContent=fmtMoney(totalSales); const ul=document.getElementById('activityList'); ul.innerHTML=''; (d.activity||[]).slice(0,20).forEach(ev=>{ const li=document.createElement('li'); li.textContent=new Date(ev.ts||Date.now()).toLocaleString()+' — '+ev.text; ul.appendChild(li); }); }
+const msalInstance = new msal.PublicClientApplication({ auth: CONFIG.msal, cache: { cacheLocation:'localStorage' } });
+let ACTIVE_ACCOUNT=null; let ROLE='viewer';
 
-  /* ---------- Settings ---------- */
-  function initSettings(){ const d=loadData(); document.getElementById('set-name').value=d.company.name||''; document.getElementById('btnSaveSettings').onclick=()=>{ const n=document.getElementById('set-name').value||''; d.company.name=n; saveData(d); addActivity('Settings: company name saved'); toast('Settings saved'); route(); }; document.getElementById('set-logo').onchange=()=>{ const f=document.getElementById('set-logo').files[0]; if(!f) return; const fr=new FileReader(); fr.onload=e=>{ const d2=loadData(); d2.company.logo=e.target.result; saveData(d2); addActivity('Settings: logo saved'); toast('Settings saved'); route(); }; fr.readAsDataURL(f); }; }
+msalInstance.handleRedirectPromise().then(resp=>{
+  if (resp) msalInstance.setActiveAccount(resp.account);
+  const acc = msalInstance.getActiveAccount() || msalInstance.getAllAccounts()[0];
+  if (acc) { msalInstance.setActiveAccount(acc); ACTIVE_ACCOUNT = acc; document.getElementById('user-info').textContent = acc.username; initSharePoint(); }
+}).catch(console.error);
 
-  /* ---------- Utilities ---------- */
-  function escapeHtml(s){ return (s||'').replace(/[&<>\"]/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]) ); }
-  function escapeAttr(s){ return (s||'').replace(/\"/g,'&quot;'); }
-  function safeFileName(s){ return (s||'file').replace(/[^a-z0-9_\-]+/gi,'_'); }
-  </script>
+async function signIn(){ await msalInstance.loginRedirect({ scopes: CONFIG.graphScopes }); }
+function signOut(){ msalInstance.logoutRedirect(); }
+
+async function getToken(){
+  const acc = msalInstance.getActiveAccount(); if(!acc) throw new Error('No active account');
+  try{ const r = await msalInstance.acquireTokenSilent({ scopes: CONFIG.graphScopes, account: acc }); return r.accessToken; }
+  catch(e){ await msalInstance.acquireTokenRedirect({ scopes: CONFIG.graphScopes }); }
+}
+async function graphGET(url){ const t=await getToken(); const r=await fetch(url,{headers:{Authorization:`Bearer ${t}`}}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function graphPOST(url,body){ const t=await getToken(); const r=await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},body:JSON.stringify(body)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function graphPATCH(url,body){ const t=await getToken(); const r=await fetch(url,{method:'PATCH',headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},body:JSON.stringify(body)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function graphDELETE(url){ const t=await getToken(); const r=await fetch(url,{method:'DELETE',headers:{Authorization:`Bearer ${t}`}}); if(!r.ok) throw new Error(await r.text()); return true; }
+
+let SITE_ID=null, TASK_LIST_ID=null, PROJECT_LIST_ID=null, DEFAULT_DRIVE_ID=null; let PROJECTS=[], TASKS=[];
+
+async function initSharePoint(){
+  await resolveRole();
+  const site = await graphGET(`https://graph.microsoft.com/v1.0/sites/${CONFIG.sharepoint.host}:${CONFIG.sharepoint.sitePath}`); SITE_ID=site.id;
+  const lists = await graphGET(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists`);
+  const task = lists.value.find(l=>l.displayName===CONFIG.sharepoint.taskListName);
+  const project = lists.value.find(l=>l.displayName===CONFIG.sharepoint.projectListName);
+  TASK_LIST_ID=task?.id; PROJECT_LIST_ID=project?.id; if(!TASK_LIST_ID||!PROJECT_LIST_ID){ alert('Task/Project lists not found.'); return; }
+  const drive = await graphGET(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive`); DEFAULT_DRIVE_ID=drive.id; await ensurePhotoFolder(CONFIG.photos.folder);
+  await refreshAll();
+}
+
+async function resolveRole(){
+  try{ const groups=await graphGET('https://graph.microsoft.com/v1.0/me/memberOf?$select=displayName'); const names=(groups.value||[]).map(g=>g.displayName||''); ROLE = names.includes('WOLCAS-Admins')? 'admin' : names.includes('WOLCAS-Editors')? 'editor' : 'viewer'; }catch(e){ ROLE='viewer'; }
+  document.getElementById('role-label').textContent = ROLE;
+}
+function canEdit(){ return ROLE==='admin'||ROLE==='editor'; }
+
+async function loadProjects(){ const r=await graphGET(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${PROJECT_LIST_ID}/items?expand=fields`); PROJECTS=r.value.map(i=>({ id:i.id, title:i.fields[COLUMN_MAP.Project.Title], owner:i.fields[COLUMN_MAP.Project.Owner], startDate:i.fields[COLUMN_MAP.Project.StartDate], expectedSales:Number(i.fields[COLUMN_MAP.Project.ExpectedSales]||0), active:!!i.fields[COLUMN_MAP.Project.Active] })); }
+async function loadTasks(){ const r=await graphGET(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${TASK_LIST_ID}/items?expand=fields`); TASKS=r.value.map(i=>({ id:i.id, title:i.fields[COLUMN_MAP.Task.Title], address:i.fields[COLUMN_MAP.Task.Address], startDate:i.fields[COLUMN_MAP.Task.StartDate], endDate:i.fields[COLUMN_MAP.Task.EndDate], quantity:Number(i.fields[COLUMN_MAP.Task.Quantity]||0), unitCost:Number(i.fields[COLUMN_MAP.Task.UnitCost]||0), totalCost:Number(i.fields[COLUMN_MAP.Task.TotalCost]||0), allocation:Number(i.fields[COLUMN_MAP.Task.Allocation]||0), sprint:i.fields[COLUMN_MAP.Task.Sprint], assignee:i.fields[COLUMN_MAP.Task.Assignee], description:i.fields[COLUMN_MAP.Task.Description], notes:i.fields[COLUMN_MAP.Task.Notes], photos:i.fields[COLUMN_MAP.Task.Photos] })); }
+
+function updateDashboard(){ const totalProjects=PROJECTS.length; const active=PROJECTS.filter(p=>p.active).length; const completed=PROJECTS.filter(p=>!p.active).length; const totalCost=TASKS.reduce((s,t)=>s+(Number(t.totalCost)||0),0); const sales=PROJECTS.reduce((s,p)=>s+(Number(p.expectedSales)||0),0); document.getElementById('metric-projects').textContent=totalProjects; document.getElementById('metric-active').textContent=active; document.getElementById('metric-completed').textContent=completed; document.getElementById('metric-totalcost').textContent=totalCost.toFixed(2); document.getElementById('metric-sales').textContent=sales.toFixed(2); }
+
+async function refreshAll(){ await loadProjects(); await loadTasks(); renderRecentProjects(); renderProjectsList(); updateDashboard(); await renderRecentActivity(); }
+
+function renderRecentProjects(){ const cont=document.getElementById('recent-projects'); cont.innerHTML=''; PROJECTS.slice(0,3).forEach(p=>{ cont.appendChild(projectCard(p,true)); }); }
+
+function renderProjectsList(){ const cont=document.getElementById('project-list'); cont.innerHTML=''; const q=(document.getElementById('project-search').value||'').toLowerCase(); PROJECTS.filter(p=>!q|| (p.title||'').toLowerCase().includes(q) || (p.owner||'').toLowerCase().includes(q)).forEach(p=>{ cont.appendChild(projectCard(p,false)); }); }
+
+document.getElementById('project-search').addEventListener('input', renderProjectsList);
+
+function projectCard(p,compact){ const wrap=document.createElement('div'); wrap.className='project-card'; const status = p.active? '<span class="pill success">active</span>' : '<span class="pill">completed</span>'; const start=(p.startDate||'').substring(0,10); const expected=p.expectedSales.toFixed(2); const totalCost = sumProjectCostApprox(p); wrap.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><h4>${p.title||''}</h4>${status}</div><div class="small">Owner: ${p.owner||''}</div><div class="small" style="margin:6px 0;">Expected sales: ${expected} &nbsp;&nbsp; Start: ${start}</div><div class="small">Total cost: ${totalCost.toFixed(2)}</div><div style="margin-top:8px; display:flex; gap:6px;">${canEdit()? `<button class='btn secondary' onclick='openProjectModal("${p.id}")'>Edit</button>`:''}${ROLE==='admin'? `<button class='btn danger' onclick='deleteProject("${p.id}")'>Delete</button>`:''}<button class='btn' onclick='goTab("dashboard")'>Open</button>${p.active? `<button class='btn ghost' onclick='markProjectActive("${p.id}", false)'>Mark Complete</button>`:`<button class='btn ghost' onclick='markProjectActive("${p.id}", true)'>Mark Active</button>`}</div>`; return wrap; }
+
+function sumProjectCostApprox(p){ const key=(p.title||'').toLowerCase(); return TASKS.filter(t=> (t.address||'').toLowerCase().includes(key) ).reduce((s,t)=>s+(Number(t.totalCost)||0),0); }
+
+async function markProjectActive(id,isActive){ const fields={}; fields[COLUMN_MAP.Project.Active]=isActive; const before=PROJECTS.find(x=>x.id===id); await graphPATCH(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${PROJECT_LIST_ID}/items/${id}`,{fields}); await logAudit(isActive?'mark-active':'mark-complete','Project',id,before,fields); await refreshAll(); }
+
+let editingProjectId=null, editingTaskId=null;
+function openProjectModal(id){ if(!canEdit()) return alert('No permission'); editingProjectId=id||null; const p=PROJECTS.find(x=>x.id===id)||{ title:'',owner:'',startDate:'',expectedSales:0,active:true }; document.getElementById('project-modal-title').textContent=id? 'Edit Project':'New Project'; document.getElementById('p_title').value=p.title||''; document.getElementById('p_owner').value=p.owner||''; document.getElementById('p_start').value=(p.startDate||'').substring(0,10); document.getElementById('p_sales').value=p.expectedSales||0; document.getElementById('p_active').value=p.active? 'true':'false'; document.getElementById('btn-project-delete').style.display=(ROLE==='admin'&&id)?'inline-block':'none'; document.getElementById('project-modal').classList.add('show'); }
+function closeProjectModal(){ document.getElementById('project-modal').classList.remove('show'); }
+
+function openTaskModal(id){ if(!canEdit()) return alert('No permission'); editingTaskId=id||null; const t=TASKS.find(x=>x.id===id)||{ title:'',address:'',startDate:'',endDate:'',quantity:0,unitCost:0,totalCost:0,allocation:0,sprint:'',assignee:'',description:'',notes:'' }; document.getElementById('task-modal-title').textContent=id? 'Edit Task':'New Task'; document.getElementById('t_title').value=t.title||''; document.getElementById('t_address').value=t.address||''; document.getElementById('t_start').value=(t.startDate||'').substring(0,10); document.getElementById('t_end').value=(t.endDate||'').substring(0,10); document.getElementById('t_qty').value=t.quantity||0; document.getElementById('t_uc').value=t.unitCost||0; document.getElementById('t_tc').value=t.totalCost||0; document.getElementById('t_alloc').value=t.allocation||0; document.getElementById('t_sprint').value=t.sprint||''; document.getElementById('t_assign').value=t.assignee||''; document.getElementById('t_desc').value=t.description||''; document.getElementById('t_notes').value=t.notes||''; document.getElementById('t_photo').value=''; document.getElementById('btn-task-delete').style.display=(ROLE==='admin'&&id)?'inline-block':'none'; document.getElementById('task-modal').classList.add('show'); }
+function closeTaskModal(){ document.getElementById('task-modal').classList.remove('show'); }
+
+['t_qty','t_uc'].forEach(id=>{ document.addEventListener('input',e=>{ if(e.target&&e.target.id===id){ const q=Number(document.getElementById('t_qty').value||0); const u=Number(document.getElementById('t_uc').value||0); document.getElementById('t_tc').value=(q*u).toFixed(2); } }); });
+
+document.getElementById('btn-project-save').addEventListener('click', async ()=>{ if(!canEdit()) return alert('No permission'); const f={}; f[COLUMN_MAP.Project.Title]=document.getElementById('p_title').value; f[COLUMN_MAP.Project.Owner]=document.getElementById('p_owner').value; f[COLUMN_MAP.Project.StartDate]=document.getElementById('p_start').value; f[COLUMN_MAP.Project.ExpectedSales]=Number(document.getElementById('p_sales').value||0); f[COLUMN_MAP.Project.Active]=document.getElementById('p_active').value==='true'; if(editingProjectId){ const before=PROJECTS.find(x=>x.id===editingProjectId); await graphPATCH(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${PROJECT_LIST_ID}/items/${editingProjectId}`,{fields:f}); await logAudit('update','Project',editingProjectId,before,f); } else { const res=await graphPOST(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${PROJECT_LIST_ID}/items`,{fields:f}); await logAudit('create','Project',res.id,null,f); } closeProjectModal(); await refreshAll(); });
+
+document.getElementById('btn-project-delete').addEventListener('click', async ()=>{ if(ROLE!=='admin') return alert('Only admins can delete projects'); if(!editingProjectId) return; if(!confirm('Delete this project?')) return; const before=PROJECTS.find(x=>x.id===editingProjectId); await graphDELETE(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${PROJECT_LIST_ID}/items/${editingProjectId}`); await logAudit('delete','Project',editingProjectId,before,null); closeProjectModal(); await refreshAll(); });
+
+document.getElementById('btn-task-save').addEventListener('click', async ()=>{ if(!canEdit()) return alert('No permission'); const f={}; f[COLUMN_MAP.Task.Title]=document.getElementById('t_title').value; f[COLUMN_MAP.Task.Address]=document.getElementById('t_address').value; f[COLUMN_MAP.Task.StartDate]=document.getElementById('t_start').value; f[COLUMN_MAP.Task.EndDate]=document.getElementById('t_end').value; f[COLUMN_MAP.Task.Quantity]=Number(document.getElementById('t_qty').value||0); f[COLUMN_MAP.Task.UnitCost]=Number(document.getElementById('t_uc').value||0); f[COLUMN_MAP.Task.TotalCost]=Number(document.getElementById('t_tc').value||0); f[COLUMN_MAP.Task.Allocation]=Number(document.getElementById('t_alloc').value||0); f[COLUMN_MAP.Task.Sprint]=document.getElementById('t_sprint').value; f[COLUMN_MAP.Task.Assignee]=document.getElementById('t_assign').value; f[COLUMN_MAP.Task.Description]=document.getElementById('t_desc').value; f[COLUMN_MAP.Task.Notes]=document.getElementById('t_notes').value; const file=document.getElementById('t_photo').files?.[0]; if(file){ const url=await uploadPhoto(file); if(url) f[COLUMN_MAP.Task.Photos]=url; } if(editingTaskId){ const before=TASKS.find(x=>x.id===editingTaskId); await graphPATCH(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${TASK_LIST_ID}/items/${editingTaskId}`,{fields:f}); await logAudit('update','Task',editingTaskId,before,f); } else { const res=await graphPOST(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${TASK_LIST_ID}/items`,{fields:f}); await logAudit('create','Task',res.id,null,f); } closeTaskModal(); await refreshAll(); });
+
+document.getElementById('btn-task-delete').addEventListener('click', async ()=>{ if(ROLE!=='admin') return alert('Only admins can delete tasks'); if(!editingTaskId) return; if(!confirm('Delete this task?')) return; const before=TASKS.find(x=>x.id===editingTaskId); await graphDELETE(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${TASK_LIST_ID}/items/${editingTaskId}`); await logAudit('delete','Task',editingTaskId,before,null); closeTaskModal(); await refreshAll(); });
+
+async function ensurePhotoFolder(folder){ try{ await graphPOST(`https://graph.microsoft.com/v1.0/drives/${DEFAULT_DRIVE_ID}/root/children`,{ name:folder, folder:{}, "@microsoft.graph.conflictBehavior":"replace" }); }catch(e){} }
+async function uploadPhoto(file){ const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_'); const url=`https://graph.microsoft.com/v1.0/drives/${DEFAULT_DRIVE_ID}/root:/${CONFIG.photos.folder}/${safe}:/content`; const t=await getToken(); const r=await fetch(url,{method:'PUT', headers:{Authorization:`Bearer ${t}`,'Content-Type':file.type||'application/octet-stream'}, body:file}); if(!r.ok){ alert('Photo upload failed'); return null; } const item=await r.json(); return item.webUrl||null; }
+
+async function logAudit(action,itemType,itemId,before,after){ try{ const details={ by:ACTIVE_ACCOUNT?.username, when:new Date().toISOString(), action, itemType, itemId, before, after }; const lists=await graphGET(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists`); let audit=lists.value.find(l=>l.displayName==='Audit'); if(!audit) audit=await graphPOST(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists`,{ displayName:'Audit', list:{ template:'genericList' } }); const AUDIT_ID=audit.id||audit.value?.id; await graphPOST(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${AUDIT_ID}/items`,{ fields:{ Title: `${action} ${itemType}`, Details: JSON.stringify(details,null,2) } }); }catch(e){ console.warn('Audit failed',e); } }
+
+async function renderRecentActivity(){ try{ const lists=await graphGET(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists`); const audit=lists.value.find(l=>l.displayName==='Audit'); if(!audit) return; const items=await graphGET(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${audit.id}/items?expand=fields&$orderby=createdDateTime desc&$top=10`); const ul=document.getElementById('recent-activity'); ul.innerHTML=''; (items.value||[]).forEach(i=>{ const li=document.createElement('li'); li.textContent = `${new Date(i.createdDateTime).toLocaleString()} — ${i.fields.Title}`; ul.appendChild(li); }); }catch(e){ console.warn('Activity load failed',e); } }
+
+goTab('home');
+</script>
 </body>
 </html>
