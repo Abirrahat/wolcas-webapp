@@ -1,20 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>WOLCAS</title>
-<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0}header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #eee}.auth-buttons{margin-left:auto;display:flex;gap:8px}.btn{padding:6px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer}.btn:disabled{opacity:.6;cursor:not-allowed}main{padding:16px}</style>
-</head>
-<body>
-<header><strong>logo Company</strong><div class="auth-buttons"><button id="wolcas-signin" class="btn">Sign in</button><button id="wolcas-signout" class="btn" disabled>Sign out</button></div></header>
-<main id="content">
-<!DOCTYPE html>
-<html lang="en">
-<head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WOLCAS (WOLCAS)</title>
+  <title>Work Order Linked Cost Allocation Standings (WOLCAS)</title>
   <style>
     :root { --primary:#1E3A8A; --secondary:#475569; --accent:#F97316; --bg:#F8FAFC; --text:#0F172A; --card:#ffffff; --border:#e5e7eb; }
     * { box-sizing: border-box; }
@@ -106,7 +95,7 @@
 <body>
   <header class="sticky">
     <div class="header-inner">
-      <div class="app-title">WOLCAS</div>
+      <div class="app-title">Work Order Linked Cost Allocation Standings</div>
       <div class="company"><img id="companyLogo" alt="logo" /><span id="companyName">Company</span></div>
     </div>
   </header>
@@ -115,8 +104,8 @@
     <!-- HOME -->
     <section id="home" class="container" hidden>
       <div class="card">
-        <h1>Welcome to WOLCAS</h1>
-        <p class="muted">Create and track work orders, tasks, allocations, photos, and reports </p>
+        <h1>Welcome to Work Order Linked Cost Allocation Standings</h1>
+        <p class="muted">Create and track work orders, tasks, allocations, photos, and reports — all offline in one file.</p>
         <div style="display:flex; gap:8px; margin-top:8px;">
           <button class="btn primary" id="btnNewOrder">New Order</button>
           <a href="#projects" class="btn secondary">View Projects</a>
@@ -454,53 +443,132 @@
   </script>
 </body>
 </html>
-</main>
-<script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+
 <script>
 (function(){
-  const msalConfig = {
-    auth: {
-      clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
-      authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
-      redirectUri: 'https://abirrahat.github.io/wolcas-webapp/auth',
-      postLogoutRedirectUri: 'https://abirrahat.github.io/wolcas-webapp/'
-    },
-    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
-  };
-  const loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
-  const msalInstance = new msal.PublicClientApplication(msalConfig);
-  let account = null;
-  async function init(){
-    await msalInstance.initialize();
-    const resp = await msalInstance.handleRedirectPromise();
-    if(resp && resp.account) account = resp.account;
-    const accounts = msalInstance.getAllAccounts();
-    if(!account && accounts.length) account = accounts[0];
-    setAuthUI();
+  // Reuse WOLCAS if present; otherwise create a minimal shell
+  window.WOLCAS = window.WOLCAS || { state: function(){ return { account: null }; } };
+
+  const graphBase = 'https://graph.microsoft.com/v1.0';
+  let accessToken = null, siteId = null, projectListId = null;
+
+  // Acquire token via MSAL (already configured in previous script)
+  async function getToken(){
+    if(!window.msal || !window.WOLCAS) throw new Error('MSAL or WOLCAS not initialized');
+    const msalInstance = new msal.PublicClientApplication({}); // dummy; we'll use existing instance via popup
+    // Try to reuse the signed-in account by triggering a silent acquire with scopes
+    try {
+      const loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
+      const accounts = msalInstance.getAllAccounts();
+      if(accounts && accounts[0]){
+        const res = await msalInstance.acquireTokenSilent({ ...loginRequest, account: accounts[0] });
+        accessToken = res.accessToken;
+        return accessToken;
+      }
+    } catch(e){ console.warn('Silent token failed (placeholder instance). Using popup via WOLCAS.login()'); }
+    // Fallback: call existing login and then rely on Graph calls with fetch and bearer from popup-acquired session cookies
+    if(window.WOLCAS.login){ await window.WOLCAS.login(); }
+    // We will call Graph with fetch + bearer from acquireTokenPopup on a temporary instance
+    try{
+      const loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
+      const res = await msalInstance.acquireTokenPopup(loginRequest);
+      accessToken = res.accessToken;
+      return accessToken;
+    }catch(err){ console.error('Token acquisition failed', err); throw err; }
   }
-  async function login(){
-    try{ await msalInstance.loginPopup(loginRequest); account = msalInstance.getAllAccounts()[0]||null; }
-    catch(e){ console.warn('Login failed', e); alert('Sign in failed'); }
-    setAuthUI();
+
+  async function graph(path, options={}){
+    const headers = { 'Authorization': `Bearer ${accessToken}` };
+    if(options.body && !options.headers?.['Content-Type']) headers['Content-Type'] = 'application/json';
+    const resp = await fetch(`${graphBase}${path}`, { ...options, headers: { ...headers, ...(options.headers||{}) } });
+    if(!resp.ok){ let t=''; try{t=await resp.text();}catch{}; throw new Error(`Graph ${resp.status}: ${t}`); }
+    const ct = resp.headers.get('content-type')||'';
+    return ct.includes('application/json') ? await resp.json() : await resp.text();
   }
-  async function logout(){
-    try{ await msalInstance.logoutPopup(); }
-    catch(e){ await msalInstance.logoutRedirect(); }
-    finally{ account = null; setAuthUI(); }
+
+  async function resolveSiteAndLists(){
+    // Resolve personal site
+    const site = await graph('/sites/architektica-my.sharepoint.com:/personal/abir_architektica_com');
+    siteId = site.id;
+    const lists = await graph(`/sites/${siteId}/lists`);
+    projectListId = (lists.value||[]).find(l=>l.displayName==='Project')?.id;
+    if(!projectListId) throw new Error('SharePoint list "Project" not found.');
   }
-  function setAuthUI(){
-    const sIn = document.getElementById('wolcas-signin');
-    const sOut = document.getElementById('wolcas-signout');
-    if(sIn) sIn.disabled = !!account;
-    if(sOut) sOut.disabled = !account;
+
+  async function loadRecentProjects(limit=8){
+    // Get list items sorted by created desc
+    const items = await graph(`/sites/${siteId}/lists/${projectListId}/items?expand=fields&$orderby=createdDateTime desc&$top=${limit}`);
+    return (items.value||[]).map(i=>i.fields||{});
   }
-  window.WOLCAS = { login, logout, state(){ return { account }; } };
+
+  function findRecentProjectsContainer(){
+    // Find the heading that contains "Recent projects" and use its parent container
+    const headings = Array.from(document.querySelectorAll('h2,h3,h4,h5'));
+    const heading = headings.find(h=>/recent projects/i.test(h.textContent||''));
+    if(!heading) return null;
+    const container = heading.parentElement;
+    if(!container) return null;
+    // Insert a dedicated list container; remove any static cards below
+    let list = container.querySelector('#recent-projects-list');
+    if(!list){
+      list = document.createElement('div');
+      list.id = 'recent-projects-list';
+      list.style.display = 'grid';
+      list.style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
+      list.style.gap = '12px';
+      container.appendChild(list);
+    }
+    // Hide any existing seeded cards (simple heuristic)
+    Array.from(container.children).forEach(ch=>{
+      if(ch!==list && (/(Owner:|Expected sales|Expected cost|Total cost)/i.test(ch.textContent||''))){ ch.style.display='none'; }
+    });
+    return list;
+  }
+
+  function renderProjects(listEl, projects){
+    listEl.innerHTML='';
+    if(!projects.length){ listEl.innerHTML = '<div style="opacity:.7">No projects found.</div>'; return; }
+    projects.forEach(p=>{
+      const card = document.createElement('div');
+      card.style.border='1px solid #e5e7eb';
+      card.style.borderRadius='12px';
+      card.style.padding='12px';
+      const title = p.Title || p.ProjectAddress || 'Untitled project';
+      const owner = p.Owner || '';
+      const start = p.StartDate || '';
+      const expected = p.ExpectedSales!=null ? p.ExpectedSales : '';
+      const active = (p.Active===true || String(p.Active).toLowerCase()==='true') ? 'active' : (p.Active===false ? 'inactive' : '');
+      card.innerHTML = `
+        <div style="font-weight:600; margin-bottom:6px;">${title} ${active?`<span style=\"margin-left:6px; font-size:12px; padding:2px 6px; background:#e5f7e9; border:1px solid #bde3c6; border-radius:999px;\">${active}</span>`:''}</div>
+        ${owner?`<div style=\"opacity:.8\">Owner: ${owner}</div>`:''}
+        <div style="display:flex; gap:16px; opacity:.8; margin-top:6px;">
+          ${expected!==''?`<div>Expected sales: ${expected}</div>`:''}
+          ${start?`<div>Start: ${start}</div>`:''}
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
+  }
+
+  async function boot(){
+    try{
+      // Ensure a token and resolve site/lists
+      await getToken();
+      await resolveSiteAndLists();
+      const projects = await loadRecentProjects(8);
+      const container = findRecentProjectsContainer();
+      if(container) renderProjects(container, projects);
+    }catch(e){ console.warn('Recent projects load failed', e); }
+  }
+
   document.addEventListener('DOMContentLoaded', function(){
-    init();
-    document.getElementById('wolcas-signin').addEventListener('click', ()=>WOLCAS.login());
-    document.getElementById('wolcas-signout').addEventListener('click', ()=>WOLCAS.logout());
+    // Load when user signs in (or if already signed in)
+    setTimeout(boot, 800);
+    // Also hook after sign-in
+    if(window.WOLCAS){
+      const sIn = document.getElementById('wolcas-signin');
+      if(sIn) sIn.addEventListener('click', function(){ setTimeout(boot, 1200); });
+    }
   });
 })();
 </script>
-</body>
-</html>
