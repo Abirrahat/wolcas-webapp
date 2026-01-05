@@ -1,37 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WOLCAS</title>
-  <style>
-    :root { --border:#e5e7eb; --muted:#6b7280; }
-    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0; }
-    header { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border); }
-    .brand { display:flex; align-items:center; gap:10px; }
-    .brand img { height:56px; width:auto; object-fit:contain; } /* enlarge logo */
-    .auth-left { margin-left:auto; display:flex; align-items:center; gap:10px; }
-    .btn { padding:6px 10px; border:1px solid #ccc; border-radius:8px; background:#fff; cursor:pointer; }
-    .btn:disabled { opacity:.6; cursor:not-allowed; }
-    #wolcas-email { font-size:14px; color: var(--muted); }
-    main { padding:16px; }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="brand">
-      <!-- Remove plain text 'logo Company'; keep only logo image if present -->
-      <img id="company-logo" alt="Company Logo" src="logo.png" onerror="this.style.display='none'" />
-    </div>
-    <div class="auth-left">
-      <span id="wolcas-email"></span>
-      <button id="wolcas-signin" class="btn">Sign in</button>
-      <button id="wolcas-signout" class="btn" disabled>Sign out</button>
-    </div>
-  </header>
-
-  <main id="content">
-<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>WOLCAS</title>
+<style>:root{--border:#e5e7eb;--muted:#6b7280;--overlay:rgba(255,255,255,0.85)}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0}header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)}.brand{display:flex;align-items:center;gap:10px}.brand img{height:64px;width:auto;object-fit:contain}.auth-left{margin-left:auto;display:flex;align-items:center;gap:10px}.btn{padding:6px 10px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer}.btn:disabled{opacity:.6;cursor:not-allowed}#wolcas-email{font-size:14px;color:var(--muted)}main{padding:16px;position:relative}.lock-overlay{position:absolute;inset:0;background:var(--overlay);backdrop-filter:saturate(.6) blur(1px);display:none;align-items:center;justify-content:center;z-index:999}.lock-overlay .panel{border:1px solid var(--border);border-radius:12px;background:#fff;padding:18px 22px;box-shadow:0 6px 18px rgba(0,0,0,.08)}.locked main .lock-overlay{display:flex}.locked main .content-body{filter:blur(1px);pointer-events:none;user-select:none}.seeded{display:none!important}</style>
+</head><body>
+<header><div class="brand"><img id="company-logo" alt="Company Logo" src="logo.png" onerror="this.style.display='none'" /></div>
+<div class="auth-left"><span id="wolcas-email"></span><button id="wolcas-signin" class="btn">Sign in</button><button id="wolcas-signout" class="btn" disabled>Sign out</button></div></header>
+<main><div class="content-body"><!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -66,14 +39,12 @@
     input[type=text], input[type=date], textarea { width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:#fff; font-size:1rem; }
     textarea { min-height:72px; }
 
-    /* Bottom nav */
     .bottom-nav { position:fixed; bottom:0; left:0; right:0; height:64px; border-top:1px solid var(--border); background:#fff; display:flex; justify-content:space-around; align-items:center; z-index:1000; }
     .bottom-nav a { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:var(--secondary); text-decoration:none; font-weight:600; }
     .bottom-nav a.active { color:var(--primary); }
 
     #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#111827; color:#fff; padding:10px 14px; border-radius:10px; display:none; z-index:1100; }
 
-    /* Project sub-tab bar */
     .subtabs { position:sticky; top:52px; background:#fff; border-bottom:1px solid var(--border); padding:8px; display:flex; gap:8px; z-index:900; }
     .subtabs button { padding:8px 12px; border-radius:999px; border:1px solid var(--border); background:#fff; cursor:pointer; }
     .subtabs button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
@@ -82,20 +53,17 @@
     .preview { max-width:120px; max-height:120px; border-radius:8px; border:1px solid var(--border); object-fit:cover; }
     .sheet-photo { max-width:80px; max-height:80px; border-radius:6px; border:1px solid var(--border); }
 
-    /* Centered modal */
     .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.2); display:none; align-items:center; justify-content:center; z-index:1050; }
     .modal { width:min(840px, 92vw); }
     .modal .card { border-radius:16px; }
     .modal-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 
-    /* Tables */
     table { width:100%; border-collapse:collapse; }
     th, td { border:1px solid var(--border); padding:8px; text-align:left; }
     th { background:#f3f4f6; position:sticky; top:0; z-index:1; }
 
     .muted { color:#6b7280; }
 
-    /* Accessible custom dropdown */
     .dropdown { position:relative; }
     .dropdown-btn { width:100%; text-align:left; }
     .dropdown-menu { position:absolute; top:calc(100% + 4px); inset-inline:0; background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.08); max-height:40vh; overflow:auto; z-index:950; }
@@ -103,21 +71,17 @@
     .dropdown-option[aria-selected=true], .dropdown-option:hover { background:#eef2ff; }
     .dropdown-empty { padding:10px 12px; color:#6b7280; }
 
-    /* Reports table */
     .report-table { min-width: 1100px; border-collapse: collapse; }
     .report-table th, .report-table td { white-space: nowrap; }
 
-    /* Confirm actions */
     .confirm-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
 
-    /* --- Project info pills used in PDF header --- */
     .report-meta { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:10px 14px; }
     .report-meta .item { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #e5e7eb; border-radius:999px; padding:4px 8px; font-weight:600; }
     .report-meta .item .label { color:#6b7280; font-weight:600; }
     .report-meta .item .value { color:#111827; }
     .report-meta .item svg { width:12px; height:12px; flex:0 0 12px; color:#1E3A8A; display:inline-block; }
 
-    /* --- NEW: status row / non-wrapping status pill --- */
     .status-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
     .status-text { flex:1 1 auto; min-width:0; }
     .status-pill { display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); background:#fff; font-weight:700; border-radius:999px; height:34px; padding:0 14px; white-space:nowrap; line-height:1; flex:0 0 auto; }
@@ -199,7 +163,6 @@
               <div><label>Sprint</label><input id="add-sprint" type="text"/></div>
               <div><label>Assignee</label><input id="add-assignee" type="text"/></div>
             </div>
-            <div style="margin-top:8px"><label>Photos</label><input id="add-photos" type="file" multiple accept="image/*" /><div id="add-previews" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px"></div></div>
             <div style="margin-top:12px; display:flex; gap:8px;"><button class="btn primary" id="btnSaveTask">Save</button></div>
           </div>
         </div>
@@ -229,7 +192,6 @@
               <div><label>Sprint</label><input id="edit-sprint" type="text"/></div>
               <div><label>Assignee</label><input id="edit-assignee" type="text"/></div>
             </div>
-            <div style="margin-top:8px"><label>Add more photos</label><input id="edit-photos" type="file" multiple accept="image/*" /></div>
             <div id="edit-thumbs" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px"></div>
             <div style="margin-top:12px; display:flex; gap:8px;"><button class="btn primary" id="btnUpdateTask">Save changes</button></div>
           </div>
@@ -260,7 +222,6 @@
     <section id="settings" class="container" hidden>
       <div class="card">
         <h2>Settings</h2>
-        <div class="input-row"><div><label>Company name</label><input id="set-name" type="text"/></div><div><label>Logo</label><input id="set-logo" type="file" accept="image/*"/></div></div>
         <div style="margin-top:12px;"><button class="btn primary" id="btnSaveSettings">Save</button></div>
       </div>
     </section>
@@ -277,30 +238,9 @@
   <div id="toast"></div>
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="card" id="modalCard"></div></div></div>
 
-  <script>
-  /* ---------- Storage & Helpers ---------- */
-  const LS_KEY='wo-lcas-data'; const DB_NAME='wo-lcas-single-tabs'; const STORE_NAME='task-images';
-  function loadData(){ try{ const raw=localStorage.getItem(LS_KEY); if(!raw){ const seed={projects:[{id:'p1',address:'48 John Street, Lockport NY 14094',owner_name:'Asif',status:'active',start_date:'2025-12-19',est_cost:'4000',sales:'5000',description:'Example seeded project',tasks:[]}],activity:[],company:{name:'Company',logo:''}}; localStorage.setItem(LS_KEY, JSON.stringify(seed)); return seed; } const data=JSON.parse(raw); data.projects.forEach(p=>{ p.tasks ||= []; p.est_cost=(p.est_cost??'').toString(); p.sales=(p.sales??'').toString(); p.owner_name=(p.owner_name??'').toString(); p.status=p.status==='completed'?'completed':'active'; }); return data; } catch(e){ console.warn(e); return {projects:[],activity:[],company:{name:'',logo:''}}; } }
-  function saveData(d){ localStorage.setItem(LS_KEY, JSON.stringify(d)); }
-  function addActivity(text){ const d=loadData(); d.activity.unshift({text,ts:Date.now()}); saveData(d); }
-  function fmtMoney(v){ const n=parseFloat((v??'').toString().replace(/[^0-9.-]/g,'')); if(isNaN(n)) return v||''; return n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
-  function sumNumeric(arr){ return arr.reduce((acc,v)=>{ const n=parseFloat((v??'').toString().replace(/[^0-9.-]/g,'')); return acc+(isNaN(n)?0:n); },0); }
-  function parseNumberText(s){ const n=parseFloat((s??'').toString().replace(/[^0-9.-]/g,'')); return isNaN(n)?0:n; }
-  function updateProjectMetrics(p){ if(!p) return; p.tasks_count=(p.tasks||[]).length; p.total_cost_sum=(p.tasks||[]).reduce((a,t)=>{ const n=parseFloat((t.totalCost??'').toString().replace(/[^0-9.-]/g,'')); return a+(isNaN(n)?0:n); },0); p.expected_sales_parsed=parseNumberText(p.sales); p.expected_cost_parsed=parseNumberText(p.est_cost); }
-  function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>{ t.style.display='none'; }, 2000); }
 
-  const idb={ db:null, async open(){ return new Promise((res,rej)=>{ const req=indexedDB.open(DB_NAME,1); req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME,{keyPath:'id'}); }; req.onsuccess=()=>{ idb.db=req.result; res(); }; req.onerror=()=> rej(req.error); }); }, async add(taskId,dataUrl){ return new Promise((res,rej)=>{ const tx=idb.db.transaction(STORE_NAME,'readwrite'); const st=tx.objectStore(STORE_NAME); st.add({id:crypto.randomUUID(),taskId,dataUrl}); tx.oncomplete=()=>res(); tx.onerror=e=>rej(tx.error||e); tx.onabort=e=>rej(tx.error||e); }); }, async list(taskId){ return new Promise((res,rej)=>{ const tx=idb.db.transaction(STORE_NAME,'readonly'); const st=tx.objectStore(STORE_NAME); const rq=st.getAll(); rq.onsuccess=()=>{ const all=rq.result||[]; res(all.filter(r=> r.taskId===taskId)); }; rq.onerror=()=> rej(rq.error); }); }, async listByProject(project){ return new Promise((res,rej)=>{ const tx=idb.db.transaction(STORE_NAME,'readonly'); const st=tx.objectStore(STORE_NAME); const rq=st.getAll(); rq.onsuccess=()=>{ const all=rq.result||[]; const byTask={}; (project.tasks||[]).forEach(t=> byTask[t.id]=[]); all.forEach(r=>{ if(byTask[r.taskId]) byTask[r.taskId].push(r); }); res(byTask); }; rq.onerror=()=> rej(rq.error); }); } };
 
-  /* ---------- Router ---------- */
-  function setScrollableHeights(){ try{ const headerH=document.querySelector('header.sticky')?.offsetHeight||0; const bottomH=document.querySelector('.bottom-nav')?.offsetHeight||0; const subtabsH=document.querySelector('.subtabs')?.offsetHeight||0; const available=Math.max(240, window.innerHeight - headerH - bottomH - subtabsH - 24); document.querySelectorAll('.scroll-panel').forEach(p=>{ p.style.maxHeight=available+'px'; p.style.overflow='auto'; }); const menu=document.getElementById('taskDropdownMenu'); if(menu){ menu.style.maxHeight=Math.floor(available*0.8)+'px'; } } catch(e){ console.warn(e); } }
-  function setActiveNav(hash){ document.querySelectorAll('.bottom-nav a').forEach(a=> a.classList.toggle('active', a.getAttribute('href')===hash)); }
-  function showView(id){ document.querySelectorAll('main > section').forEach(s=> s.hidden=(s.id!==id)); }
-  function route(){ setScrollableHeights(); const h=location.hash||'#home'; setActiveNav(h); const d=loadData(); document.getElementById('companyLogo').src=d.company.logo||''; document.getElementById('companyName').textContent=d.company.name||'Company'; document.getElementById('projectsLogo').src=d.company.logo||''; document.getElementById('dashLogo').src=d.company.logo||''; if(h==='#home'){ showView('home'); initHome(); } else if(h==='#projects'){ showView('projects'); initProjects(); } else if(h.startsWith('#project:')){ showView('projectView'); initProject(h.split(':')[1]); } else if(h==='#dashboard'){ showView('dashboard'); initDashboard(); } else if(h==='#settings'){ showView('settings'); initSettings(); } }
-  window.addEventListener('hashchange', ()=>{ route(); setScrollableHeights(); }); window.addEventListener('resize', setScrollableHeights); document.addEventListener('DOMContentLoaded', async ()=>{ await idb.open(); route(); setScrollableHeights(); });
 
-  /* ---------- Home ---------- */
-  function initHome(){ const d=loadData(); const container=document.getElementById('homeRecent'); container.innerHTML=''; const recent=d.projects.slice().reverse().slice(0,6); if(!recent.length){ container.innerHTML='<div class="muted">No projects yet</div>'; }
-    recent.forEach(p=>{ const totalCost=sumNumeric(p.tasks.map(t=> t.totalCost)); const card=document.createElement('div'); card.className='card';
       card.innerHTML=`
         <div class="status-row">
           <div class="status-text">
@@ -319,18 +259,9 @@
         <div style="margin-top:8px"><a class="btn small secondary" href="#project:${p.id}">Open</a></div>`;
       container.appendChild(card);
     });
-    document.getElementById('btnNewOrder').onclick=()=> openNewProjectModal(); }
 
-  /* ---------- New Project modal ---------- */
-  function openNewProjectModal(existing){ const backdrop=document.getElementById('modalBackdrop'); const card=document.getElementById('modalCard'); backdrop.style.display='flex'; const isEdit=!!existing; card.innerHTML=`<div class="modal-header"><h3 style="margin:0">${isEdit?'Edit Project':'Create New Project'}</h3><button class="btn small link" id="btnCloseModal">✖</button></div><div class="input-row"><div style="grid-column:1/-1"><label>Project address</label><input id="np-address" type="text" value="${escapeAttr(existing?.address||'')}"/></div></div><div class="input-row"><div><label>Description</label><textarea id="np-desc">${escapeHtml(existing?.description||'')}</textarea></div><div><label>Project owner</label><input id="np-owner" type="text" value="${escapeAttr(existing?.owner_name||'')}"/></div></div><div class="input-row3"><div><label>Expected cost (text)</label><input id="np-cost" type="text" value="${escapeAttr(existing?.est_cost||'')}"/></div><div><label>Start date</label><input id="np-start" type="date" value="${escapeAttr(existing?.start_date||'')}"/></div><div><label>Expected sales (text)</label><input id="np-sales" type="text" value="${escapeAttr(existing?.sales||'')}"/></div></div><div style="margin-top:12px; display:flex; gap:8px;">${isEdit?'<button class="btn primary" id="np-save">Save</button>':'<button class="btn primary" id="np-create">Create</button>'}</div>`; document.getElementById('btnCloseModal').onclick=closeModal; (isEdit?document.getElementById('np-save'):document.getElementById('np-create')).onclick=()=>{ const d=loadData(); const p=existing || {id:crypto.randomUUID(), tasks:[], status:'active'}; p.name=(document.getElementById('np-address').value||'').trim(); p.address=(document.getElementById('np-address').value||'').trim(); p.description=(document.getElementById('np-desc').value||'').trim(); p.owner_name=(document.getElementById('np-owner').value||'').trim(); p.est_cost=(document.getElementById('np-cost').value||'').trim(); p.start_date=document.getElementById('np-start').value||''; p.sales=(document.getElementById('np-sales').value||'').trim(); if(isEdit){ const idx=d.projects.findIndex(x=> x.id===p.id); if(idx>=0) d.projects[idx]=p; addActivity(`Edited project: ${p.address}`); updateProjectMetrics(p); saveData(d); closeModal(); initProjects(); toast('Project updated'); } else { d.projects.push(p); updateProjectMetrics(p); saveData(d); addActivity(`Created project: ${p.address}`); closeModal(); location.hash=`#project:${p.id}`; toast('Project created'); } }; }
-  function closeModal(){ const backdrop=document.getElementById('modalBackdrop'); backdrop.style.display='none'; document.getElementById('modalCard').innerHTML=''; }
 
-  /* ---------- Projects ---------- */
-  function initProjects(){ const d=loadData(); const grid=document.getElementById('projectsGrid'); const q=(document.getElementById('projSearch').value||'').toLowerCase(); grid.innerHTML=''; const items=d.projects.filter(p=>{ const hay=`${p.address||''} ${p.name||''} ${p.description||''}`.toLowerCase(); return hay.includes(q); }); if(!items.length){ grid.innerHTML='<div class="muted">No projects</div>'; }
-    items.forEach(p=> grid.appendChild(renderProjectCard(p)));
-    document.getElementById('projSearch').oninput=()=> initProjects(); }
 
-  function renderProjectCard(p){ const totalCost=sumNumeric(p.tasks.map(t=> t.totalCost)); const el=document.createElement('div'); el.className='card'; el.innerHTML=`
       <div class="status-row">
         <div class="status-text">
           <h3 style="margin:0">${escapeHtml(p.address||p.name||'Untitled')}</h3>
@@ -351,38 +282,15 @@
         <button class="btn small" data-action="delete">Delete</button>
         <button class="btn small" data-action="mark-active">Mark Active</button>
         <button class="btn small" data-action="mark-complete">Mark Complete</button>
-      </div>`; el.querySelector('[data-action="edit"]').onclick=()=> openNewProjectModal(p); el.querySelector('[data-action="delete"]').onclick=async ()=>{ const ok=await confirmDialog('Delete Project', `Are you sure you want to delete: ${escapeHtml(p.address||p.name||'Untitled')}?`); if(!ok) return; const d=loadData(); const idx=d.projects.findIndex(x=> x.id===p.id); if(idx>=0){ d.projects.splice(idx,1); saveData(d); addActivity(`Deleted project: ${p.address}`); initProjects(); toast('Project deleted'); } }; el.querySelector('[data-action="mark-active"]').onclick=()=>{ const d=loadData(); const pr=d.projects.find(x=> x.id===p.id); if(pr){ pr.status='active'; updateProjectMetrics(pr); saveData(d); addActivity(`Marked active: ${p.address}`); initProjects(); } }; el.querySelector('[data-action="mark-complete"]').onclick=()=>{ const d=loadData(); const pr=d.projects.find(x=> x.id===p.id); if(pr){ pr.status='completed'; updateProjectMetrics(pr); saveData(d); addActivity(`Marked complete: ${p.address}`); initProjects(); } }; return el; }
 
-  /* ---------- Project ---------- */
-  let currentProjectId=null; let editSelectedTaskId='';
-  function initProject(id){ currentProjectId=id; const d=loadData(); const p=d.projects.find(x=> x.id===id); updateProjectMetrics(p); saveData(d); if(!p){ document.getElementById('projectHeader').innerHTML='<div class="muted">Project not found</div>'; return; } const totalCost=sumNumeric(p.tasks.map(t=> t.totalCost)); const header=document.getElementById('projectHeader'); header.innerHTML=`<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;"><div><h2 style="margin:0">${escapeHtml(p.address||p.name||'Untitled')}</h2><div class="muted">Owner: ${escapeHtml(p.owner_name||'')}</div><div style="margin-top:6px; display:flex; gap:12px; flex-wrap:wrap;"><span class="badge ${p.status==='completed'?'completed':'active'}">${p.status}</span><span class="badge">Tasks: ${p.tasks.length}</span><span class="badge">Total Cost: ${fmtMoney(totalCost)}</span><span class="badge">Expected Sales: ${escapeHtml(p.sales||'')}</span><span class="badge">Expected Cost: ${escapeHtml(p.est_cost||'')}</span><span class="badge">Start: ${escapeHtml(p.start_date||'')}</span></div></div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="btn small" id="pMarkActive">Mark Active</button><button class="btn small" id="pMarkComplete">Mark Complete</button></div></div>`; document.getElementById('pMarkActive').onclick=()=>{ p.status='active'; updateProjectMetrics(p); saveData(d); addActivity(`Marked active: ${p.address}`); initProject(id); }; document.getElementById('pMarkComplete').onclick=()=>{ p.status='completed'; updateProjectMetrics(p); saveData(d); addActivity(`Marked complete: ${p.address}`); initProject(id); };
-    document.querySelectorAll('.subtabs button[data-tab]').forEach(b=>{ b.onclick=()=>{ document.querySelectorAll('.subtabs button').forEach(x=> x.classList.toggle('active', x===b)); document.querySelectorAll('#projectPanels > div').forEach(div=> div.hidden=(div.id!==`panel-${b.dataset.tab}`)); setScrollableHeights(); }; }); renderTasksList(p); buildTaskDropdown(p); renderPhotosTab(p);
-    const photoInput=document.getElementById('add-photos'); const previewWrap=document.getElementById('add-previews'); photoInput.onchange=()=>{ previewWrap.innerHTML=''; [...photoInput.files].forEach(file=>{ const img=document.createElement('img'); img.className='preview'; const fr=new FileReader(); fr.onload=e=> img.src=e.target.result; fr.readAsDataURL(file); previewWrap.appendChild(img); }); };
-    document.getElementById('btnSaveTask').onclick=async ()=>{ const t={ id:crypto.randomUUID(), name:document.getElementById('add-name').value||'', date:document.getElementById('add-date').value||'', description:document.getElementById('add-desc').value||'', quantity:document.getElementById('add-qty').value||'', unitCost:document.getElementById('add-unit').value||'', totalCost:document.getElementById('add-total').value||'', allocation:document.getElementById('add-allocation').value||'', sprint:document.getElementById('add-sprint').value||'', assignee:document.getElementById('add-assignee').value||'', notes:document.getElementById('add-notes').value||'' }; p.tasks.push(t); updateProjectMetrics(p); saveData(d); addActivity(`Task added: ${t.name} in ${p.address}`); const files=document.getElementById('add-photos').files; if(files && files.length){ const readers=[]; for(const f of files){ readers.push(new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=async e=>{ try{ await idb.add(t.id, e.target.result); res(); } catch(err){ rej(err); } }; fr.onerror=rej; fr.readAsDataURL(f); })); } try{ await Promise.all(readers); } catch(err){ console.error(err); } } ['add-name','add-date','add-desc','add-qty','add-unit','add-total','add-allocation','add-sprint','add-assignee','add-notes'].forEach(i=>{ const el=document.getElementById(i); if(el) el.value=''; }); document.getElementById('add-photos').value=''; document.getElementById('add-previews').innerHTML=''; initProject(p.id); toast('Task saved'); document.querySelector('.subtabs button[data-tab="view"]').click(); };
-    document.getElementById('btnSpreadsheet').onclick = ()=> openReportsModal(p);
-    document.getElementById('btnUpdateTask').onclick=async ()=>{ const t=p.tasks.find(x=> x.id===editSelectedTaskId); if(!t) return; t.name=document.getElementById('edit-name').value||''; t.date=document.getElementById('edit-date').value||''; t.description=document.getElementById('edit-desc').value||''; t.quantity=document.getElementById('edit-qty').value||''; t.unitCost=document.getElementById('edit-unit').value||''; t.totalCost=document.getElementById('edit-total').value||''; t.allocation=document.getElementById('edit-allocation').value||''; t.sprint=document.getElementById('edit-sprint').value||''; t.assignee=document.getElementById('edit-assignee').value||''; t.notes=document.getElementById('edit-notes').value||''; updateProjectMetrics(p); saveData(d); addActivity(`Task updated: ${t.name} in ${p.address}`); const files=document.getElementById('edit-photos').files; if(files && files.length){ const readers=[]; for(const f of files){ readers.push(new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=async e=>{ try{ await idb.add(t.id, e.target.result); res(); } catch(err){ rej(err); } }; fr.onerror=rej; fr.readAsDataURL(f); })); } try{ await Promise.all(readers); } catch(err){ console.error(err); } } initProject(p.id); toast('Task updated'); document.querySelector('.subtabs button[data-tab="view"]').click(); };
   }
 
-  function renderTasksList(p){ const panel=document.getElementById('panel-view'); panel.innerHTML=''; if(p.tasks.length===0){ panel.innerHTML='<div class="muted">No tasks yet</div>'; return; } p.tasks.forEach(t=>{ const row=document.createElement('div'); row.className='card'; const allocFmt=t.allocation?('$'+fmtMoney(t.allocation)) : ''; row.innerHTML=`<div style="display:flex; justify-content:space-between; align-items:center;"><div><strong>${escapeHtml(t.name||'Untitled')}</strong><span class="badge" style="margin-left:6px">${escapeHtml(t.assignee||'')}</span></div><div style="display:flex; gap:8px;"><button class="btn small" data-action="view">View</button><button class="btn small" data-action="delete">Delete</button></div></div><div class="muted" style="margin-top:4px">${escapeHtml(t.description||'')}</div><div style="margin-top:6px; display:flex; gap:12px; flex-wrap:wrap;"><div><strong>Date:</strong> ${escapeHtml(t.date||'')}</div><div><strong>Qty:</strong> ${escapeHtml(t.quantity||'')}</div><div><strong>Unit:</strong> ${escapeHtml(t.unitCost||'')}</div><div><strong>Total:</strong> ${escapeHtml(t.totalCost||'')}</div><div><strong>Allocation:</strong> ${allocFmt}</div><div><strong>Sprint:</strong> ${escapeHtml(t.sprint||'')}</div></div><div class="muted" style="margin-top:6px">Photos:</div><div class="thumbs" style="display:flex; gap:6px; flex-wrap:wrap;" data-task="${t.id}"></div>`; row.querySelector('[data-action="view"]').onclick=()=> openTaskDetails(t); row.querySelector('[data-action="delete"]').onclick=async ()=>{ const ok=await confirmDialog('Delete Task', `Are you sure you want to delete task: ${escapeHtml(t.name||'(Untitled)')}?`); if(!ok) return; const d=loadData(); const pr=d.projects.find(x=> x.id===p.id); const idx=pr.tasks.findIndex(x=> x.id===t.id); if(idx>=0){ pr.tasks.splice(idx,1); updateProjectMetrics(pr); saveData(d); addActivity(`Deleted task: ${t.name} in ${p.address}`); initProject(p.id); toast('Task deleted'); } }; panel.appendChild(row); idb.list(t.id).then(images=>{ const wrap=row.querySelector('.thumbs'); if(!images.length){ wrap.textContent='No photos'; return; } images.forEach(rec=>{ const img=document.createElement('img'); img.className='preview'; img.src=rec.dataUrl; wrap.appendChild(img); }); }); }); }
 
-  /* ---------- Custom dropdown ---------- */
-  function buildTaskDropdown(p){ editSelectedTaskId=''; const btn=document.getElementById('taskDropdownBtn'); const menu=document.getElementById('taskDropdownMenu'); const dd=document.getElementById('taskDropdown'); btn.textContent='— Select —'; menu.innerHTML=''; if(!p.tasks.length){ const empty=document.createElement('div'); empty.className='dropdown-empty'; empty.textContent='No tasks'; menu.appendChild(empty); } p.tasks.forEach((t, idx)=>{ const opt=document.createElement('div'); opt.className='dropdown-option'; opt.setAttribute('role','option'); opt.dataset.id=t.id; opt.textContent=t.name||'(Untitled)'; opt.setAttribute('aria-selected','false'); opt.onclick=()=> selectTaskOption(p, t.id); opt.onmouseenter=()=> setActiveOption(opt); menu.appendChild(opt); if(idx===0) setActiveOption(opt); }); btn.onclick=(e)=>{ e.stopPropagation(); const open=!menu.hasAttribute('hidden'); if(open){ closeMenu(); } else { openMenu(); } }; function openMenu(){ menu.removeAttribute('hidden'); btn.setAttribute('aria-expanded','true'); menu.focus(); setScrollableHeights(); } function closeMenu(){ menu.setAttribute('hidden',''); btn.setAttribute('aria-expanded','false'); } document.addEventListener('click',(ev)=>{ if(!dd.contains(ev.target)) closeMenu(); }); menu.addEventListener('keydown',(ev)=>{ const opts=[...menu.querySelectorAll('.dropdown-option')]; const active=menu.querySelector('.dropdown-option[aria-selected=true]'); const idx=opts.indexOf(active); if(ev.key==='ArrowDown'){ ev.preventDefault(); const next=opts[Math.min(opts.length-1, idx+1)]; if(next) setActiveOption(next); next?.scrollIntoView({block:'nearest'}); } else if(ev.key==='ArrowUp'){ ev.preventDefault(); const prev=opts[Math.max(0, idx-1)]; if(prev) setActiveOption(prev); prev?.scrollIntoView({block:'nearest'}); } else if(ev.key==='Home'){ ev.preventDefault(); const first=opts[0]; if(first) setActiveOption(first); first?.scrollIntoView({block:'nearest'}); } else if(ev.key==='End'){ ev.preventDefault(); const last=opts[opts.length-1]; if(last) setActiveOption(last); last?.scrollIntoView({block:'nearest'}); } else if(ev.key==='Enter'){ ev.preventDefault(); const sel=menu.querySelector('.dropdown-option[aria-selected=true]'); if(sel) selectTaskOption(p, sel.dataset.id); closeMenu(); } else if(ev.key==='Escape'){ ev.preventDefault(); closeMenu(); btn.focus(); } }); function setActiveOption(opt){ menu.querySelectorAll('.dropdown-option').forEach(o=> o.setAttribute('aria-selected','false')); opt.setAttribute('aria-selected','true'); } }
-  function selectTaskOption(p, taskId){ editSelectedTaskId=taskId; const t=p.tasks.find(x=> x.id===taskId); const btn=document.getElementById('taskDropdownBtn'); btn.textContent=t?.name || '(Untitled)'; document.getElementById('edit-name').value=t?.name||''; document.getElementById('edit-date').value=t?.date||''; document.getElementById('edit-desc').value=t?.description||''; document.getElementById('edit-qty').value=t?.quantity||''; document.getElementById('edit-unit').value=t?.unitCost||''; document.getElementById('edit-total').value=t?.totalCost||''; document.getElementById('edit-allocation').value=t?.allocation||''; document.getElementById('edit-sprint').value=t?.sprint||''; document.getElementById('edit-assignee').value=t?.assignee||''; document.getElementById('edit-notes').value=t?.notes||''; const thumbs=document.getElementById('edit-thumbs'); thumbs.innerHTML=''; idb.list(t.id).then(images=>{ if(!images.length){ thumbs.textContent='No photos'; return; } images.forEach(r=>{ const img=document.createElement('img'); img.className='preview'; img.src=r.dataUrl; thumbs.appendChild(img); }); }); }
 
-  /* ---------- Photos tab ---------- */
-  function renderPhotosTab(p){ const grid=document.getElementById('photosGrid'); grid.innerHTML=''; if(p.tasks.length===0){ grid.innerHTML='<div class="muted">No tasks yet</div>'; return; } idb.listByProject(p).then(byTask=>{ p.tasks.forEach(t=>{ const card=document.createElement('div'); card.className='card'; card.innerHTML=`<h3 style="margin-top:0">${escapeHtml(t.name||'(Untitled)')}</h3>`; const wrap=document.createElement('div'); wrap.style.cssText='display:flex; gap:6px; flex-wrap:wrap;'; const imgs=byTask[t.id]||[]; if(!imgs.length){ wrap.textContent='No photos'; } else imgs.forEach(r=>{ const img=document.createElement('img'); img.className='preview'; img.src=r.dataUrl; wrap.appendChild(img); }); card.appendChild(wrap); grid.appendChild(card); }); }); }
 
-  /* ---------- Confirm dialog ---------- */
-  async function confirmDialog(title, message, confirmText='Delete', cancelText='Cancel'){ return new Promise((resolve)=>{ const backdrop=document.getElementById('modalBackdrop'); const card=document.getElementById('modalCard'); backdrop.style.display='flex'; card.innerHTML=`<div class="modal-header"><h3 style="margin:0">${escapeHtml(title)}</h3><button class="btn small link" id="btnCloseModal">✖</button></div><div>${escapeHtml(message)}</div><div class="confirm-actions"><button class="btn" id="btnCancel">${escapeHtml(cancelText)}</button><button class="btn primary" id="btnConfirm">${escapeHtml(confirmText)}</button></div>`; document.getElementById('btnCloseModal').onclick=()=>{ closeModal(); resolve(false); }; document.getElementById('btnCancel').onclick=()=>{ closeModal(); resolve(false); }; document.getElementById('btnConfirm').onclick=()=>{ closeModal(); resolve(true); }; }); }
 
-  /* ---------- Task details ---------- */
-  function openTaskDetails(t){ const backdrop=document.getElementById('modalBackdrop'); const card=document.getElementById('modalCard'); backdrop.style.display='flex'; card.innerHTML=`<div class="modal-header"><h3 style="margin:0">Task Details</h3><button class="btn small link" id="btnCloseModal">✖</button></div><table style="margin-top:8px"><tbody><tr><th>Name</th><td>${escapeHtml(t.name||'')}</td></tr><tr><th>Date</th><td>${escapeHtml(t.date||'')}</td></tr><tr><th>Description</th><td>${escapeHtml(t.description||'')}</td></tr><tr><th>Quantity</th><td>${escapeHtml(t.quantity||'')}</td></tr><tr><th>Unit Cost</th><td>${escapeHtml(t.unitCost||'')}</td></tr><tr><th>Total Cost</th><td>${escapeHtml(t.totalCost||'')}</td></tr><tr><th>Allocation ($)</th><td>${escapeHtml(t.allocation||'')}</td></tr><tr><th>Sprint</th><td>${escapeHtml(t.sprint||'')}</td></tr><tr><th>Assignee</th><td>${escapeHtml(t.assignee||'')}</td></tr><tr><th>Notes</th><td>${escapeHtml(t.notes||'')}</td></tr></tbody></table><div style="margin-top:8px" id="td-photos"></div>`; document.getElementById('btnCloseModal').onclick=closeModal; idb.list(t.id).then(imgs=>{ const wrap=document.createElement('div'); wrap.style.cssText='display:flex; gap:6px; flex-wrap:wrap;'; if(!imgs.length){ wrap.textContent='No photos'; } else imgs.forEach(r=>{ const img=document.createElement('img'); img.className='preview'; img.src=r.dataUrl; wrap.appendChild(img); }); document.getElementById('td-photos').appendChild(wrap); }); }
 
-  /* ---------- Reports modal (exports) ---------- */
-  function openReportsModal(p){
-    const backdrop=document.getElementById('modalBackdrop'); const card=document.getElementById('modalCard'); backdrop.style.display='flex';
 
-    const rows=(p.tasks||[]).map(t=> `
       <tr>
         <td>${escapeHtml(t.name||'')}</td>
         <td>${escapeHtml(t.date||'')}</td>
@@ -416,187 +324,39 @@
     document.getElementById('btnCloseModal').onclick=closeModal;
 
     // Photos thumbnails in the table
-    Promise.all((p.tasks||[]).map(t=> idb.list(t.id))).then(group=>{
-      group.forEach((imgs, idx)=>{
-        const t=p.tasks[idx]; const cell=card.querySelector(`[data-photos-for="${t.id}"]`);
         if(!cell) return; if(!imgs.length){ cell.textContent='No photos'; return; }
-        imgs.forEach(r=>{ const im=document.createElement('img'); im.className='sheet-photo'; im.src=r.dataUrl; cell.appendChild(im); });
       });
     });
 
     // CSV Export (table only)
-    document.getElementById('btnExportCSV').onclick=()=>{
-      const rowsDom=[...document.querySelectorAll('#sheetTable tr')].map(tr=> [...tr.children].map(td=> td.textContent.trim()));
-      const csv=rowsDom.map(r=> r.map(cell=> `"${cell.replace(/"/g,'""')}"`).join(',')).join('\n');
-      const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a');
       a.href=URL.createObjectURL(blob); a.download=`${safeFileName(p.address||'project')}.csv`; a.click();
     };
 
     // XLS Export (table only)
-    document.getElementById('btnExportXLS').onclick=()=>{
-      const table=document.getElementById('sheetTable'); const htmlStr='<table>'+table.outerHTML+'</table>';
-      const uri='data:application/vnd.ms-excel,'+encodeURIComponent(htmlStr);
-      const a=document.createElement('a'); a.href=uri; a.download=`${safeFileName(p.address||'project')}.xls`; a.click();
     };
 
     // PDF Export (prepend project details above the table)
-    document.getElementById('btnExportPDF').onclick=()=>{
-      const tableHTML=document.getElementById('sheetTable').outerHTML;
-      const w=window.open('', '_blank');
-      const css=`<style>
         table{border-collapse:collapse} table, th, td{border:1px solid #d1d5db}
         .report-meta{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px 14px}
         .report-meta .item{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e7eb;border-radius:999px;padding:4px 8px;font-weight:600}
         .report-meta .item svg{width:12px;height:12px;color:#0F172A;display:inline-block}
         img.sheet-photo{max-width:80px;max-height:80px;border:1px solid #e5e7eb;border-radius:6px}
       </style>`;
-      const meta=`<div class="report-meta">
             <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 21h16v-2H4v2zm2-4h12V5a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v12zm2-8h2V7H8v2zm0 4h2v-2H8v2zm4-4h2V7h-2v2zm0 4h2v-2h-2v2z"/></svg><span class="label">Project:</span> <span class="value">${escapeHtml(p.address||p.name||'Untitled')}</span></span>
             <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5z"/></svg><span class="label">Owner:</span> <span class="value">${escapeHtml(p.owner_name||'')}</span></span>
             <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h2v2h6V2h2v2h3a1 1 0 0 1 1 1v15a1 1 0  0 1-1 1H4a1 1 0  0 1-1-1V5a1 1 0  0 1 1-1h3V2zm13 6H4v12h16V8z"/></svg><span class="label">Start date:</span> <span class="value">${escapeHtml(p.start_date||'')}</span></span>
             <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 0 1 1 1v1.06c1.73.22 3 1.42 3  2.94h-2c0-.55-.67-1-1.5-1S10 8 10 8.5s.67.88 1.5 1.07l1 .23c2 .47 3.5 1.6 3.5 3.2 0 1.74-1.53 3.14-3.5 3.36V18a1  1 0  0 1-2 0v-1.06c-1.73-.22-3-1.42-3-2.94h2c0 .55.67 1 1.5 1s1.5-.45 1.5-.95-.67-.88-1.5-1.07l-1-.23C9.5 12.28 8 11.15 8 9.55 8 7.81 9.53 6.41 11.5 6.19V5a1  1 0  0 1 1-1z"/></svg><span class="label">Expected Cost:</span> <span class="value">${escapeHtml(p.est_cost||'')}</span></span>
             <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17h18v2H3v-2zm2-6 4 4 4-4 4 4 3-3V7h-5l-3 3-4-4-5 5z"/></svg><span class="label">Expected Sales:</span> <span class="value">${escapeHtml(p.sales||'')}</span></span>
             <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 5h11v2H9V5zM4 7l2-2 2 2-2 2L4 7zm1 5h15v2H5v-2zm0 6h15v2H5v-2z"/></svg><span class="label">Tasks:</span> <span class="value">${(p.tasks||[]).length}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12a1 1 0  0 1 1 1v18l-3-2-3 2-3-2-3 2V3a1  1 0  0 1 1-1zm2 5h8v2H8V7zm0 4h8v2H8v-2zm0 4h5v2H8v-2z"/></svg><span class="label">Total Cost:</span> <span class="value">${fmtMoney(sumNumeric((p.tasks||[]).map(t=> t.totalCost)))}</span></span>
           </div>`;
-      w.document.write('<html><head><title>Reports</title>'+css+'</head><body>'+meta+tableHTML+'</body></html>'); w.document.close(); w.print();
     };
   }
 
-  /* ---------- Dashboard ---------- */
-  function initDashboard(){ const d=loadData(); const totalProjects=d.projects.length; const activeProjects=d.projects.filter(p=> p.status==='active').length; const completedProjects=d.projects.filter(p=> p.status==='completed').length; const totalCosts=sumNumeric(d.projects.flatMap(p=> p.tasks.map(t=> t.totalCost))); const totalSales=sumNumeric(d.projects.map(p=> p.sales)); document.getElementById('mTotalProjects').textContent=totalProjects; document.getElementById('mActiveProjects').textContent=activeProjects; document.getElementById('mCompletedProjects').textContent=completedProjects; document.getElementById('mTotalCosts').textContent=fmtMoney(totalCosts); document.getElementById('mTotalSales').textContent=fmtMoney(totalSales); const ul=document.getElementById('activityList'); ul.innerHTML=''; (d.activity||[]).slice(0,20).forEach(ev=>{ const li=document.createElement('li'); li.textContent=new Date(ev.ts||Date.now()).toLocaleString()+' — '+ev.text; ul.appendChild(li); }); }
 
-  /* ---------- Settings ---------- */
-  function initSettings(){ const d=loadData(); document.getElementById('set-name').value=d.company.name||''; document.getElementById('btnSaveSettings').onclick=()=>{ const n=document.getElementById('set-name').value||''; d.company.name=n; saveData(d); addActivity('Settings: company name saved'); toast('Settings saved'); route(); }; document.getElementById('set-logo').onchange=()=>{ const f=document.getElementById('set-logo').files[0]; if(!f) return; const fr=new FileReader(); fr.onload=e=>{ const d2=loadData(); d2.company.logo=e.target.result; saveData(d2); addActivity('Settings: logo saved'); toast('Settings saved'); route(); }; fr.readAsDataURL(f); }; }
 
-  /* ---------- Utilities ---------- */
-  function escapeHtml(s){ return (s||'').replace(/[&<>\"]/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]) ); }
-  function escapeAttr(s){ return (s||'').replace(/\"/g,'&quot;'); }
-  function safeFileName(s){ return (s||'file').replace(/[^a-z0-9_\-]+/gi,'_'); }
   </script>
 </body>
-</html>
-  </main>
-
-  <!-- MSAL Browser -->
-  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
-  <script>
-  (function(){
-    var BASE = 'https://abirrahat.github.io/wolcas-webapp/';
-    var REDIRECT = BASE + 'auth';
-    var msalConfig = {
-      auth: {
-        clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
-        authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
-        redirectUri: REDIRECT,
-        postLogoutRedirectUri: BASE,
-        navigateToLoginRequestUrl: false
-      },
-      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true },
-      system: { loggerOptions: { loggerCallback: function(level, message, containsPii){ if(!containsPii) console.debug('[MSAL]', message); } } }
-    };
-
-    var loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
-    var msalInstance = new msal.PublicClientApplication(msalConfig);
-
-    function getAccount(){ return msalInstance.getAllAccounts()[0] || null; }
-    function setAuthUI(){
-      var acc = getAccount();
-      var emailEl = document.getElementById('wolcas-email');
-      var sIn = document.getElementById('wolcas-signin');
-      var sOut = document.getElementById('wolcas-signout');
-      if(emailEl) emailEl.textContent = acc ? (acc.username || acc.email || acc.name || '') : '';
-      if(sIn) sIn.disabled = !!acc;
-      if(sOut) sOut.disabled = !acc;
-    }
-
-    async function login(){
-      try { await msalInstance.loginPopup(loginRequest); }
-      catch(e){ console.error('loginPopup error', e); alert('Sign-in error. Check console.'); }
-      setAuthUI();
-      window.dispatchEvent(new Event('WOLCAS_SIGNED_IN'));
-    }
-
-    async function logout(){
-      try { await msalInstance.logoutPopup(); }
-      catch(e){ await msalInstance.logoutRedirect(); }
-      setAuthUI();
-    }
-
-    // ===== Microsoft Graph helpers (one instance) =====
-    var accessToken = null, siteId = null, projectListId = null, taskListId = null, driveId = null;
-
-    async function acquireToken(){
-      var acc = getAccount();
-      try { var res = await msalInstance.acquireTokenSilent({ ...loginRequest, account: acc }); accessToken = res.accessToken; return accessToken; }
-      catch(e){ var res2 = await msalInstance.acquireTokenPopup(loginRequest); accessToken = res2.accessToken; return accessToken; }
-    }
-
-    async function graph(path, options){
-      options = options || {}; var headers = options.headers || {}; headers['Authorization'] = 'Bearer ' + accessToken;
-      if(options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
-      var resp = await fetch('https://graph.microsoft.com/v1.0' + path, { method: options.method||'GET', headers: headers, body: options.body||null });
-      if(!resp.ok){ var t=''; try{ t=await resp.text(); }catch{}; throw new Error('Graph '+resp.status+': '+t); }
-      var ct = resp.headers.get('content-type')||''; return ct.includes('application/json') ? await resp.json() : await resp.text();
-    }
-
-    async function resolveSite(){
-      var site = await graph('/sites/architektica-my.sharepoint.com:/personal/abir_architektica_com');
-      siteId = site.id;
-      var lists = await graph('/sites/'+siteId+'/lists');
-      projectListId = (lists.value||[]).find(function(l){ return l.displayName==='Project'; })?.id;
-      taskListId = (lists.value||[]).find(function(l){ return l.displayName==='Task'; })?.id;
-      var drives = await graph('/sites/'+siteId+'/drives');
-      driveId = (drives.value||[]).find(function(d){ return d.name==='Documents'; })?.id || (drives.value||[])[0]?.id;
-    }
-
-    // ===== Recent projects loader (hides cached/seeded cards) =====
-    function recentContainer(){
-      var headings = Array.from(document.querySelectorAll('h2,h3')); var h = headings.find(function(x){ return /recent projects/i.test(x.textContent||''); });
-      if(!h) return null; var container = h.parentElement; if(!container) return null;
-      // Hide any pre-seeded blocks
-      Array.from(container.children).forEach(function(ch){ if(/Owner:|Expected sales|Expected cost|Total cost/i.test(ch.textContent||'')) ch.style.display='none'; });
-      var list = container.querySelector('#recent-projects-list'); if(!list){ list = document.createElement('div'); list.id='recent-projects-list'; list.style.display='grid'; list.style.gridTemplateColumns='repeat(auto-fill, minmax(260px, 1fr))'; list.style.gap='12px'; container.appendChild(list); }
-      return list;
-    }
-
-    function renderProjects(el, projects){
-      el.innerHTML=''; if(!projects.length){ el.innerHTML='<div style="opacity:.7">No projects found.</div>'; return; }
-      projects.forEach(function(p){
-        var card = document.createElement('div'); card.style.border='1px solid #e5e7eb'; card.style.borderRadius='12px'; card.style.padding='12px';
-        var title = p.Title || p.ProjectAddress || 'Untitled project'; var owner = p.Owner||''; var start = p.StartDate||''; var expected = (p.ExpectedSales!=null ? p.ExpectedSales : '');
-        var active = (p.Active===true || String(p.Active).toLowerCase()==='true') ? 'active' : (p.Active===false ? 'inactive' : '');
-        card.innerHTML = '<div style="font-weight:600; margin-bottom:6px;">'+title+(active? ' <span style="margin-left:6px; font-size:12px; padding:2px 6px; background:#e5f7e9; border:1px solid #bde3c6; border-radius:999px;">'+active+'</span>' : '')+'</div>'
-          + (owner? '<div style="opacity:.8">Owner: '+owner+'</div>' : '')
-          + '<div style="display:flex; gap:16px; opacity:.8; margin-top:6px;">'
-          + (expected!==''? '<div>Expected sales: '+expected+'</div>' : '')
-          + (start? '<div>Start: '+start+'</div>' : '')
-          + '</div>';
-        el.appendChild(card);
-      });
-    }
-
-    async function loadRecentProjects(){
-      try {
-        await acquireToken(); await resolveSite();
-        var items = await graph('/sites/'+siteId+'/lists/'+projectListId+'/items?expand=fields&$orderby=createdDateTime desc&$top=8');
-        var projects = (items.value||[]).map(function(i){ return i.fields||{}; });
-        var el = recentContainer(); if(el) renderProjects(el, projects);
-      } catch(e){ console.warn('Recent projects load failed', e); }
-    }
-
-    // ===== Public API for autosave/photo upload =====
-    async function upsertListItem(listKind, itemId, fields){
-      await acquireToken(); if(!siteId) await resolveSite(); var listId = (listKind==='project')? projectListId : taskListId; if(!listId) throw new Error('List not found: '+listKind);
-      if(itemId){ await graph('/sites/'+siteId+'/lists/'+listId+'/items/'+itemId+'/fields', { method:'PATCH', body: JSON.stringify(fields) }); return itemId; }
-      var res = await graph('/sites/'+siteId+'/lists/'+listId+'/items', { method:'POST', body: JSON.stringify({ fields: fields }) }); return res.id;
-    }
-
-    window.WOLCAS = Object.assign(window.WOLCAS||{}, { login: login, logout: logout, state: function(){ return { account: getAccount(), siteId: siteId, projectListId: projectListId, taskListId: taskListId, driveId: driveId }; }, upsertListItem: upsertListItem });
-
-    document.addEventListener('DOMContentLoaded', function(){ setAuthUI(); loadRecentProjects(); });
-    window.addEventListener('WOLCAS_SIGNED_IN', function(){ setTimeout(loadRecentProjects, 600); });
-  })();
-  </script>
-</body>
-</html>
+</html></div><div class="lock-overlay" id="lock-overlay"><div class="panel"><div style="font-weight:600;margin-bottom:8px;">Sign in required</div><div style="opacity:.8;margin-bottom:10px;">Please sign in to use WOLCAS features.</div><button id="overlay-signin" class="btn">Sign in</button></div></div></main>
+<script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+<script>(function(){var BASE='https://abirrahat.github.io/wolcas-webapp/';var REDIRECT=BASE+'auth';var msalConfig={auth:{clientId:'827656f8-3a21-4d69-b6e5-c35e2ec2fb71',authority:'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',redirectUri:REDIRECT,postLogoutRedirectUri:BASE,navigateToLoginRequestUrl:false},cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true},system:{loggerOptions:{loggerCallback:function(l,m,p){if(!p)console.debug('[MSAL]',m)}}}};var loginRequest={scopes:['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All']};var msalInstance=new msal.PublicClientApplication(msalConfig);function acc(){return msalInstance.getAllAccounts()[0]||null}function setUI(){var a=acc();var e=document.getElementById('wolcas-email'),si=document.getElementById('wolcas-signin'),so=document.getElementById('wolcas-signout'),ov=document.getElementById('lock-overlay');if(e)e.textContent=a?(a.username||a.email||a.name||''):'';if(si)si.disabled=!!a;if(so)so.disabled=!a;if(a){document.body.classList.remove('locked');if(ov)ov.style.display='none'}else{document.body.classList.add('locked');if(ov)ov.style.display='flex'}}async function login(){try{await msalInstance.loginPopup(loginRequest)}catch(e){console.error('loginPopup error',e);alert('Sign-in error. Check console.')}setUI();window.dispatchEvent(new Event('WOLCAS_SIGNED_IN'))}async function logout(){try{await msalInstance.logoutPopup()}catch(e){await msalInstance.logoutRedirect()}setUI()}var token=null,siteId=null,projectListId=null,taskListId=null,driveId=null;async function getToken(){var a=acc();if(!a)throw new Error('Not signed in');try{var r=await msalInstance.acquireTokenSilent({...loginRequest,account:a});token=r.accessToken;return token}catch(e){var r2=await msalInstance.acquireTokenPopup(loginRequest);token=r2.accessToken;return token}}async function g(p,o){o=o||{};var h=o.headers||{};h['Authorization']='Bearer '+token;if(o.body&&!h['Content-Type'])h['Content-Type']='application/json';var r=await fetch('https://graph.microsoft.com/v1.0'+p,{method:o.method||'GET',headers:h,body:o.body||null});if(!r.ok){var t='';try{t=await r.text()}catch{};throw new Error('Graph '+r.status+': '+t)}var ct=r.headers.get('content-type')||'';return ct.includes('application/json')?await r.json():await r.text()}async function site(){var s=await g('/sites/architektica-my.sharepoint.com:/personal/abir_architektica_com');siteId=s.id;var lists=await g('/sites/'+siteId+'/lists');projectListId=(lists.value||[]).find(function(l){return l.displayName==='Project'})?.id;taskListId=(lists.value||[]).find(function(l){return l.displayName==='Task'})?.id;var drives=await g('/sites/'+siteId+'/drives');driveId=(drives.value||[]).find(function(d){return d.name==='Documents'})?.id||(drives.value||[])[0]?.id}function recentCont(){var hs=Array.from(document.querySelectorAll('h2,h3'));var h=hs.find(function(x){return /recent projects/i.test(x.textContent||'')});if(!h)return null;var c=h.parentElement;if(!c)return null;Array.from(c.children).forEach(function(ch){if(/Owner:|Expected sales|Expected cost|Total cost/i.test(ch.textContent||''))ch.classList.add('seeded')});var list=c.querySelector('#recent-projects-list');if(!list){list=document.createElement('div');list.id='recent-projects-list';list.style.display='grid';list.style.gridTemplateColumns='repeat(auto-fill,minmax(260px,1fr))';list.style.gap='12px';c.appendChild(list)}return list}function render(el,projects){el.innerHTML='';if(!projects.length){el.innerHTML='<div style="opacity:.7">No projects found.</div>';return}projects.forEach(function(p){var card=document.createElement('div');card.style.border='1px solid #e5e7eb';card.style.borderRadius='12px';card.style.padding='12px';var title=p.Title||p.ProjectAddress||'Untitled project';var owner=p.Owner||'';var start=p.StartDate||'';var expected=(p.ExpectedSales!=null?p.ExpectedSales:'');var active=(p.Active===true||String(p.Active).toLowerCase()==='true')?'active':(p.Active===false?'inactive':'');card.innerHTML='<div style="font-weight:600;margin-bottom:6px;">'+title+(active?' <span style="margin-left:6px;font-size:12px;padding:2px 6px;background:#e5f7e9;border:1px solid #bde3c6;border-radius:999px;">'+active+'</span>':'')+'</div>'+(owner?'<div style="opacity:.8">Owner: '+owner+'</div>':'')+'<div style="display:flex;gap:16px;opacity:.8;margin-top:6px;">'+(expected!==''?'<div>Expected sales: '+expected+'</div>':'')+(start?'<div>Start: '+start+'</div>':'')+'</div>';el.appendChild(card)})}async function loadRecent(){try{await getToken();await site();var items=await g('/sites/'+siteId+'/lists/'+projectListId+'/items?expand=fields&$orderby=createdDateTime desc&$top=8');var projects=(items.value||[]).map(function(i){return i.fields||{}});var el=recentCont();if(el)render(el,projects)}catch(e){console.warn('Recent projects load failed',e)}}async function upsert(listKind,itemId,fields){await getToken();if(!siteId)await site();var listId=(listKind==='project')?projectListId:taskListId;if(!listId)throw new Error('List not found: '+listKind);if(itemId){await g('/sites/'+siteId+'/lists/'+listId+'/items/'+itemId+'/fields',{method:'PATCH',body:JSON.stringify(fields)});return itemId}var r=await g('/sites/'+siteId+'/lists/'+listId+'/items',{method:'POST',body:JSON.stringify({fields:fields})});return r.id}window.WOLCAS=Object.assign(window.WOLCAS||{}, {login:login,logout:logout,state:function(){return {account:acc(),siteId:siteId,projectListId:projectListId,taskListId:taskListId,driveId:driveId}},upsertListItem:upsert});document.addEventListener('DOMContentLoaded',function(){setUI();var overlayBtn=document.getElementById('overlay-signin');if(overlayBtn)overlayBtn.onclick=login;var sIn=document.getElementById('wolcas-signin');var sOut=document.getElementById('wolcas-signout');if(sIn)sIn.onclick=login;if(sOut)sOut.onclick=logout});window.addEventListener('WOLCAS_SIGNED_IN',function(){setUI();setTimeout(loadRecent,600)})})();</script>
+</body></html>
