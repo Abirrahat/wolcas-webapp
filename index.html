@@ -426,7 +426,78 @@
             <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 5h11v2H9V5zM4 7l2-2 2 2-2 2L4 7zm1 5h15v2H5v-2zm0 6h15v2H5v-2z"/></svg><span class="label">Tasks:</span> <span class="value">${(p.tasks||[]).length}</span></span>
             <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12a1 1 0  0 1 1 1v18l-3-2-3 2-3-2-3 2V3a1  1 0  0 1 1-1zm2 5h8v2H8V7zm0 4h8v2H8v-2zm0 4h5v2H8v-2z"/></svg><span class="label">Total Cost:</span> <span class="value">${fmtMoney(sumNumeric((p.tasks||[]).map(t=> t.totalCost)))}</span></span>
           </div>`;
-      w.document.write('<html><head><title>Reports</title>'+css+'</head><body>'+meta+tableHTML+'</body></html>'); w.document.close(); w.print();
+      w.document.write('<html><head><title>Reports</title>'+css+'</head><body>'+meta+tableHTML+'
+<script>
+(function(){
+  var BASE = 'https://abirrahat.github.io/wolcas-webapp/';
+  var REDIRECT = BASE + 'auth';
+  // Recreate instance with callback page for popup redirects
+  var msalConfig = {
+    auth: {
+      clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
+      authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
+      redirectUri: REDIRECT,
+      postLogoutRedirectUri: BASE,
+      navigateToLoginRequestUrl: false
+    },
+    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
+  };
+
+  var loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
+  var msalInstance = new msal.PublicClientApplication(msalConfig);
+
+  async function getAccount(){
+    var acc = msalInstance.getAllAccounts()[0] || null;
+    return acc;
+  }
+
+  async function showEmail(){
+    try{
+      var acc = await getAccount();
+      var el = document.getElementById('wolcas-email');
+      if(!el) return;
+      el.textContent = acc ? (acc.username || acc.email || acc.name || '') : '';
+      // Toggle buttons
+      var sIn = document.getElementById('wolcas-signin');
+      var sOut = document.getElementById('wolcas-signout');
+      if(sIn) sIn.disabled = !!acc;
+      if(sOut) sOut.disabled = !acc;
+    }catch(e){ console.warn('Email display failed', e); }
+  }
+
+  async function login(){
+    try{ await msalInstance.loginPopup(loginRequest); }
+    catch(e){ console.error('loginPopup error', e); alert('Sign-in error. See console.'); }
+    await showEmail();
+    // Notify any listeners (e.g., recent projects loader)
+    try{ window.dispatchEvent(new Event('WOLCAS_SIGNED_IN')); }catch(e){}
+  }
+
+  async function logout(){
+    try{ await msalInstance.logoutPopup(); }
+    catch(e){ await msalInstance.logoutRedirect(); }
+    await showEmail();
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    // Wire buttons
+    var sIn = document.getElementById('wolcas-signin');
+    var sOut = document.getElementById('wolcas-signout');
+    if(sIn) sIn.onclick = login;
+    if(sOut) sOut.onclick = logout;
+    showEmail();
+    // Close residual auth popups if any send a message back
+    window.addEventListener('message', function(ev){
+      if(ev && ev.data && ev.data.type==='WOLCAS_AUTH_DONE'){ showEmail(); }
+    });
+  });
+
+  // Expose minimal API (override if WOLCAS exists)
+  window.WOLCAS = Object.assign(window.WOLCAS||{}, { login: login, logout: logout, state: function(){ return { account: msalInstance.getAllAccounts()[0] || null }; } });
+})();
+</script>
+
+</body></html>'); w.document.close(); w.print();
     };
   }
 
@@ -441,134 +512,76 @@
   function escapeAttr(s){ return (s||'').replace(/\"/g,'&quot;'); }
   function safeFileName(s){ return (s||'file').replace(/[^a-z0-9_\-]+/gi,'_'); }
   </script>
-</body>
-</html>
 
 <script>
 (function(){
-  // Reuse WOLCAS if present; otherwise create a minimal shell
-  window.WOLCAS = window.WOLCAS || { state: function(){ return { account: null }; } };
+  var BASE = 'https://abirrahat.github.io/wolcas-webapp/';
+  var REDIRECT = BASE + 'auth';
+  // Recreate instance with callback page for popup redirects
+  var msalConfig = {
+    auth: {
+      clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
+      authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
+      redirectUri: REDIRECT,
+      postLogoutRedirectUri: BASE,
+      navigateToLoginRequestUrl: false
+    },
+    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
+  };
 
-  const graphBase = 'https://graph.microsoft.com/v1.0';
-  let accessToken = null, siteId = null, projectListId = null;
+  var loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
+  var msalInstance = new msal.PublicClientApplication(msalConfig);
 
-  // Acquire token via MSAL (already configured in previous script)
-  async function getToken(){
-    if(!window.msal || !window.WOLCAS) throw new Error('MSAL or WOLCAS not initialized');
-    const msalInstance = new msal.PublicClientApplication({}); // dummy; we'll use existing instance via popup
-    // Try to reuse the signed-in account by triggering a silent acquire with scopes
-    try {
-      const loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
-      const accounts = msalInstance.getAllAccounts();
-      if(accounts && accounts[0]){
-        const res = await msalInstance.acquireTokenSilent({ ...loginRequest, account: accounts[0] });
-        accessToken = res.accessToken;
-        return accessToken;
-      }
-    } catch(e){ console.warn('Silent token failed (placeholder instance). Using popup via WOLCAS.login()'); }
-    // Fallback: call existing login and then rely on Graph calls with fetch and bearer from popup-acquired session cookies
-    if(window.WOLCAS.login){ await window.WOLCAS.login(); }
-    // We will call Graph with fetch + bearer from acquireTokenPopup on a temporary instance
+  async function getAccount(){
+    var acc = msalInstance.getAllAccounts()[0] || null;
+    return acc;
+  }
+
+  async function showEmail(){
     try{
-      const loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
-      const res = await msalInstance.acquireTokenPopup(loginRequest);
-      accessToken = res.accessToken;
-      return accessToken;
-    }catch(err){ console.error('Token acquisition failed', err); throw err; }
+      var acc = await getAccount();
+      var el = document.getElementById('wolcas-email');
+      if(!el) return;
+      el.textContent = acc ? (acc.username || acc.email || acc.name || '') : '';
+      // Toggle buttons
+      var sIn = document.getElementById('wolcas-signin');
+      var sOut = document.getElementById('wolcas-signout');
+      if(sIn) sIn.disabled = !!acc;
+      if(sOut) sOut.disabled = !acc;
+    }catch(e){ console.warn('Email display failed', e); }
   }
 
-  async function graph(path, options={}){
-    const headers = { 'Authorization': `Bearer ${accessToken}` };
-    if(options.body && !options.headers?.['Content-Type']) headers['Content-Type'] = 'application/json';
-    const resp = await fetch(`${graphBase}${path}`, { ...options, headers: { ...headers, ...(options.headers||{}) } });
-    if(!resp.ok){ let t=''; try{t=await resp.text();}catch{}; throw new Error(`Graph ${resp.status}: ${t}`); }
-    const ct = resp.headers.get('content-type')||'';
-    return ct.includes('application/json') ? await resp.json() : await resp.text();
+  async function login(){
+    try{ await msalInstance.loginPopup(loginRequest); }
+    catch(e){ console.error('loginPopup error', e); alert('Sign-in error. See console.'); }
+    await showEmail();
+    // Notify any listeners (e.g., recent projects loader)
+    try{ window.dispatchEvent(new Event('WOLCAS_SIGNED_IN')); }catch(e){}
   }
 
-  async function resolveSiteAndLists(){
-    // Resolve personal site
-    const site = await graph('/sites/architektica-my.sharepoint.com:/personal/abir_architektica_com');
-    siteId = site.id;
-    const lists = await graph(`/sites/${siteId}/lists`);
-    projectListId = (lists.value||[]).find(l=>l.displayName==='Project')?.id;
-    if(!projectListId) throw new Error('SharePoint list "Project" not found.');
-  }
-
-  async function loadRecentProjects(limit=8){
-    // Get list items sorted by created desc
-    const items = await graph(`/sites/${siteId}/lists/${projectListId}/items?expand=fields&$orderby=createdDateTime desc&$top=${limit}`);
-    return (items.value||[]).map(i=>i.fields||{});
-  }
-
-  function findRecentProjectsContainer(){
-    // Find the heading that contains "Recent projects" and use its parent container
-    const headings = Array.from(document.querySelectorAll('h2,h3,h4,h5'));
-    const heading = headings.find(h=>/recent projects/i.test(h.textContent||''));
-    if(!heading) return null;
-    const container = heading.parentElement;
-    if(!container) return null;
-    // Insert a dedicated list container; remove any static cards below
-    let list = container.querySelector('#recent-projects-list');
-    if(!list){
-      list = document.createElement('div');
-      list.id = 'recent-projects-list';
-      list.style.display = 'grid';
-      list.style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
-      list.style.gap = '12px';
-      container.appendChild(list);
-    }
-    // Hide any existing seeded cards (simple heuristic)
-    Array.from(container.children).forEach(ch=>{
-      if(ch!==list && (/(Owner:|Expected sales|Expected cost|Total cost)/i.test(ch.textContent||''))){ ch.style.display='none'; }
-    });
-    return list;
-  }
-
-  function renderProjects(listEl, projects){
-    listEl.innerHTML='';
-    if(!projects.length){ listEl.innerHTML = '<div style="opacity:.7">No projects found.</div>'; return; }
-    projects.forEach(p=>{
-      const card = document.createElement('div');
-      card.style.border='1px solid #e5e7eb';
-      card.style.borderRadius='12px';
-      card.style.padding='12px';
-      const title = p.Title || p.ProjectAddress || 'Untitled project';
-      const owner = p.Owner || '';
-      const start = p.StartDate || '';
-      const expected = p.ExpectedSales!=null ? p.ExpectedSales : '';
-      const active = (p.Active===true || String(p.Active).toLowerCase()==='true') ? 'active' : (p.Active===false ? 'inactive' : '');
-      card.innerHTML = `
-        <div style="font-weight:600; margin-bottom:6px;">${title} ${active?`<span style=\"margin-left:6px; font-size:12px; padding:2px 6px; background:#e5f7e9; border:1px solid #bde3c6; border-radius:999px;\">${active}</span>`:''}</div>
-        ${owner?`<div style=\"opacity:.8\">Owner: ${owner}</div>`:''}
-        <div style="display:flex; gap:16px; opacity:.8; margin-top:6px;">
-          ${expected!==''?`<div>Expected sales: ${expected}</div>`:''}
-          ${start?`<div>Start: ${start}</div>`:''}
-        </div>
-      `;
-      listEl.appendChild(card);
-    });
-  }
-
-  async function boot(){
-    try{
-      // Ensure a token and resolve site/lists
-      await getToken();
-      await resolveSiteAndLists();
-      const projects = await loadRecentProjects(8);
-      const container = findRecentProjectsContainer();
-      if(container) renderProjects(container, projects);
-    }catch(e){ console.warn('Recent projects load failed', e); }
+  async function logout(){
+    try{ await msalInstance.logoutPopup(); }
+    catch(e){ await msalInstance.logoutRedirect(); }
+    await showEmail();
   }
 
   document.addEventListener('DOMContentLoaded', function(){
-    // Load when user signs in (or if already signed in)
-    setTimeout(boot, 800);
-    // Also hook after sign-in
-    if(window.WOLCAS){
-      const sIn = document.getElementById('wolcas-signin');
-      if(sIn) sIn.addEventListener('click', function(){ setTimeout(boot, 1200); });
-    }
+    // Wire buttons
+    var sIn = document.getElementById('wolcas-signin');
+    var sOut = document.getElementById('wolcas-signout');
+    if(sIn) sIn.onclick = login;
+    if(sOut) sOut.onclick = logout;
+    showEmail();
+    // Close residual auth popups if any send a message back
+    window.addEventListener('message', function(ev){
+      if(ev && ev.data && ev.data.type==='WOLCAS_AUTH_DONE'){ showEmail(); }
+    });
   });
+
+  // Expose minimal API (override if WOLCAS exists)
+  window.WOLCAS = Object.assign(window.WOLCAS||{}, { login: login, logout: logout, state: function(){ return { account: msalInstance.getAllAccounts()[0] || null }; } });
 })();
 </script>
+
+</body>
+</html>
