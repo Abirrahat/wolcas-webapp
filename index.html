@@ -3,7 +3,34 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Work Order Linked Cost Allocation Standings (WOLCAS)</title>
+  <title>WOLCAS</title>
+  <style>
+    :root { --border:#e5e7eb; --muted:#6b7280; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin:0; }
+    header { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); }
+    .auth-left { margin-left:auto; display:flex; align-items:center; gap:10px; }
+    .btn { padding:6px 10px; border:1px solid #ccc; border-radius:8px; background:#fff; cursor:pointer; }
+    .btn:disabled { opacity:.6; cursor:not-allowed; }
+    #wolcas-email { font-size:14px; color: var(--muted); }
+    main { padding:16px; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>logo Company</strong>
+    <div class="auth-left">
+      <span id="wolcas-email"></span>
+      <button id="wolcas-signin" class="btn">Sign in</button>
+      <button id="wolcas-signout" class="btn" disabled>Sign out</button>
+    </div>
+  </header>
+  <main id="content">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WOLCAS (WOLCAS)</title>
   <style>
     :root { --primary:#1E3A8A; --secondary:#475569; --accent:#F97316; --bg:#F8FAFC; --text:#0F172A; --card:#ffffff; --border:#e5e7eb; }
     * { box-sizing: border-box; }
@@ -95,7 +122,7 @@
 <body>
   <header class="sticky">
     <div class="header-inner">
-      <div class="app-title">Work Order Linked Cost Allocation Standings</div>
+      <div class="app-title">WOLCAS</div>
       <div class="company"><img id="companyLogo" alt="logo" /><span id="companyName">Company</span></div>
     </div>
   </header>
@@ -104,8 +131,8 @@
     <!-- HOME -->
     <section id="home" class="container" hidden>
       <div class="card">
-        <h1>Welcome to Work Order Linked Cost Allocation Standings</h1>
-        <p class="muted">Create and track work orders, tasks, allocations, photos, and reports — all offline in one file.</p>
+        <h1>Welcome to WOLCAS</h1>
+        <p class="muted">Create and track work orders, tasks, allocations, photos, and reports </p>
         <div style="display:flex; gap:8px; margin-top:8px;">
           <button class="btn primary" id="btnNewOrder">New Order</button>
           <a href="#projects" class="btn secondary">View Projects</a>
@@ -426,78 +453,7 @@
             <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 5h11v2H9V5zM4 7l2-2 2 2-2 2L4 7zm1 5h15v2H5v-2zm0 6h15v2H5v-2z"/></svg><span class="label">Tasks:</span> <span class="value">${(p.tasks||[]).length}</span></span>
             <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12a1 1 0  0 1 1 1v18l-3-2-3 2-3-2-3 2V3a1  1 0  0 1 1-1zm2 5h8v2H8V7zm0 4h8v2H8v-2zm0 4h5v2H8v-2z"/></svg><span class="label">Total Cost:</span> <span class="value">${fmtMoney(sumNumeric((p.tasks||[]).map(t=> t.totalCost)))}</span></span>
           </div>`;
-      w.document.write('<html><head><title>Reports</title>'+css+'</head><body>'+meta+tableHTML+'
-<script>
-(function(){
-  var BASE = 'https://abirrahat.github.io/wolcas-webapp/';
-  var REDIRECT = BASE + 'auth';
-  // Recreate instance with callback page for popup redirects
-  var msalConfig = {
-    auth: {
-      clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
-      authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
-      redirectUri: REDIRECT,
-      postLogoutRedirectUri: BASE,
-      navigateToLoginRequestUrl: false
-    },
-    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
-  };
-
-  var loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
-  var msalInstance = new msal.PublicClientApplication(msalConfig);
-
-  async function getAccount(){
-    var acc = msalInstance.getAllAccounts()[0] || null;
-    return acc;
-  }
-
-  async function showEmail(){
-    try{
-      var acc = await getAccount();
-      var el = document.getElementById('wolcas-email');
-      if(!el) return;
-      el.textContent = acc ? (acc.username || acc.email || acc.name || '') : '';
-      // Toggle buttons
-      var sIn = document.getElementById('wolcas-signin');
-      var sOut = document.getElementById('wolcas-signout');
-      if(sIn) sIn.disabled = !!acc;
-      if(sOut) sOut.disabled = !acc;
-    }catch(e){ console.warn('Email display failed', e); }
-  }
-
-  async function login(){
-    try{ await msalInstance.loginPopup(loginRequest); }
-    catch(e){ console.error('loginPopup error', e); alert('Sign-in error. See console.'); }
-    await showEmail();
-    // Notify any listeners (e.g., recent projects loader)
-    try{ window.dispatchEvent(new Event('WOLCAS_SIGNED_IN')); }catch(e){}
-  }
-
-  async function logout(){
-    try{ await msalInstance.logoutPopup(); }
-    catch(e){ await msalInstance.logoutRedirect(); }
-    await showEmail();
-  }
-
-  document.addEventListener('DOMContentLoaded', function(){
-    // Wire buttons
-    var sIn = document.getElementById('wolcas-signin');
-    var sOut = document.getElementById('wolcas-signout');
-    if(sIn) sIn.onclick = login;
-    if(sOut) sOut.onclick = logout;
-    showEmail();
-    // Close residual auth popups if any send a message back
-    window.addEventListener('message', function(ev){
-      if(ev && ev.data && ev.data.type==='WOLCAS_AUTH_DONE'){ showEmail(); }
-    });
-  });
-
-  // Expose minimal API (override if WOLCAS exists)
-  window.WOLCAS = Object.assign(window.WOLCAS||{}, { login: login, logout: logout, state: function(){ return { account: msalInstance.getAllAccounts()[0] || null }; } });
-})();
-</script>
-
-</body></html>'); w.document.close(); w.print();
+      w.document.write('<html><head><title>Reports</title>'+css+'</head><body>'+meta+tableHTML+'</body></html>'); w.document.close(); w.print();
     };
   }
 
@@ -512,76 +468,69 @@
   function escapeAttr(s){ return (s||'').replace(/\"/g,'&quot;'); }
   function safeFileName(s){ return (s||'file').replace(/[^a-z0-9_\-]+/gi,'_'); }
   </script>
+</body>
+</html>
+  </main>
+  <!-- MSAL Browser -->
+  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+  <script>
+  // MSAL popup auth with dedicated /auth callback, show email left of Sign in
+  (function(){
+    var BASE = 'https://abirrahat.github.io/wolcas-webapp/';
+    var REDIRECT = BASE + 'auth';
+    var msalConfig = {
+      auth: {
+        clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
+        authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
+        redirectUri: REDIRECT,
+        postLogoutRedirectUri: BASE,
+        navigateToLoginRequestUrl: false
+      },
+      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true },
+      system: { loggerOptions: { loggerCallback: function(level, message, containsPii){ if(!containsPii) console.debug('[MSAL]', message); } } }
+    };
 
-<script>
-(function(){
-  var BASE = 'https://abirrahat.github.io/wolcas-webapp/';
-  var REDIRECT = BASE + 'auth';
-  // Recreate instance with callback page for popup redirects
-  var msalConfig = {
-    auth: {
-      clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
-      authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
-      redirectUri: REDIRECT,
-      postLogoutRedirectUri: BASE,
-      navigateToLoginRequestUrl: false
-    },
-    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
-  };
+    var loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
+    var msalInstance = new msal.PublicClientApplication(msalConfig);
 
-  var loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
-  var msalInstance = new msal.PublicClientApplication(msalConfig);
-
-  async function getAccount(){
-    var acc = msalInstance.getAllAccounts()[0] || null;
-    return acc;
-  }
-
-  async function showEmail(){
-    try{
-      var acc = await getAccount();
-      var el = document.getElementById('wolcas-email');
-      if(!el) return;
-      el.textContent = acc ? (acc.username || acc.email || acc.name || '') : '';
-      // Toggle buttons
+    function account(){ return msalInstance.getAllAccounts()[0] || null; }
+    function setAuthUI(){
+      var acc = account();
+      var emailEl = document.getElementById('wolcas-email');
       var sIn = document.getElementById('wolcas-signin');
       var sOut = document.getElementById('wolcas-signout');
+      if(emailEl) emailEl.textContent = acc ? (acc.username || acc.email || acc.name || '') : '';
       if(sIn) sIn.disabled = !!acc;
       if(sOut) sOut.disabled = !acc;
-    }catch(e){ console.warn('Email display failed', e); }
-  }
+    }
 
-  async function login(){
-    try{ await msalInstance.loginPopup(loginRequest); }
-    catch(e){ console.error('loginPopup error', e); alert('Sign-in error. See console.'); }
-    await showEmail();
-    // Notify any listeners (e.g., recent projects loader)
-    try{ window.dispatchEvent(new Event('WOLCAS_SIGNED_IN')); }catch(e){}
-  }
+    async function login(){
+      try { await msalInstance.loginPopup(loginRequest); }
+      catch(e){ console.error('loginPopup error', e); alert('Sign-in error. Check console.'); }
+      setAuthUI();
+      window.dispatchEvent(new Event('WOLCAS_SIGNED_IN'));
+    }
 
-  async function logout(){
-    try{ await msalInstance.logoutPopup(); }
-    catch(e){ await msalInstance.logoutRedirect(); }
-    await showEmail();
-  }
+    async function logout(){
+      try { await msalInstance.logoutPopup(); }
+      catch(e){ await msalInstance.logoutRedirect(); }
+      setAuthUI();
+    }
 
-  document.addEventListener('DOMContentLoaded', function(){
-    // Wire buttons
-    var sIn = document.getElementById('wolcas-signin');
-    var sOut = document.getElementById('wolcas-signout');
-    if(sIn) sIn.onclick = login;
-    if(sOut) sOut.onclick = logout;
-    showEmail();
-    // Close residual auth popups if any send a message back
-    window.addEventListener('message', function(ev){
-      if(ev && ev.data && ev.data.type==='WOLCAS_AUTH_DONE'){ showEmail(); }
+    document.addEventListener('DOMContentLoaded', function(){
+      // initial render
+      setAuthUI();
+      var sIn = document.getElementById('wolcas-signin');
+      var sOut = document.getElementById('wolcas-signout');
+      if(sIn) sIn.onclick = login;
+      if(sOut) sOut.onclick = logout;
+      // message from auth.html closes popup and refreshes UI
+      window.addEventListener('message', function(ev){ if(ev && ev.data && ev.data.type==='WOLCAS_AUTH_DONE'){ setAuthUI(); } });
     });
-  });
 
-  // Expose minimal API (override if WOLCAS exists)
-  window.WOLCAS = Object.assign(window.WOLCAS||{}, { login: login, logout: logout, state: function(){ return { account: msalInstance.getAllAccounts()[0] || null }; } });
-})();
-</script>
-
+    // expose minimal API for other modules (e.g., projects loader)
+    window.WOLCAS = Object.assign(window.WOLCAS||{}, { login: login, logout: logout, state: function(){ return { account: account() }; } });
+  })();
+  </script>
 </body>
 </html>
