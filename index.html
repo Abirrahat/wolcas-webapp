@@ -6,8 +6,10 @@
   <title>WOLCAS</title>
   <style>
     :root { --border:#e5e7eb; --muted:#6b7280; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin:0; }
-    header { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); }
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0; }
+    header { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border); }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .brand img { height:56px; width:auto; object-fit:contain; } /* enlarge logo */
     .auth-left { margin-left:auto; display:flex; align-items:center; gap:10px; }
     .btn { padding:6px 10px; border:1px solid #ccc; border-radius:8px; background:#fff; cursor:pointer; }
     .btn:disabled { opacity:.6; cursor:not-allowed; }
@@ -17,13 +19,17 @@
 </head>
 <body>
   <header>
-    <strong>logo Company</strong>
+    <div class="brand">
+      <!-- Remove plain text 'logo Company'; keep only logo image if present -->
+      <img id="company-logo" alt="Company Logo" src="logo.png" onerror="this.style.display='none'" />
+    </div>
     <div class="auth-left">
       <span id="wolcas-email"></span>
       <button id="wolcas-signin" class="btn">Sign in</button>
       <button id="wolcas-signout" class="btn" disabled>Sign out</button>
     </div>
   </header>
+
   <main id="content">
 <!DOCTYPE html>
 <html lang="en">
@@ -471,10 +477,10 @@
 </body>
 </html>
   </main>
+
   <!-- MSAL Browser -->
   <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
   <script>
-  // MSAL popup auth with dedicated /auth callback, show email left of Sign in
   (function(){
     var BASE = 'https://abirrahat.github.io/wolcas-webapp/';
     var REDIRECT = BASE + 'auth';
@@ -493,9 +499,9 @@
     var loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
     var msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    function account(){ return msalInstance.getAllAccounts()[0] || null; }
+    function getAccount(){ return msalInstance.getAllAccounts()[0] || null; }
     function setAuthUI(){
-      var acc = account();
+      var acc = getAccount();
       var emailEl = document.getElementById('wolcas-email');
       var sIn = document.getElementById('wolcas-signin');
       var sOut = document.getElementById('wolcas-signout');
@@ -517,21 +523,80 @@
       setAuthUI();
     }
 
-    document.addEventListener('DOMContentLoaded', function(){
-      // initial render
-      setAuthUI();
-      var sIn = document.getElementById('wolcas-signin');
-      var sOut = document.getElementById('wolcas-signout');
-      if(sIn) sIn.onclick = login;
-      if(sOut) sOut.onclick = logout;
-      // message from auth.html closes popup and refreshes UI
-      window.addEventListener('message', function(ev){ if(ev && ev.data && ev.data.type==='WOLCAS_AUTH_DONE'){ setAuthUI(); } });
-    });
+    // ===== Microsoft Graph helpers (one instance) =====
+    var accessToken = null, siteId = null, projectListId = null, taskListId = null, driveId = null;
 
-    // expose minimal API for other modules (e.g., projects loader)
-    window.WOLCAS = Object.assign(window.WOLCAS||{}, { login: login, logout: logout, state: function(){ return { account: account() }; } });
+    async function acquireToken(){
+      var acc = getAccount();
+      try { var res = await msalInstance.acquireTokenSilent({ ...loginRequest, account: acc }); accessToken = res.accessToken; return accessToken; }
+      catch(e){ var res2 = await msalInstance.acquireTokenPopup(loginRequest); accessToken = res2.accessToken; return accessToken; }
+    }
+
+    async function graph(path, options){
+      options = options || {}; var headers = options.headers || {}; headers['Authorization'] = 'Bearer ' + accessToken;
+      if(options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+      var resp = await fetch('https://graph.microsoft.com/v1.0' + path, { method: options.method||'GET', headers: headers, body: options.body||null });
+      if(!resp.ok){ var t=''; try{ t=await resp.text(); }catch{}; throw new Error('Graph '+resp.status+': '+t); }
+      var ct = resp.headers.get('content-type')||''; return ct.includes('application/json') ? await resp.json() : await resp.text();
+    }
+
+    async function resolveSite(){
+      var site = await graph('/sites/architektica-my.sharepoint.com:/personal/abir_architektica_com');
+      siteId = site.id;
+      var lists = await graph('/sites/'+siteId+'/lists');
+      projectListId = (lists.value||[]).find(function(l){ return l.displayName==='Project'; })?.id;
+      taskListId = (lists.value||[]).find(function(l){ return l.displayName==='Task'; })?.id;
+      var drives = await graph('/sites/'+siteId+'/drives');
+      driveId = (drives.value||[]).find(function(d){ return d.name==='Documents'; })?.id || (drives.value||[])[0]?.id;
+    }
+
+    // ===== Recent projects loader (hides cached/seeded cards) =====
+    function recentContainer(){
+      var headings = Array.from(document.querySelectorAll('h2,h3')); var h = headings.find(function(x){ return /recent projects/i.test(x.textContent||''); });
+      if(!h) return null; var container = h.parentElement; if(!container) return null;
+      // Hide any pre-seeded blocks
+      Array.from(container.children).forEach(function(ch){ if(/Owner:|Expected sales|Expected cost|Total cost/i.test(ch.textContent||'')) ch.style.display='none'; });
+      var list = container.querySelector('#recent-projects-list'); if(!list){ list = document.createElement('div'); list.id='recent-projects-list'; list.style.display='grid'; list.style.gridTemplateColumns='repeat(auto-fill, minmax(260px, 1fr))'; list.style.gap='12px'; container.appendChild(list); }
+      return list;
+    }
+
+    function renderProjects(el, projects){
+      el.innerHTML=''; if(!projects.length){ el.innerHTML='<div style="opacity:.7">No projects found.</div>'; return; }
+      projects.forEach(function(p){
+        var card = document.createElement('div'); card.style.border='1px solid #e5e7eb'; card.style.borderRadius='12px'; card.style.padding='12px';
+        var title = p.Title || p.ProjectAddress || 'Untitled project'; var owner = p.Owner||''; var start = p.StartDate||''; var expected = (p.ExpectedSales!=null ? p.ExpectedSales : '');
+        var active = (p.Active===true || String(p.Active).toLowerCase()==='true') ? 'active' : (p.Active===false ? 'inactive' : '');
+        card.innerHTML = '<div style="font-weight:600; margin-bottom:6px;">'+title+(active? ' <span style="margin-left:6px; font-size:12px; padding:2px 6px; background:#e5f7e9; border:1px solid #bde3c6; border-radius:999px;">'+active+'</span>' : '')+'</div>'
+          + (owner? '<div style="opacity:.8">Owner: '+owner+'</div>' : '')
+          + '<div style="display:flex; gap:16px; opacity:.8; margin-top:6px;">'
+          + (expected!==''? '<div>Expected sales: '+expected+'</div>' : '')
+          + (start? '<div>Start: '+start+'</div>' : '')
+          + '</div>';
+        el.appendChild(card);
+      });
+    }
+
+    async function loadRecentProjects(){
+      try {
+        await acquireToken(); await resolveSite();
+        var items = await graph('/sites/'+siteId+'/lists/'+projectListId+'/items?expand=fields&$orderby=createdDateTime desc&$top=8');
+        var projects = (items.value||[]).map(function(i){ return i.fields||{}; });
+        var el = recentContainer(); if(el) renderProjects(el, projects);
+      } catch(e){ console.warn('Recent projects load failed', e); }
+    }
+
+    // ===== Public API for autosave/photo upload =====
+    async function upsertListItem(listKind, itemId, fields){
+      await acquireToken(); if(!siteId) await resolveSite(); var listId = (listKind==='project')? projectListId : taskListId; if(!listId) throw new Error('List not found: '+listKind);
+      if(itemId){ await graph('/sites/'+siteId+'/lists/'+listId+'/items/'+itemId+'/fields', { method:'PATCH', body: JSON.stringify(fields) }); return itemId; }
+      var res = await graph('/sites/'+siteId+'/lists/'+listId+'/items', { method:'POST', body: JSON.stringify({ fields: fields }) }); return res.id;
+    }
+
+    window.WOLCAS = Object.assign(window.WOLCAS||{}, { login: login, logout: logout, state: function(){ return { account: getAccount(), siteId: siteId, projectListId: projectListId, taskListId: taskListId, driveId: driveId }; }, upsertListItem: upsertListItem });
+
+    document.addEventListener('DOMContentLoaded', function(){ setAuthUI(); loadRecentProjects(); });
+    window.addEventListener('WOLCAS_SIGNED_IN', function(){ setTimeout(loadRecentProjects, 600); });
   })();
   </script>
 </body>
 </html>
-
