@@ -1,9 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WOLCAS</title>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0}header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #eee}.auth-buttons{margin-left:auto;display:flex;gap:8px}.btn{padding:6px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer}.btn:disabled{opacity:.6;cursor:not-allowed}main{padding:16px}</style>
+</head>
+<body>
+<header><strong>logo Company</strong><div class="auth-buttons"><button id="wolcas-signin" class="btn">Sign in</button><button id="wolcas-signout" class="btn" disabled>Sign out</button></div></header>
+<main id="content">
+<!DOCTYPE html>
+<html lang="en">
+<head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Work Order Linked Cost Allocation Standings (WOLCAS)</title>
+  <title>WOLCAS (WOLCAS)</title>
   <style>
     :root { --primary:#1E3A8A; --secondary:#475569; --accent:#F97316; --bg:#F8FAFC; --text:#0F172A; --card:#ffffff; --border:#e5e7eb; }
     * { box-sizing: border-box; }
@@ -95,7 +106,7 @@
 <body>
   <header class="sticky">
     <div class="header-inner">
-      <div class="app-title">Work Order Linked Cost Allocation Standings</div>
+      <div class="app-title">WOLCAS</div>
       <div class="company"><img id="companyLogo" alt="logo" /><span id="companyName">Company</span></div>
     </div>
   </header>
@@ -104,8 +115,8 @@
     <!-- HOME -->
     <section id="home" class="container" hidden>
       <div class="card">
-        <h1>Welcome to Work Order Linked Cost Allocation Standings</h1>
-        <p class="muted">Create and track work orders, tasks, allocations, photos, and reports — all offline in one file.</p>
+        <h1>Welcome to WOLCAS</h1>
+        <p class="muted">Create and track work orders, tasks, allocations, photos, and reports </p>
         <div style="display:flex; gap:8px; margin-top:8px;">
           <button class="btn primary" id="btnNewOrder">New Order</button>
           <a href="#projects" class="btn secondary">View Projects</a>
@@ -443,16 +454,9 @@
   </script>
 </body>
 </html>
-
-<!-- ===== WOLCAS Online Mode: Microsoft identity + Microsoft Graph integration (no layout changes) ===== -->
+</main>
 <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 <script>
-/*
-  WOLCAS Online Mode bootstrap
-  - Azure AD (Entra ID) auth: MSAL.js (PKCE, public client; no client secret in browser)
-  - Microsoft Graph: SharePoint Lists (Task, Project) + Document Library photo uploads
-  - Autosave: binds to existing inputs (update selectors below to match your DOM) without changing layout
-*/
 (function(){
   const msalConfig = {
     auth: {
@@ -461,214 +465,42 @@
       redirectUri: 'https://abirrahat.github.io/wolcas-webapp/auth',
       postLogoutRedirectUri: 'https://abirrahat.github.io/wolcas-webapp/'
     },
-    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true },
-    system: { loggerOptions: { loggerCallback: (lvl, msg)=>console.debug('[MSAL]', msg) } }
+    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
   };
-
   const loginRequest = { scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'] };
-  const graphBase = 'https://graph.microsoft.com/v1.0';
-
   const msalInstance = new msal.PublicClientApplication(msalConfig);
-  let account, accessToken, siteId, taskListId, projectListId, driveId, role = 'viewer';
-
-  async function handleRedirectIfNeeded(){
+  let account = null;
+  async function init(){
+    await msalInstance.initialize();
     const resp = await msalInstance.handleRedirectPromise();
     if(resp && resp.account) account = resp.account;
-  }
-
-  async function login(){
-    await msalInstance.initialize();
-    await handleRedirectIfNeeded();
     const accounts = msalInstance.getAllAccounts();
-    if(accounts.length){ account = accounts[0]; }
-    if(!account){
-      // Prefer popup to avoid full-page redirect on GitHub Pages
-      await msalInstance.loginPopup(loginRequest);
-      account = msalInstance.getAllAccounts()[0];
-    }
-    accessToken = await getToken();
+    if(!account && accounts.length) account = accounts[0];
+    setAuthUI();
   }
-
-  async function getToken(){
-    try {
-      const res = await msalInstance.acquireTokenSilent({ ...loginRequest, account });
-      return res.accessToken;
-    } catch(e){
-      const res = await msalInstance.acquireTokenPopup(loginRequest);
-      return res.accessToken;
-    }
+  async function login(){
+    try{ await msalInstance.loginPopup(loginRequest); account = msalInstance.getAllAccounts()[0]||null; }
+    catch(e){ console.warn('Login failed', e); alert('Sign in failed'); }
+    setAuthUI();
   }
-
-  async function graph(path, options={}){
-    const headers = { 'Authorization': `Bearer ${accessToken}` };
-    if(options.body && !options.headers?.['Content-Type']) headers['Content-Type'] = 'application/json';
-    const resp = await fetch(`${graphBase}${path}`, { ...options, headers: { ...headers, ...(options.headers||{}) } });
-    if(!resp.ok){
-      let t; try{ t = await resp.text(); }catch{ t=''; }
-      throw new Error(`Graph ${resp.status}: ${t}`);
-    }
-    const ct = resp.headers.get('content-type')||'';
-    return ct.includes('application/json') ? await resp.json() : await resp.text();
+  async function logout(){
+    try{ await msalInstance.logoutPopup(); }
+    catch(e){ await msalInstance.logoutRedirect(); }
+    finally{ account = null; setAuthUI(); }
   }
-
-  async function resolveSite(){
-    const site = await graph('/sites/architektica-my.sharepoint.com:/personal/abir_architektica_com');
-    siteId = site.id;
-    const lists = await graph(`/sites/${siteId}/lists`);
-    taskListId = (lists.value||[]).find(l=>l.displayName==='Task')?.id;
-    projectListId = (lists.value||[]).find(l=>l.displayName==='Project')?.id;
-    if(!taskListId) console.warn('SharePoint List "Task" not found.');
-    if(!projectListId) console.warn('SharePoint List "Project" not found.');
-    const drives = await graph(`/sites/${siteId}/drives`);
-    driveId = (drives.value||[]).find(d=>d.name==='Documents')?.id || (drives.value||[])[0]?.id;
+  function setAuthUI(){
+    const sIn = document.getElementById('wolcas-signin');
+    const sOut = document.getElementById('wolcas-signout');
+    if(sIn) sIn.disabled = !!account;
+    if(sOut) sOut.disabled = !account;
   }
-
-  async function getMe(){ return await graph('/me'); }
-  async function getGroups(){ return await graph('/me/memberOf'); }
-
-  // Optional: simple role logic (viewer/editor) based on membership in configured Azure AD groups (fill with real IDs)
-  const RBAC = { editorGroups: [/* '00000000-0000-0000-0000-000000000000' */] };
-  async function resolveRole(){
-    try{
-      const groups = await getGroups();
-      const groupIds = (groups.value||[]).map(g=>g.id);
-      role = RBAC.editorGroups.some(id=>groupIds.includes(id)) ? 'editor' : 'viewer';
-      console.log('WOLCAS role =', role);
-    }catch(e){ console.warn('RBAC resolution failed', e); }
-  }
-
-  async function upsertListItem(listId, itemId, fields){
-    if(!listId) throw new Error('List ID is missing.');
-    if(itemId){
-      await graph(`/sites/${siteId}/lists/${listId}/items/${itemId}/fields`, { method: 'PATCH', body: JSON.stringify(fields) });
-      return itemId;
-    } else {
-      const res = await graph(`/sites/${siteId}/lists/${listId}/items`, { method: 'POST', body: JSON.stringify({ fields }) });
-      return res.id;
-    }
-  }
-
-  async function uploadPhoto(file, folderSegments){
-    if(!driveId) throw new Error('Drive ID is missing.');
-    const safeSeg = (folderSegments||[]).map(s=>encodeURIComponent(String(s).replace(/[\\/]/g,'-')));
-    const path = ['WOLCAS','TaskPhotos', ...safeSeg, encodeURIComponent(file.name)].join('/');
-    const url = `${graphBase}/sites/${siteId}/drives/${driveId}/root:/${path}:/content`;
-    const resp = await fetch(url, { method: 'PUT', headers: { 'Authorization': `Bearer ${accessToken}` }, body: file });
-    if(!resp.ok){ throw new Error(await resp.text()); }
-    const item = await resp.json();
-    return item.webUrl; // SharePoint file URL
-  }
-
-  // Autosave helper: binds change/typing events to save to SharePoint Lists without layout changes
-  function bindAutosave(mapping, listKind='task'){
-    const listId = listKind==='task' ? taskListId : projectListId;
-    if(!listId){ console.warn('List ID missing for', listKind); return () => null; }
-    let itemId = null;
-    const debounce = (fn, delay=1200)=>{ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), delay); }; };
-    const collect = () => {
-      const fields = {};
-      for(const [field, selector] of Object.entries(mapping)){
-        const el = document.querySelector(selector);
-        if(!el) continue;
-        let val;
-        if(el.type==='checkbox'){ val = el.checked; }
-        else if(el.type==='date'){ val = el.value; }
-        else if('value' in el){ val = el.value; }
-        else { val = el.textContent||''; }
-        fields[field] = val;
-      }
-      return fields;
-    };
-    const save = debounce(async()=>{
-      try{
-        const fields = collect();
-        itemId = await upsertListItem(listId, itemId, fields);
-        if(window.WOLCASHooks?.onSaved) window.WOLCASHooks.onSaved({ listKind, itemId, fields });
-      }catch(e){ console.error('Autosave error', e); }
-    }, 1200);
-    Object.values(mapping).forEach(selector=>{
-      const el = document.querySelector(selector);
-      if(!el) return;
-      ['input','change','keyup','blur'].forEach(evt=>el.addEventListener(evt, save));
-    });
-    // initial save to create the item record
-    save();
-    return ()=>itemId;
-  }
-
-  // Public API for the existing UI code to call without altering layout
-  window.WOLCAS = {
-    login, getToken, resolveSite, resolveRole, getMe,
-    bindAutosave, upsertListItem, uploadPhoto,
-    state(){ return { account, siteId, taskListId, projectListId, driveId, role }; }
-  };
-
-  // Bootstrap automatically when DOM is ready
-  document.addEventListener('DOMContentLoaded', async ()=>{
-    try {
-      await login();
-      await resolveSite();
-      await resolveRole();
-      console.log('WOLCAS Online ready', WOLCAS.state());
-      // Example mappings — update selectors to match your existing fields (no layout change required)
-      const taskMapping = {
-        Title: '#task-name',
-        Address: '#task-address',
-        StartDate: '#task-start-date',
-        EndDate: '#task-end-date',
-        QuantityUnit: '#task-quantity-unit',
-        Cost: '#task-unit-cost',
-        TotalCost: '#task-total-cost',
-        Allocation: '#task-allocation',
-        Sprint: '#task-sprint',
-        Assignee: '#task-assignee',
-        Description: '#task-description',
-        Notes: '#task-notes',
-        Photos: '#task-photos-json' // multi-line text storing JSON array of file URLs
-      };
-      if(document.querySelector('#task-name')) WOLCAS.bindAutosave(taskMapping, 'task');
-
-      const projectMapping = {
-        Title: '#project-address', // use Title for primary text column
-        Owner: '#project-owner',
-        StartDate: '#project-start-date',
-        ExpectedSales: '#project-expected-sales',
-        Active: '#project-active' // checkbox mapped to Yes/No column
-      };
-      if(document.querySelector('#project-address')) WOLCAS.bindAutosave(projectMapping, 'project');
-
-      // Photo upload example hook — expects <input type="file" id="task-photos-input" multiple>
-      const photoInput = document.querySelector('#task-photos-input');
-      if(photoInput){
-        let getItemId = null;
-        if(window.WOLCASHooks?.getTaskItemId){ getItemId = window.WOLCASHooks.getTaskItemId; }
-        photoInput.addEventListener('change', async (e)=>{
-          try{
-            // Ensure a task item exists before upload
-            if(!getItemId){
-              getItemId = WOLCAS.bindAutosave(taskMapping, 'task');
-              await new Promise(r=>setTimeout(r, 1500));
-            }
-            const itemId = getItemId();
-            const urls = [];
-            for(const file of e.target.files){
-              const url = await uploadPhoto(file, ['Task', itemId]);
-              urls.push(url);
-            }
-            const photosField = document.querySelector('#task-photos-json');
-            if(photosField){
-              const current = photosField.value ? JSON.parse(photosField.value) : [];
-              photosField.value = JSON.stringify([...current, ...urls]);
-              photosField.dispatchEvent(new Event('change'));
-            }
-          }catch(err){ console.error('Photo upload error', err); alert('Photo upload failed: '+err.message); }
-        });
-      }
-    } catch(err) {
-      console.error('WOLCAS init failed', err);
-      alert('Sign-in or configuration error. Check console for details.');
-    }
+  window.WOLCAS = { login, logout, state(){ return { account }; } };
+  document.addEventListener('DOMContentLoaded', function(){
+    init();
+    document.getElementById('wolcas-signin').addEventListener('click', ()=>WOLCAS.login());
+    document.getElementById('wolcas-signout').addEventListener('click', ()=>WOLCAS.logout());
   });
 })();
 </script>
-<!-- ===== End WOLCAS Online Mode script ===== -->
+</body>
+</html>
