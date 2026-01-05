@@ -1,0 +1,16 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auth Redirect — WOLCAS</title>
+  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+</head>
+<body>
+<script>
+  const msalInstance = new msal.PublicClientApplication({ auth: { clientId: "827656f8-3a21-4d69-b6e5-c35e2ec2fb71", authority: "https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45", redirectUri: "https://abirrahat.github.io/wolcas-webapp/auth" } });
+  msalInstance.handleRedirectPromise().then(()=>{ window.location.replace('https://abirrahat.github.io/wolcas-webapp/'); }).catch((e)=>{ document.body.innerHTML='<pre>'+e.toString()+'</pre>'; });
+</script>
+</body>
+</html>
