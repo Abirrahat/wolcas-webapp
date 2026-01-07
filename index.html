@@ -1,362 +1,100 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>WOLCAS</title>
-<style>:root{--border:#e5e7eb;--muted:#6b7280;--overlay:rgba(255,255,255,0.85)}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0}header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)}.brand{display:flex;align-items:center;gap:10px}.brand img{height:64px;width:auto;object-fit:contain}.auth-left{margin-left:auto;display:flex;align-items:center;gap:10px}.btn{padding:6px 10px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer}.btn:disabled{opacity:.6;cursor:not-allowed}#wolcas-email{font-size:14px;color:var(--muted)}main{padding:16px;position:relative}.lock-overlay{position:absolute;inset:0;background:var(--overlay);backdrop-filter:saturate(.6) blur(1px);display:none;align-items:center;justify-content:center;z-index:999}.lock-overlay .panel{border:1px solid var(--border);border-radius:12px;background:#fff;padding:18px 22px;box-shadow:0 6px 18px rgba(0,0,0,.08)}.locked main .lock-overlay{display:flex}.locked main .content-body{filter:blur(1px);pointer-events:none;user-select:none}.seeded{display:none!important}</style>
-</head><body>
-<header><div class="brand"><img id="company-logo" alt="Company Logo" src="logo.png" onerror="this.style.display='none'" /></div>
-<div class="auth-left"><span id="wolcas-email"></span><button id="wolcas-signin" class="btn">Sign in</button><button id="wolcas-signout" class="btn" disabled>Sign out</button></div></header>
-<main><div class="content-body">
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang='en'>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WOLCAS (WOLCAS)</title>
-  <style>
-    :root { --primary:#1E3A8A; --secondary:#475569; --accent:#F97316; --bg:#F8FAFC; --text:#0F172A; --card:#ffffff; --border:#e5e7eb; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial; color:var(--text); background:var(--bg); padding-bottom:72px; overflow-x:hidden; }
-    header.sticky { position:sticky; top:0; z-index:1000; background:var(--card); border-bottom:1px solid var(--border); }
-    .header-inner { display:flex; align-items:center; gap:12px; padding:10px 16px; }
-    .app-title { font-weight:700; color:var(--primary); }
-    .company { margin-left:auto; display:flex; align-items:center; gap:8px; color:var(--secondary); font-size:0.95rem; }
-    .company img { width:24px; height:24px; border-radius:4px; object-fit:cover; border:1px solid var(--border); }
-
-    .container { width:min(100%, 1100px); margin-inline:auto; padding:16px; }
-    h1,h2,h3 { margin:8px 0; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.04); padding:16px; width:100%; overflow-wrap:anywhere; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:16px; align-items:start; }
-    .btn { display:inline-flex; align-items:center; gap:6px; padding:10px 14px; border-radius:10px; border:1px solid var(--border); cursor:pointer; text-decoration:none; font-weight:600; }
-    .btn.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
-    .btn.secondary { background:#fff; color:var(--primary); }
-    .btn.small { padding:6px 10px; font-size:0.9rem; }
-    .btn.link { background:transparent; border-color:transparent; color:var(--primary); }
-    .badge { display:inline-block; padding:6px 10px; border-radius:999px; font-size:0.9rem; border:1px solid var(--border); background:#fff; }
-    .badge.active { color:#065f46; background:#ecfdf5; border-color:#a7f3d0; }
-    .badge.completed { color:#1f2937; background:#e5e7eb; border-color:#d1d5db; }
-
-    .input-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .input-row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
-    label { font-weight:600; font-size:0.9rem; color:var(--secondary); }
-    input[type=text], input[type=date], textarea { width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:#fff; font-size:1rem; }
-    textarea { min-height:72px; }
-
-    .bottom-nav { position:fixed; bottom:0; left:0; right:0; height:64px; border-top:1px solid var(--border); background:#fff; display:flex; justify-content:space-around; align-items:center; z-index:1000; }
-    .bottom-nav a { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:var(--secondary); text-decoration:none; font-weight:600; }
-    .bottom-nav a.active { color:var(--primary); }
-
-    #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#111827; color:#fff; padding:10px 14px; border-radius:10px; display:none; z-index:1100; }
-
-    .subtabs { position:sticky; top:52px; background:#fff; border-bottom:1px solid var(--border); padding:8px; display:flex; gap:8px; z-index:900; }
-    .subtabs button { padding:8px 12px; border-radius:999px; border:1px solid var(--border); background:#fff; cursor:pointer; }
-    .subtabs button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
-    .scroll-panel { max-height:52vh; overflow:auto; padding:12px 0; }
-
-    .preview { max-width:120px; max-height:120px; border-radius:8px; border:1px solid var(--border); object-fit:cover; }
-    .sheet-photo { max-width:80px; max-height:80px; border-radius:6px; border:1px solid var(--border); }
-
-    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.2); display:none; align-items:center; justify-content:center; z-index:1050; }
-    .modal { width:min(840px, 92vw); }
-    .modal .card { border-radius:16px; }
-    .modal-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-
-    table { width:100%; border-collapse:collapse; }
-    th, td { border:1px solid var(--border); padding:8px; text-align:left; }
-    th { background:#f3f4f6; position:sticky; top:0; z-index:1; }
-
-    .muted { color:#6b7280; }
-
-    .dropdown { position:relative; }
-    .dropdown-btn { width:100%; text-align:left; }
-    .dropdown-menu { position:absolute; top:calc(100% + 4px); inset-inline:0; background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.08); max-height:40vh; overflow:auto; z-index:950; }
-    .dropdown-option { padding:10px 12px; cursor:pointer; }
-    .dropdown-option[aria-selected=true], .dropdown-option:hover { background:#eef2ff; }
-    .dropdown-empty { padding:10px 12px; color:#6b7280; }
-
-    .report-table { min-width: 1100px; border-collapse: collapse; }
-    .report-table th, .report-table td { white-space: nowrap; }
-
-    .confirm-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
-
-    .report-meta { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:10px 14px; }
-    .report-meta .item { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #e5e7eb; border-radius:999px; padding:4px 8px; font-weight:600; }
-    .report-meta .item .label { color:#6b7280; font-weight:600; }
-    .report-meta .item .value { color:#111827; }
-    .report-meta .item svg { width:12px; height:12px; flex:0 0 12px; color:#1E3A8A; display:inline-block; }
-
-    .status-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-    .status-text { flex:1 1 auto; min-width:0; }
-    .status-pill { display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); background:#fff; font-weight:700; border-radius:999px; height:34px; padding:0 14px; white-space:nowrap; line-height:1; flex:0 0 auto; }
-    .status-pill.active { color:#065f46; background:#ecfdf5; border-color:#a7f3d0; }
-    .status-pill.completed { color:#1f2937; background:#e5e7eb; border-color:#d1d5db; }
-  </style>
+  <meta charset='utf-8' />
+  <meta name='viewport' content='width=device-width, initial-scale=1' />
+  <title>WOLCAS</title>
+  <link rel='stylesheet' href='css/app.css' />
+  <script src='https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js'></script>
+  <script type='module' src='js/ui.js'></script>
 </head>
-<body>
-  <header class="sticky">
-    <div class="header-inner">
-      <div class="app-title">WOLCAS</div>
-      <div class="company"><img id="companyLogo" alt="logo" /><span id="companyName">Company</span></div>
-    </div>
-  </header>
-
-  <main id="views">
-    <!-- HOME -->
-    <section id="home" class="container" hidden>
-      <div class="card">
-        <h1>Welcome to WOLCAS</h1>
-        <p class="muted">Create and track work orders, tasks, allocations, photos, and reports </p>
-        <div style="display:flex; gap:8px; margin-top:8px;">
-          <button class="btn primary" id="btnNewOrder">New Order</button>
-          <a href="#projects" class="btn secondary">View Projects</a>
-        </div>
-      </div>
-      <div class="card" style="margin-top:12px;">
-        <h2>Recent projects</h2>
-        <div id="homeRecent" class="grid"></div>
-      </div>
-    </section>
-
-    <!-- PROJECTS -->
-    <section id="projects" class="container" hidden>
-      <div class="card">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <img id="projectsLogo" style="width:24px;height:24px;border-radius:4px;border:1px solid var(--border);object-fit:cover" alt="logo" />
-          <h2 style="margin:0">Projects</h2>
-        </div>
-        <div style="margin-top:12px;" class="input-row">
-          <div>
-            <label>Search</label>
-            <input id="projSearch" type="text" placeholder="Search by address or description" />
-          </div>
-        </div>
-        <div id="projectsGrid" class="grid" style="margin-top:12px;"></div>
-      </div>
-    </section>
-
-    <!-- PROJECT DETAILS -->
-    <section id="projectView" class="container" hidden>
-      <div class="card" id="projectHeader"></div>
-      <div class="subtabs">
-        <button data-tab="view" class="active">View</button>
-        <button data-tab="add">Add Task</button>
-        <button data-tab="edit">Edit Task</button>
-        <button data-tab="photos">Photos</button>
-        <button id="btnSpreadsheet" class="btn small secondary" style="margin-left:auto">Reports</button>
-      </div>
-      <div id="projectPanels">
-        <div id="panel-view" class="scroll-panel"></div>
-        <div id="panel-add" class="scroll-panel" hidden>
-          <div class="card">
-            <div class="input-row">
-              <div><label>Task name</label><input id="add-name" type="text"/></div>
-              <div><label>Date</label><input id="add-date" type="date"/></div>
-            </div>
-            <div class="input-row">
-              <div><label>Description</label><textarea id="add-desc"></textarea></div>
-              <div><label>Notes</label><textarea id="add-notes"></textarea></div>
-            </div>
-            <div class="input-row3">
-              <div><label>Quantity</label><input id="add-qty" type="text"/></div>
-              <div><label>Unit Cost</label><input id="add-unit" type="text"/></div>
-              <div><label>Total Cost</label><input id="add-total" type="text"/></div>
-            </div>
-            <div class="input-row3">
-              <div><label>Allocation ($)</label><input id="add-allocation" type="text" placeholder="$"/></div>
-              <div><label>Sprint</label><input id="add-sprint" type="text"/></div>
-              <div><label>Assignee</label><input id="add-assignee" type="text"/></div>
-            </div>
-            <div style="margin-top:12px; display:flex; gap:8px;"><button class="btn primary" id="btnSaveTask">Save</button></div>
-          </div>
-        </div>
-        <div id="panel-edit" class="scroll-panel" hidden>
-          <div class="card">
-            <div><label>Select a task to edit</label>
-              <div class="dropdown" id="taskDropdown">
-                <button id="taskDropdownBtn" class="btn dropdown-btn" aria-haspopup="listbox" aria-expanded="false">— Select —</button>
-                <div id="taskDropdownMenu" class="dropdown-menu" role="listbox" aria-label="Select a task" tabindex="0" hidden></div>
-              </div>
-            </div>
-            <div class="input-row" style="margin-top:8px;">
-              <div><label>Task name</label><input id="edit-name" type="text"/></div>
-              <div><label>Date</label><input id="edit-date" type="date"/></div>
-            </div>
-            <div class="input-row">
-              <div><label>Description</label><textarea id="edit-desc"></textarea></div>
-              <div><label>Notes</label><textarea id="edit-notes"></textarea></div>
-            </div>
-            <div class="input-row3">
-              <div><label>Quantity</label><input id="edit-qty" type="text"/></div>
-              <div><label>Unit Cost</label><input id="edit-unit" type="text"/></div>
-              <div><label>Total Cost</label><input id="edit-total" type="text"/></div>
-            </div>
-            <div class="input-row3">
-              <div><label>Allocation ($)</label><input id="edit-allocation" type="text"/></div>
-              <div><label>Sprint</label><input id="edit-sprint" type="text"/></div>
-              <div><label>Assignee</label><input id="edit-assignee" type="text"/></div>
-            </div>
-            <div id="edit-thumbs" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px"></div>
-            <div style="margin-top:12px; display:flex; gap:8px;"><button class="btn primary" id="btnUpdateTask">Save changes</button></div>
-          </div>
-        </div>
-        <div id="panel-photos" class="scroll-panel" hidden><div id="photosGrid" class="grid"></div></div>
-      </div>
-    </section>
-
-    <!-- DASHBOARD -->
-    <section id="dashboard" class="container" hidden>
-      <div class="card">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <img id="dashLogo" style="width:24px;height:24px;border-radius:4px;border:1px solid var(--border);object-fit:cover" alt="logo" />
-          <h2 style="margin:0">Dashboard</h2>
-        </div>
-        <div class="grid" style="margin-top:12px;">
-          <div class="card"><h3>Total Projects</h3><div id="mTotalProjects" class="badge"></div></div>
-          <div class="card"><h3>Active Projects</h3><div id="mActiveProjects" class="badge active"></div></div>
-          <div class="card"><h3>Completed Projects</h3><div id="mCompletedProjects" class="badge completed"></div></div>
-          <div class="card"><h3>Total Costs (tasks)</h3><div id="mTotalCosts" class="badge"></div></div>
-          <div class="card"><h3>Total Sales (expected)</h3><div id="mTotalSales" class="badge"></div></div>
-        </div>
-        <div class="card" style="margin-top:12px;"><h3>Recent Activity</h3><ul id="activityList" style="padding-left:18px"></ul></div>
-      </div>
-    </section>
-
-    <!-- SETTINGS -->
-    <section id="settings" class="container" hidden>
-      <div class="card">
-        <h2>Settings</h2>
-        <div style="margin-top:12px;"><button class="btn primary" id="btnSaveSettings">Save</button></div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Bottom navigation -->
-  <nav class="bottom-nav" aria-label="Bottom navigation">
-    <a href="#home" id="nav-home"><span>🏠</span><span>Home</span></a>
-    <a href="#projects" id="nav-projects"><span>🗂️</span><span>Projects</span></a>
-    <a href="#dashboard" id="nav-dashboard"><span>📊</span><span>Dashboard</span></a>
-    <a href="#settings" id="nav-settings"><span>⚙️</span><span>Settings</span></a>
+<body class='wolcas-body'>
+<header class='app-header'>
+  <img src='assets/logo.png' alt='WOLCAS' class='brand-logo' />
+  <nav class='auth-nav'>
+    <span id='userEmail' class='user-email'></span>
+    <button id='btnSignIn'>Sign in</button>
+    <button id='btnSignOut' class='hidden'>Sign out</button>
   </nav>
-
-  <div id="toast"></div>
-  <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="card" id="modalCard"></div></div></div>
-
-
-
-
-      card.innerHTML=`
-        <div class="status-row">
-          <div class="status-text">
-            <h3 style="margin:0">${escapeHtml(p.address||p.name||'Untitled')}</h3>
-            <div class="muted">Owner: ${escapeHtml(p.owner_name||'')}</div>
-          </div>
-          <span class="status-pill ${p.status==='completed'?'completed':'active'}">${p.status}</span>
+</header>
+<main id='signedOutMain'>
+  <section class='signin-card'>
+    <h1>WOLCAS</h1>
+    <p>Sign in to manage Projects & Tasks.</p>
+    <button id='btnSignInCard'>Sign in</button>
+  </section>
+</main>
+<main id='appMain' class='hidden'>
+  <section id='dashboard'>
+    <h2>Dashboard</h2>
+    <div class='stats-row'>
+      <div class='stat'><h3>Total Projects</h3><span id='statTotalProjects'>–</span></div>
+      <div class='stat'><h3>Active Projects</h3><span id='statActiveProjects'>–</span></div>
+      <div class='stat'><h3>Completed Projects</h3><span id='statCompletedProjects'>–</span></div>
+      <div class='stat'><h3>Total Costs (tasks)</h3><span id='statTotalCosts'>–</span></div>
+      <div class='stat'><h3>Total Sales (expected)</h3><span id='statTotalSales'>–</span></div>
+    </div>
+  </section>
+  <section id='projects'>
+    <h2>Projects</h2>
+    <button id='btnAddProject' class='rbac-not-viewer'>Add Project</button>
+    <table id='projectTable'>
+      <thead><tr>
+        <th>Title</th><th>Owner</th><th>Start Date</th><th>Expected Sales</th><th>Active</th><th>Actions</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <dialog id='projectModal'>
+      <form id='projectForm'>
+        <label>Title <input name='Title' required></label>
+        <label>Owner <input name='Owner'></label>
+        <label>Start Date <input type='date' name='StartDate'></label>
+        <label>Expected Sales <input type='number' step='0.01' name='ExpectedSales'></label>
+        <label class='checkbox'>Active <input type='checkbox' name='Active'></label>
+        <menu>
+          <button type='submit' id='btnSaveProject'>Save</button>
+          <button type='button' id='btnDeleteProject' class='rbac-admin'>Delete</button>
+          <button type='button' id='btnCloseProject'>Close</button>
+        </menu>
+      </form>
+    </dialog>
+  </section>
+  <section id='tasks'>
+    <h2>Tasks</h2>
+    <button id='btnAddTask' class='rbac-not-viewer'>Add Task</button>
+    <table id='taskTable'>
+      <thead><tr>
+        <th>Title</th><th>Address</th><th>Start Date</th><th>End Date</th><th>Quantity</th><th>Unit Cost</th><th>Total Cost</th><th>Allocation</th><th>Sprint</th><th>Assignee</th><th>Actions</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <dialog id='taskModal'>
+      <form id='taskForm'>
+        <label>Title <input name='Title' required></label>
+        <label>Address <input name='Address'></label>
+        <label>Start Date <input type='date' name='StartDate'></label>
+        <label>End Date <input type='date' name='EndDate'></label>
+        <div class='row'>
+          <label>Quantity <input type='number' step='0.01' name='Quantity'></label>
+          <label>Unit Cost <input type='number' step='0.01' name='UnitCost'></label>
+          <label>Total Cost <input type='number' step='0.01' name='TotalCost'></label>
+          <label class='rbac-admin'>Allocation <input type='number' step='0.01' name='Allocation'></label>
         </div>
-        <div style="margin-top:8px" class="muted">${escapeHtml(p.description||'')}</div>
-        <div style="margin-top:8px; display:flex; gap:12px; flex-wrap:wrap;">
-          <div><strong>Expected cost:</strong> ${escapeHtml(p.est_cost||'')}</div>
-          <div><strong>Expected sales:</strong> ${escapeHtml(p.sales||'')}</div>
-          <div><strong>Start:</strong> ${escapeHtml(p.start_date||'')}</div>
-          <div><strong>Total cost:</strong> ${fmtMoney(totalCost)}</div>
+        <label>Sprint <input name='Sprint'></label>
+        <label>Assignee <input name='Assignee'></label>
+        <label>Description <textarea name='Description'></textarea></label>
+        <label>Notes <textarea name='Notes'></textarea></label>
+        <div>
+          <label>Photos <input type='file' id='taskPhotos' multiple accept='image/*'></label>
         </div>
-        <div style="margin-top:8px"><a class="btn small secondary" href="#project:${p.id}">Open</a></div>`;
-      container.appendChild(card);
-    });
-
-
-
-      <div class="status-row">
-        <div class="status-text">
-          <h3 style="margin:0">${escapeHtml(p.address||p.name||'Untitled')}</h3>
-          <div class="muted">Owner: ${escapeHtml(p.owner_name||'')}</div>
-        </div>
-        <span class="status-pill ${p.status==='completed'?'completed':'active'}">${p.status}</span>
-      </div>
-      <div style="margin-top:6px" class="muted">${escapeHtml(p.description||'')}</div>
-      <div style="margin-top:8px; display:flex; gap:12px; flex-wrap:wrap;">
-        <div><strong>Expected cost:</strong> ${escapeHtml(p.est_cost||'')}</div>
-        <div><strong>Expected sales:</strong> ${escapeHtml(p.sales||'')}</div>
-        <div><strong>Start:</strong> ${escapeHtml(p.start_date||'')}</div>
-        <div><strong>Total cost:</strong> ${fmtMoney(totalCost)}</div>
-      </div>
-      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn small secondary" href="#project:${p.id}">Open</a>
-        <button class="btn small" data-action="edit">Edit</button>
-        <button class="btn small" data-action="delete">Delete</button>
-        <button class="btn small" data-action="mark-active">Mark Active</button>
-        <button class="btn small" data-action="mark-complete">Mark Complete</button>
-
-  }
-
-
-
-
-
-
-
-      <tr>
-        <td>${escapeHtml(t.name||'')}</td>
-        <td>${escapeHtml(t.date||'')}</td>
-        <td>${escapeHtml(t.description||'')}</td>
-        <td>${escapeHtml(t.quantity||'')}</td>
-        <td>${escapeHtml(t.unitCost||'')}</td>
-        <td>${escapeHtml(t.totalCost||'')}</td>
-        <td>${escapeHtml(t.allocation||'')}</td>
-        <td>${escapeHtml(t.assignee||'')}</td>
-        <td>${escapeHtml(t.sprint||'')}</td>
-        <td>${escapeHtml(t.notes||'')}</td>
-        <td data-photos-for="${t.id}"></td>
-      </tr>`).join('');
-
-    card.innerHTML=`<div class="modal-header"><h3 style="margin:0">Reports</h3><button class="btn small link" id="btnCloseModal">✖</button></div>
-      <div style="max-height:50vh; overflow:auto; overflow-x:auto; margin-top:8px;">
-        <table id="sheetTable" class="report-table">
-          <thead><tr>
-            <th>Task Name</th><th>Date</th><th>Description</th><th>Quantity</th><th>Unit Cost</th><th>Total</th><th>Allocation ($)</th><th>Assignee</th><th>Sprint</th><th>Notes</th><th>Photos</th>
-          </tr></thead>
-          <tbody>
-            ${rows}
-          </tbody>
-        </table>
-      </div>
-      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="btn secondary" id="btnExportCSV">Export CSV</button>
-        <button class="btn secondary" id="btnExportXLS">Export XLS</button>
-        <button class="btn secondary" id="btnExportPDF">Export PDF</button>
-      </div>`;
-    document.getElementById('btnCloseModal').onclick=closeModal;
-
-    // Photos thumbnails in the table
-        if(!cell) return; if(!imgs.length){ cell.textContent='No photos'; return; }
-      });
-    });
-
-    // CSV Export (table only)
-      a.href=URL.createObjectURL(blob); a.download=`${safeFileName(p.address||'project')}.csv`; a.click();
-    };
-
-    // XLS Export (table only)
-    };
-
-    // PDF Export (prepend project details above the table)
-        table{border-collapse:collapse} table, th, td{border:1px solid #d1d5db}
-        .report-meta{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px 14px}
-        .report-meta .item{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e7eb;border-radius:999px;padding:4px 8px;font-weight:600}
-        .report-meta .item svg{width:12px;height:12px;color:#0F172A;display:inline-block}
-        img.sheet-photo{max-width:80px;max-height:80px;border:1px solid #e5e7eb;border-radius:6px}
-      </style>`;
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 21h16v-2H4v2zm2-4h12V5a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v12zm2-8h2V7H8v2zm0 4h2v-2H8v2zm4-4h2V7h-2v2zm0 4h2v-2h-2v2z"/></svg><span class="label">Project:</span> <span class="value">${escapeHtml(p.address||p.name||'Untitled')}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5z"/></svg><span class="label">Owner:</span> <span class="value">${escapeHtml(p.owner_name||'')}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h2v2h6V2h2v2h3a1 1 0 0 1 1 1v15a1 1 0  0 1-1 1H4a1 1 0  0 1-1-1V5a1 1 0  0 1 1-1h3V2zm13 6H4v12h16V8z"/></svg><span class="label">Start date:</span> <span class="value">${escapeHtml(p.start_date||'')}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 0 1 1 1v1.06c1.73.22 3 1.42 3  2.94h-2c0-.55-.67-1-1.5-1S10 8 10 8.5s.67.88 1.5 1.07l1 .23c2 .47 3.5 1.6 3.5 3.2 0 1.74-1.53 3.14-3.5 3.36V18a1  1 0  0 1-2 0v-1.06c-1.73-.22-3-1.42-3-2.94h2c0 .55.67 1 1.5 1s1.5-.45 1.5-.95-.67-.88-1.5-1.07l-1-.23C9.5 12.28 8 11.15 8 9.55 8 7.81 9.53 6.41 11.5 6.19V5a1  1 0  0 1 1-1z"/></svg><span class="label">Expected Cost:</span> <span class="value">${escapeHtml(p.est_cost||'')}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17h18v2H3v-2zm2-6 4 4 4-4 4 4 3-3V7h-5l-3 3-4-4-5 5z"/></svg><span class="label">Expected Sales:</span> <span class="value">${escapeHtml(p.sales||'')}</span></span>
-            <span class="item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 5h11v2H9V5zM4 7l2-2 2 2-2 2L4 7zm1 5h15v2H5v-2zm0 6h15v2H5v-2z"/></svg><span class="label">Tasks:</span> <span class="value">${(p.tasks||[]).length}</span></span>
-          </div>`;
-    };
-  }
-
-
-
-  </script>
+        <menu>
+          <button type='submit' id='btnSaveTask'>Save</button>
+          <button type='button' id='btnDeleteTask' class='rbac-admin'>Delete</button>
+          <button type='button' id='btnCloseTask'>Close</button>
+        </menu>
+      </form>
+    </dialog>
+  </section>
+</main>
 </body>
 </html>
-</div><div class="lock-overlay" id="lock-overlay"><div class="panel"><div style="font-weight:600;margin-bottom:8px;">Sign in required</div><div style="opacity:.8;margin-bottom:10px;">Please sign in to use WOLCAS features.</div><button id="overlay-signin" class="btn">Sign in</button></div></div></main>
-<script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
-<script>(function(){var BASE='https://abirrahat.github.io/wolcas-webapp/';var REDIRECT=BASE+'auth';var msalConfig={auth:{clientId:'827656f8-3a21-4d69-b6e5-c35e2ec2fb71',authority:'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',redirectUri:REDIRECT,postLogoutRedirectUri:BASE,navigateToLoginRequestUrl:false},cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true},system:{loggerOptions:{loggerCallback:function(l,m,p){if(!p)console.debug('[MSAL]',m)}}}};var loginRequest={scopes:['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All']};var msalInstance=new msal.PublicClientApplication(msalConfig);function acc(){return msalInstance.getAllAccounts()[0]||null}function setUI(){var a=acc();var e=document.getElementById('wolcas-email'),si=document.getElementById('wolcas-signin'),so=document.getElementById('wolcas-signout'),ov=document.getElementById('lock-overlay');if(e)e.textContent=a?(a.username||a.email||a.name||''):'';if(si)si.disabled=!!a;if(so)so.disabled=!a;if(a){document.body.classList.remove('locked');if(ov)ov.style.display='none'}else{document.body.classList.add('locked');if(ov)ov.style.display='flex'}}async function login(){try{await msalInstance.loginPopup(loginRequest)}catch(e){console.error('loginPopup error',e);alert('Sign-in error. Check console.')}setUI();window.dispatchEvent(new Event('WOLCAS_SIGNED_IN'))}async function logout(){try{await msalInstance.logoutPopup()}catch(e){await msalInstance.logoutRedirect()}setUI()}var token=null,siteId=null,projectListId=null,taskListId=null,driveId=null;async function getToken(){var a=acc();if(!a)throw new Error('Not signed in');try{var r=await msalInstance.acquireTokenSilent({...loginRequest,account:a});token=r.accessToken;return token}catch(e){var r2=await msalInstance.acquireTokenPopup(loginRequest);token=r2.accessToken;return token}}async function g(p,o){o=o||{};var h=o.headers||{};h['Authorization']='Bearer '+token;if(o.body&&!h['Content-Type'])h['Content-Type']='application/json';var r=await fetch('https://graph.microsoft.com/v1.0'+p,{method:o.method||'GET',headers:h,body:o.body||null});if(!r.ok){var t='';try{t=await r.text()}catch{};throw new Error('Graph '+r.status+': '+t)}var ct=r.headers.get('content-type')||'';return ct.includes('application/json')?await r.json():await r.text()}async function site(){var s=await g('/sites/architektica-my.sharepoint.com:/personal/abir_architektica_com');siteId=s.id;var lists=await g('/sites/'+siteId+'/lists');projectListId=(lists.value||[]).find(function(l){return l.displayName==='Project'})?.id;taskListId=(lists.value||[]).find(function(l){return l.displayName==='Task'})?.id;var drives=await g('/sites/'+siteId+'/drives');driveId=(drives.value||[]).find(function(d){return d.name==='Documents'})?.id||(drives.value||[])[0]?.id}function recentCont(){var hs=Array.from(document.querySelectorAll('h2,h3'));var h=hs.find(function(x){return /recent projects/i.test(x.textContent||'')});if(!h)return null;var c=h.parentElement;if(!c)return null;Array.from(c.children).forEach(function(ch){if(/Owner:|Expected sales|Expected cost|Total cost|card\.innerHTML|appendChild\(|container\.appendChild/i.test(ch.textContent||''))ch.classList.add('seeded')});var list=c.querySelector('#recent-projects-list');if(!list){list=document.createElement('div');list.id='recent-projects-list';list.style.display='grid';list.style.gridTemplateColumns='repeat(auto-fill,minmax(260px,1fr))';list.style.gap='12px';c.appendChild(list)}return list}function render(el,projects){el.innerHTML='';if(!projects.length){el.innerHTML='<div style="opacity:.7">No projects found.</div>';return}projects.forEach(function(p){var card=document.createElement('div');card.style.border='1px solid #e5e7eb';card.style.borderRadius='12px';card.style.padding='12px';var title=p.Title||p.ProjectAddress||'Untitled project';var owner=p.Owner||'';var start=p.StartDate||'';var expected=(p.ExpectedSales!=null?p.ExpectedSales:'');var active=(p.Active===true||String(p.Active).toLowerCase()==='true')?'active':(p.Active===false?'inactive':'');card.innerHTML='<div style="font-weight:600;margin-bottom:6px;">'+title+(active?' <span style="margin-left:6px;font-size:12px;padding:2px 6px;background:#e5f7e9;border:1px solid #bde3c6;border-radius:999px;">'+active+'</span>':'')+'</div>'+(owner?'<div style="opacity:.8">Owner: '+owner+'</div>':'')+'<div style="display:flex;gap:16px;opacity:.8;margin-top:6px;">'+(expected!==''?'<div>Expected sales: '+expected+'</div>':'')+(start?'<div>Start: '+start+'</div>':'')+'</div>';el.appendChild(card)})}async function loadRecent(){try{await getToken();await site();var items=await g('/sites/'+siteId+'/lists/'+projectListId+'/items?expand=fields&$orderby=createdDateTime desc&$top=8');var projects=(items.value||[]).map(function(i){return i.fields||{}});var el=recentCont();if(el)render(el,projects)}catch(e){console.warn('Recent projects load failed',e)}}async function upsert(listKind,itemId,fields){await getToken();if(!siteId)await site();var listId=(listKind==='project')?projectListId:taskListId;if(!listId)throw new Error('List not found: '+listKind);if(itemId){await g('/sites/'+siteId+'/lists/'+listId+'/items/'+itemId+'/fields',{method:'PATCH',body:JSON.stringify(fields)});return itemId}var r=await g('/sites/'+siteId+'/lists/'+listId+'/items',{method:'POST',body:JSON.stringify({fields:fields})});return r.id}window.WOLCAS=Object.assign(window.WOLCAS||{}, {login:login,logout:logout,state:function(){return {account:acc(),siteId:siteId,projectListId:projectListId,taskListId:taskListId,driveId:driveId}},upsertListItem:upsert});document.addEventListener('DOMContentLoaded',function(){setUI();var overlayBtn=document.getElementById('overlay-signin');if(overlayBtn)overlayBtn.onclick=login;var sIn=document.getElementById('wolcas-signin');var sOut=document.getElementById('wolcas-signout');if(sIn)sIn.onclick=login;if(sOut)sOut.onclick=logout});window.addEventListener('WOLCAS_SIGNED_IN',function(){setUI();setTimeout(loadRecent,600)})})();</script>
