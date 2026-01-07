@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang='en'>
+<head><meta charset='utf-8'><title>Auth</title></head>
+<body style='background:#fff;'></body>
+<script src='https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js'></script>
+<script>
+  const msalConfig = {
+    auth: {
+      clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
+      authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
+      redirectUri: 'https://abirrahat.github.io/wolcas-webapp/auth',
+      navigateToLoginRequestUrl: false
+    },
+    cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
+  };
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
+</script>
+</html>
