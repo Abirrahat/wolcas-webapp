@@ -1,24 +1,29 @@
-
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>Auth</title></head>
-<body style="background:#fff;"></body>
-
-<!-- MSAL Browser (must match version used in index.html) -->
-https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js</script>
-
-<script>
-  // Minimal MSAL instance—popup will navigate here to complete auth and close.
-  const msalConfig = {
-    auth: {
-      clientId: "827656f8-3a21-4d69-b6e5-c35e2ec2fb71",
-      authority: "https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45",
-      redirectUri: "https://abirrahat.github.io/wolcas-webapp/auth",
-      navigateToLoginRequestUrl: false
-    },
-    cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false }
-  };
-  // Instantiating is enough; no UI needed here.
-  new msal.PublicClientApplication(msalConfig);
-</script>
+<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title>WOLCAS Auth</title>
+  <style>body{margin:0;background:#fff;color:#222;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh}</style>
+  <!-- MSAL Browser -->
+  <script src=\"https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.11.1/dist/msal-browser.min.js\"></script>
+</head>
+<body>
+  <div>Authenticating…</div>
+  <script>
+    // Dedicated auth page for popup — MSAL will automatically close this window after completing login.
+    const msalConfig = {
+      auth: {
+        clientId: "827656f8-3a21-4d69-b6e5-c35e2ec2fb71",
+        authority: "https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45",
+        redirectUri: "https://abirrahat.github.io/wolcas-webapp/auth"
+      },
+      cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false },
+      system: { allowRedirectInIframe: true }
+    };
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    // For popup flow, MSAL handles closing. As a fallback, close if opened as a child.
+    setTimeout(()=>{ if(window.opener){ window.close(); } }, 1500);
+  </script>
+</body>
 </html>
