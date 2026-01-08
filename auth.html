@@ -4,7 +4,6 @@
   <meta charset=\"utf-8\" />
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <title>WOLCAS Auth</title>
-  <!-- CSP: local scripts only; allow login.microsoftonline.com for auth -->
   <meta http-equiv=\"Content-Security-Policy\" content=\"
     default-src 'self';
     img-src 'self' data:;
@@ -15,7 +14,6 @@
     form-action 'self' https://login.microsoftonline.com;
   \" />
   <style>body{margin:0;background:#fff;color:#222;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh}</style>
-  <!-- MSAL hosted LOCALLY -->
   <script src=\"./msal-browser.min.js\"></script>
 </head>
 <body>
