@@ -4,47 +4,40 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WOLCAS — Secure Online App</title>
-  <!-- Content Security Policy (best-effort for GitHub Pages via meta) -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.jsdelivr.net https://alcdn.msauth.net https://login.microsoftonline.com https://graph.microsoft.com; img-src 'self' data: https://*.sharepoint.com https://graph.microsoft.com; style-src 'self' 'unsafe-inline'; script-src 'self' https://cdn.jsdelivr.net https://alcdn.msauth.net; connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com https://architektica-my.sharepoint.com; frame-ancestors 'self'; frame-src https://login.microsoftonline.com;" />
+  <!-- Updated CSP (Option A: quick) -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    img-src 'self' data: https://*.sharepoint.com https://graph.microsoft.com https://upload.wikimedia.org;
+    style-src 'self' 'unsafe-inline';
+    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://alcdn.msauth.net https://aadcdn.msftauth.net;
+    connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com https://architektica-my.sharepoint.com https://alcdn.msauth.net https://aadcdn.msftauth.net;
+    frame-src 'self' https://login.microsoftonline.com https://alcdn.msauth.net https://aadcdn.msftauth.net;
+    form-action 'self' https://login.microsoftonline.com;
+  " />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🏗️</text></svg>">
   <style>
-    :root{
-      --accent:#0067b8; /* Microsoft blue */
-      --muted:#f5f6f8;
-      --text:#222;
-      --danger:#c43e1c;
-      --ok:#107c10;
-    }
+    :root{ --accent:#0067b8; --muted:#f5f6f8; --text:#222; --danger:#c43e1c; --ok:#107c10; }
     html,body{height:100%;background:#fff;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;}
     *{box-sizing:border-box}
     a{color:var(--accent)}
-    header{
-      position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #e5e7eb;
-      display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;
-    }
+    header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem}
     .logo{height:56px;}
     .app-title{font-weight:600;letter-spacing:.2px}
     .left{display:flex;align-items:center;gap:.5rem;margin-left:auto}
     .email{color:#555;font-size:.9rem}
-
     main{max-width:1100px;margin:1rem auto;padding:0 1rem}
-
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:1rem}
     .warning{border-left:4px solid var(--danger);padding-left:.75rem}
-
     .grid{display:grid;grid-template-columns:1fr;gap:1rem}
     @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
-
     .toolbar{display:flex;align-items:center;justify-content:space-between;margin:.25rem 0 .75rem 0}
     .btn{appearance:none;border:1px solid #d1d5db;background:#fff;color:#111; padding:.35rem .65rem;border-radius:8px;cursor:pointer}
     .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
     .btn.danger{background:#fff;color:var(--danger);border-color:var(--danger)}
     .btn:disabled{opacity:.5;cursor:not-allowed}
-
     table{width:100%;border-collapse:collapse}
     th,td{border-bottom:1px solid #eee;padding:.5rem;text-align:left}
     th{background:var(--muted);}
-
     dialog{border:none;border-radius:10px;padding:0;max-width:680px;width:95vw}
     .modal{padding:1rem}
     .modal .row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
@@ -53,7 +46,6 @@
     .modal textarea{min-height:84px}
     .hidden{display:none !important}
     .rbac-note{font-size:.8rem;color:#666}
-
     .footer-note{margin-top:1rem;color:#666;font-size:.9rem}
   </style>
   <!-- MSAL Browser -->
@@ -244,12 +236,10 @@
     };
     const GRAPH_SCOPES = ["User.Read","Group.Read.All","Sites.ReadWrite.All","Files.ReadWrite.All"];
 
-    // SharePoint site information derived from provided URLs
-    const SP_HOST = "architektica-my.sharepoint.com"; // hostname
-    const SP_SITE_PATH = "/personal/abir_architektica_com"; // site path
+    const SP_HOST = "architektica-my.sharepoint.com";
+    const SP_SITE_PATH = "/personal/abir_architektica_com";
     const LIST_DISPLAY_NAMES = { Project: "Project", Task: "Task" };
 
-    // Optional RBAC via AAD groups (edit names to match your tenant)
     const RBAC_GROUPS = {
       admin: ["WOLCAS Admins"],
       editor: ["WOLCAS Editors"],
@@ -303,12 +293,11 @@
     }
 
     function setRoleUI(){
-      // RBAC: hide add buttons for viewer; hide delete buttons unless admin; lock Allocation unless admin
       addProjectBtn.classList.toggle("hidden", role === "viewer");
       addTaskBtn.classList.toggle("hidden", role === "viewer");
       projectDeleteBtn.classList.toggle("hidden", role !== "admin");
       taskDeleteBtn.classList.toggle("hidden", role !== "admin");
-      allocationInput.disabled = role !== "admin"; // per-field RBAC
+      allocationInput.disabled = role !== "admin";
     }
 
     async function signIn(){
@@ -356,7 +345,6 @@
     }
 
     async function detectRole(){
-      // Default: viewer; upgrade based on group membership
       try{
         const meGroups = await graph("/me/memberOf?$select=displayName");
         const names = (meGroups.value||[]).map(g => g.displayName);
@@ -368,13 +356,10 @@
     }
 
     async function resolveSiteAndLists(){
-      // Resolve site id by path
       const site = await graph(`/sites/${SP_HOST}:${SP_SITE_PATH}`);
       siteId = site.id;
-      // Default document library (drive)
       const drive = await graph(`/sites/${siteId}/drive`);
       driveId = drive.id;
-      // Resolve list ids by displayName
       const lists = await graph(`/sites/${siteId}/lists?$select=id,displayName`);
       for(const l of lists.value){
         if(l.displayName === LIST_DISPLAY_NAMES.Project){ listIds.Project = l.id; }
@@ -384,7 +369,6 @@
     }
 
     async function ensureTaskPhotosFolder(){
-      // Ensure TaskPhotos folder exists under Documents
       const children = await graph(`/sites/${siteId}/drive/root/children?$select=name,folder`);
       const exists = children.value.find(c => c.name === "TaskPhotos" && c.folder);
       if(!exists){
@@ -507,7 +491,6 @@
     async function saveTask(){
       const fields = collectFormFields(taskForm);
       const payload = { fields };
-      // Per-field RBAC: prevent non-admins from changing Allocation
       if(currentTaskItem?.fields && role !== "admin"){
         fields.Allocation = currentTaskItem.fields.Allocation;
       }
@@ -519,7 +502,6 @@
         itemId = created.id;
         currentTaskItem = created;
       }
-      // Photos upload (optional)
       const files = taskPhotosInput.files;
       if(files && files.length){
         await ensureTaskPhotosFolder();
@@ -570,9 +552,7 @@
     function escapeHtml(s){
       return String(s).replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
     }
-    function sanitizeFileName(name){
-      return name.replace(/[^A-Za-z0-9._-]/g, "_");
-    }
+    function sanitizeFileName(name){ return name.replace(/[^A-Za-z0-9._-]/g, "_"); }
 
     async function postLoginInit(){
       await detectRole();
@@ -580,14 +560,12 @@
       await Promise.all([loadProjects(), loadTasks()]);
     }
 
-    // Table row action handlers
     document.addEventListener("click", (e)=>{
       const btn = e.target.closest("button");
       if(!btn) return;
       const action = btn.getAttribute("data-action");
       const id = btn.getAttribute("data-id");
       if(action === "editProject"){
-        // fetch item fields
         graph(`/sites/${siteId}/lists/${listIds.Project}/items/${id}?expand=fields`).then(item => openProjectModal(item));
       }else if(action === "deleteProject"){
         deleteProject(id);
@@ -598,11 +576,9 @@
       }
     });
 
-    // Buttons
     signinStart.addEventListener("click", signIn);
     signinBtn.addEventListener("click", signIn);
     signoutBtn.addEventListener("click", signOut);
-
     addProjectBtn.addEventListener("click", ()=> openProjectModal(null));
     projectSaveBtn.addEventListener("click", (ev)=>{ ev.preventDefault(); saveProject(); });
     projectDeleteBtn.addEventListener("click", (ev)=>{ ev.preventDefault(); if(currentProjectItem?.id) deleteProject(currentProjectItem.id); });
@@ -611,11 +587,7 @@
     taskSaveBtn.addEventListener("click", (ev)=>{ ev.preventDefault(); saveTask(); });
     taskDeleteBtn.addEventListener("click", (ev)=>{ ev.preventDefault(); if(currentTaskItem?.id) deleteTask(currentTaskItem.id); });
 
-    // Initial locked UI
     setSignedInUI(false);
-
-    // SECURITY NOTE: Client secret must NEVER be included in this browser app.
-    // The app uses MSAL PKCE public-client flow and Graph scopes: User.Read, Group.Read.All, Sites.ReadWrite.All, Files.ReadWrite.All.
   </script>
 </body>
 </html>
