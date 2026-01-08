@@ -4,10 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WOLCAS</title>
-  <!-- CSP tuned to avoid inline/script/logo blocking and allow Graph/AAD only -->
+  <!-- CSP updated to avoid inline/script/logo blocks and allow Graph/AAD only -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://upload.wikimedia.org; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com; frame-src 'self' https://login.microsoftonline.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self' https://login.microsoftonline.com;" />
+  <!-- Use project-relative favicon to stop domain-root 404 -->
+  <link rel="icon" href="./Construction_icon.svg" type="image/svg+xml" />
   <style>
-    /* ===== Preserve classic layout (no redesign) ===== */
+    /* ===== Preserve your original compact layout (no redesign) ===== */
     body { font-family: Segoe UI, Tahoma, Arial, sans-serif; margin:0; background:#fff; color:#111; }
     header { display:flex; align-items:center; gap:12px; padding:8px 12px; border-bottom:1px solid #eee; }
     header img.logo { height:56px; width:auto; }
@@ -167,10 +169,10 @@
     </section>
   </main>
 
-  <!-- Local MSAL -->
+  <!-- Local MSAL (no external CDNs) -->
   <script src="./msal-browser.min.js"></script>
   <script>
-    // ===== MSAL (keep SPA, no client secret in front-end) =====
+    // ===== MSAL SPA config (no client secret in front-end) =====
     const msalConfig = {
       auth: {
         clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
@@ -272,8 +274,8 @@
     }
     async function editProject(id){
       if (!id){
-        document.getElementById('projTitle').value=''; document.getElementById('projAddress').value=''; document.getElementById('projOwner').value='';
-        document.getElementById('projStart').value=''; document.getElementById('projSales').value=''; document.getElementById('projActive').checked=false;
+        projTitle.value=''; projAddress.value=''; projOwner.value='';
+        projStart.value=''; projSales.value=''; projActive.checked=false;
         document.getElementById('projDelete').classList.add('hidden');
         document.getElementById('projSave').onclick = ()=> saveProject(null);
         return;
@@ -376,7 +378,7 @@
     }
     async function deleteTask(id){ if (ROLE!=='admin') return; await graph(`/sites/${spSiteId}/lists/${taskListId}/items/${id}`, { method:'DELETE' }); await loadTasks(); }
 
-    // ===== Auth lifecycle (no layout changes) =====
+    // ===== Auth lifecycle (open same-origin /auth popup to avoid COOP warnings) =====
     async function onSignedIn(){
       document.getElementById('signInCard').classList.add('hidden');
       document.getElementById('appRoot').classList.remove('hidden');
@@ -390,7 +392,16 @@
       await loadProjectsTop8();
       await loadTasks();
     }
-    async function signIn(){ try{ const resp = await msalInstance.loginPopup(loginRequest); account = resp.account; msalInstance.setActiveAccount(account); onSignedIn(); }catch(e){ console.error(e); } }
+    function signIn(){
+      const popup = window.open('./auth', 'WOLCAS_AUTH', 'width=520,height=680,noopener,noreferrer');
+      window.addEventListener('message', async (ev) => {
+        if (ev.data && ev.data.type === 'MSAL_AUTH_SUCCESS') {
+          account = ev.data.account;
+          msalInstance.setActiveAccount(account);
+          await onSignedIn();
+        }
+      }, { once: true });
+    }
     function signOut(){ msalInstance.logoutPopup({ postLogoutRedirectUri: window.location.origin }); }
 
     document.getElementById('signInBtn').addEventListener('click', signIn);
