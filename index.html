@@ -3,290 +3,516 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Work Order Linked Cost Allocation Standings (WOLCAS)</title>
-  <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    img-src 'self' data: https://*.sharepoint.com https://graph.microsoft.com;
-    style-src 'self' 'unsafe-inline';
-    script-src 'self' 'unsafe-inline';
-    connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com https://architektica-my.sharepoint.com;
-    frame-src 'self' https://login.microsoftonline.com;
-    form-action 'self' https://login.microsoftonline.com;
-  " />
+  <title>WOLCAS</title>
+  <!-- CSP: allow local inline scripts, Graph & AAD auth calls, and Wikimedia logo images -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://upload.wikimedia.org; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com; frame-src 'self' https://login.microsoftonline.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self' https://login.microsoftonline.com;" />
   <style>
-    :root{ --accent:#0067b8; --muted:#f6f7f9; --text:#222; --danger:#c43e1c; --ok:#107c10; --border:#e5e7eb; --tabs-h:42px }
-    html,body{height:100%;background:#fff;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;}
-    body{ padding-bottom: var(--tabs-h); }
-    *{box-sizing:border-box}
-    a{color:#0366d6;text-decoration:none}
-
-    /* Header: logo removed */
-    header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem}
-    .titlebar{font-weight:700}
-    .spacer{flex:1}
-    .btn{appearance:none;border:1px solid #d1d5db;background:#fff;color:#111; padding:.3rem .6rem;border-radius:8px;cursor:pointer}
-    .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-    .btn.danger{background:#fff;color:#c43e1c;border-color:#c43e1c}
-    .btn.small{font-size:.85rem;padding:.2rem .45rem}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .pill{display:inline-block;border:1px solid #d1d5db;border-radius:999px;padding:.05rem .4rem;font-size:.8rem;color:#555}
-
-    main{max-width:1100px;margin:.5rem auto;padding:0 .75rem}
-
-    .hero{background:var(--muted);border:1px solid var(--border);border-radius:8px;padding:.6rem;margin-bottom:.6rem}
-    .hero h1{font-size:1.1rem;margin:.1rem 0}
-    .hero .actions{display:flex;gap:.4rem;flex-wrap:wrap}
-
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-    @media (max-width:900px){ .grid{grid-template-columns:1fr} }
-
-    .card{background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:.6rem}
-    .toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem}
-
-    table{width:100%;border-collapse:collapse}
-    th,td{border-bottom:1px solid #eee;padding:.35rem;text-align:left;vertical-align:top}
-    th{background:var(--muted)}
-
-    dialog{border:none;border-radius:10px;padding:0;max-width:700px;width:95vw}
-    .modal{padding:.6rem}
-    .modal .row{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}
-    @media (max-width:640px){ .modal .row{grid-template-columns:1fr} }
-    .modal label{font-size:.85rem;color:#555}
-    .modal input,.modal textarea,.modal select{width:100%;padding:.45rem;border:1px solid #d1d5db;border-radius:8px}
-    .modal textarea{min-height:80px}
-
-    .hidden{display:none !important}
-
-    /* Bottom tab bar: fixed and shorter */
-    .tabs{position:fixed;left:0;right:0;bottom:0;height:var(--tabs-h);z-index:20;background:#fff;border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:center}
-    .tabs a{display:flex;flex-direction:column;align-items:center;gap:.1rem;color:#555;font-size:.8rem;padding:.2rem .4rem}
-    .tabs a.active{color:var(--accent)}
+    :root { --accent:#2563eb; --bg:#ffffff; --muted:#6b7280; --danger:#b91c1c; }
+    html,body { height:100%; background:#fff; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+    header { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #e5e7eb; }
+    header .logo { height:56px; width:auto; }
+    header h1 { font-size:20px; margin:0; letter-spacing:0.3px; }
+    header nav { margin-left:auto; display:flex; align-items:center; gap:12px; }
+    .btn { padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; background:#fff; cursor:pointer; }
+    .btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .btn.danger { background:var(--danger); color:#fff; border-color:var(--danger); }
+    .badge { padding:2px 8px; background:#eef2ff; color:#4338ca; border-radius:999px; font-size:12px; }
+    #signInCard { max-width:420px; margin:64px auto; padding:24px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; box-shadow:0 8px 24px rgba(0,0,0,.06); }
+    #signInCard h2 { margin:0 0 8px; }
+    #signInCard p { margin:0 0 16px; color:var(--muted); }
+    #appRoot { display:none; }
+    main { padding:16px; }
+    /* Layout placeholders preserved from original offline app (Projects/Dashboard/Settings/Tabs) */
+    .tabs { display:flex; gap:12px; border-bottom:1px solid #e5e7eb; margin-bottom:16px; }
+    .tab { padding:8px 12px; border-radius:8px 8px 0 0; cursor:pointer; }
+    .tab.active { background:#f3f4f6; }
+    .grid { display:grid; grid-template-columns:1fr; gap:16px; }
+    @media (min-width:900px){ .grid{ grid-template-columns: 2fr 1fr; } }
+    table { width:100%; border-collapse:collapse; }
+    th, td { border-bottom:1px solid #e5e7eb; padding:8px; text-align:left; }
+    .actions { display:flex; gap:8px; }
+    .hidden { display:none !important; }
+    .field { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+    .modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; backdrop-filter:blur(2px); background:rgba(0,0,0,.35); }
+    .modal .panel { width:min(720px, 92vw); max-height:85vh; overflow:auto; background:#fff; border-radius:12px; padding:16px; }
   </style>
-  <script src="./msal-browser.min.js"></script>
 </head>
 <body>
   <header>
-    <div class="titlebar">WOLCAS</div>
-    <div class="spacer"></div>
-    <span id="userEmail" class="pill">Not signed in</span>
-    <button class="btn small" id="signinBtn">Sign in</button>
-    <button class="btn small" id="signoutBtn" disabled>Sign out</button>
+    <img class="logo" alt="Logo" src="https://upload.wikimedia.org/wikipedia/commons/5/59/Construction_icon.svg" />
+    <h1>WOLCAS</h1>
+    <nav>
+      <span id="userEmail" class="badge hidden"></span>
+      <button id="signInBtn" class="btn primary">Sign in</button>
+      <button id="signOutBtn" class="btn danger hidden">Sign out</button>
+    </nav>
   </header>
 
-  <main>
-    <!-- HOME SECTION -->
-    <section id="homeSection" class="section active">
-      <div class="hero">
-        <h1>Welcome to Work Order Linked Cost Allocation Standings</h1>
-        <p>Create and track work orders, tasks, allocations, photos, and reports.</p>
+  <!-- Sign-in only card (white background) -->
+  <section id="signInCard">
+    <h2>Sign in to continue</h2>
+    <p>Only permitted users in your company can access this app.</p>
+    <button id="cardSignInBtn" class="btn primary">Sign in with Microsoft</button>
+  </section>
+
+  <!-- App content is hidden until auth succeeds. Layout preserved. -->
+  <div id="appRoot">
+    <main>
+      <div class="tabs">
+        <div class="tab active" data-tab="projects">🏗️ Projects</div>
+        <div class="tab" data-tab="tasks">📝 Tasks</div>
+        <div class="tab" data-tab="dashboard">📊 Dashboard</div>
+        <div class="tab" data-tab="settings">⚙️ Settings</div>
+      </div>
+
+      <!-- Projects -->
+      <section id="tab-projects">
+        <div class="actions" style="justify-content:flex-end; margin-bottom:8px;">
+          <button id="btnAddProject" class="btn hidden">Add Project</button>
+        </div>
+        <div class="grid">
+          <div>
+            <table id="projectTable">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Project Address</th>
+                  <th>Owner</th>
+                  <th>Start Date</th>
+                  <th>Expected Sales</th>
+                  <th>Active</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <aside>
+            <div class="field"><label>Title</label><input id="projTitle" /></div>
+            <div class="field"><label>Project Address</label><input id="projAddress" /></div>
+            <div class="field"><label>Owner</label><input id="projOwner" /></div>
+            <div class="field"><label>Start Date</label><input id="projStart" type="date" /></div>
+            <div class="field"><label>Expected Sales</label><input id="projSales" type="number" step="0.01" /></div>
+            <div class="field"><label><input id="projActive" type="checkbox" /> Active</label></div>
+            <div class="actions">
+              <button id="projSave" class="btn">Save</button>
+              <button id="projDelete" class="btn danger hidden">Delete</button>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- Tasks -->
+      <section id="tab-tasks" class="hidden">
+        <div class="actions" style="justify-content:flex-end; margin-bottom:8px;">
+          <button id="btnAddTask" class="btn hidden">Add Task</button>
+        </div>
+        <table id="taskTable">
+          <thead>
+            <tr>
+              <th>Task name</th>
+              <th>Address</th>
+              <th>Start Date</th>
+              <th>End Date</th>
+              <th>Quantity</th>
+              <th>Unit Cost</th>
+              <th>Total Cost</th>
+              <th>Allocation</th>
+              <th>Sprint</th>
+              <th>Assignee</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <!-- Dashboard -->
+      <section id="tab-dashboard" class="hidden">
+        <div class="grid">
+          <div>
+            <h3>Totals</h3>
+            <ul id="dashboardTotals"></ul>
+          </div>
+          <div>
+            <h3>Recent Activity</h3>
+            <ul id="recentActivity"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings -->
+      <section id="tab-settings" class="hidden">
+        <div class="field"><label>Company name</label><input id="companyName" /></div>
+        <div class="field"><label>Logo URL</label><input id="companyLogo" /></div>
+        <div class="actions"><button id="settingsSave" class="btn">Save</button></div>
+      </section>
+    </main>
+
+    <!-- Task Editor Modal -->
+    <div id="taskModal" class="modal">
+      <div class="panel">
+        <h3>Edit Task</h3>
+        <div class="grid" style="grid-template-columns:1fr 1fr;">
+          <div class="field"><label>Title</label><input id="taskTitle" /></div>
+          <div class="field"><label>Address</label><input id="taskAddress" /></div>
+          <div class="field"><label>Start Date</label><input id="taskStart" type="date" /></div>
+          <div class="field"><label>End Date</label><input id="taskEnd" type="date" /></div>
+          <div class="field"><label>Quantity</label><input id="taskQty" type="number" step="0.01" /></div>
+          <div class="field"><label>Unit Cost</label><input id="taskUnitCost" type="number" step="0.01" /></div>
+          <div class="field"><label>Total Cost</label><input id="taskTotalCost" type="number" step="0.01" /></div>
+          <div class="field"><label>Allocation</label><input id="taskAllocation" type="number" step="0.01" /></div>
+          <div class="field"><label>Sprint</label><input id="taskSprint" /></div>
+          <div class="field"><label>Assignee</label><input id="taskAssignee" /></div>
+        </div>
+        <div class="field"><label>Description</label><textarea id="taskDesc"></textarea></div>
+        <div class="field"><label>Notes</label><textarea id="taskNotes"></textarea></div>
+        <div class="field"><label>Photos</label><input id="taskPhotos" type="file" accept="image/*" multiple /></div>
         <div class="actions">
-          <button class="btn primary" id="homeNewOrder">New Order</button>
-          <button class="btn" id="homeViewProjects">View Projects</button>
+          <button id="taskSave" class="btn">Save</button>
+          <button id="taskDelete" class="btn danger hidden">Delete</button>
+          <button id="taskClose" class="btn">Close</button>
         </div>
       </div>
-      <div class="card">
-        <h3 style="margin:.1rem 0 .4rem 0">Recent projects</h3>
-        <div id="recentProjects"></div>
-      </div>
-    </section>
+    </div>
+  </div>
 
-    <!-- PROJECTS & TASKS SECTION -->
-    <section id="projectsSection" class="section">
-      <div class="grid">
-        <div class="card">
-          <div class="toolbar">
-            <h3>Projects</h3>
-            <button class="btn primary" id="addProjectBtn">Add Project</button>
-          </div>
-          <table id="projectsTable">
-            <thead>
-              <tr><th>Title</th><th>Owner</th><th>Start Date</th><th>Expected Sales</th><th>Active</th><th>Actions</th></tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <div class="card">
-          <div class="toolbar">
-            <h3>Tasks</h3>
-            <button class="btn primary" id="addTaskBtn">Add Task</button>
-          </div>
-          <table id="tasksTable">
-            <thead>
-              <tr>
-                <th>Title</th><th>Project</th><th>Address</th><th>Start</th><th>End</th>
-                <th>Quantity</th><th>Unit Cost</th><th>Total Cost</th><th>Allocation</th>
-                <th>Sprint</th><th>Assignee</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- DASHBOARD SECTION -->
-    <section id="dashboardSection" class="section">
-      <div class="card">
-        <h3>Dashboard</h3>
-        <div id="dashboardCards" class="grid" style="grid-template-columns:1fr 1fr 1fr 1fr"></div>
-      </div>
-    </section>
-
-    <!-- SETTINGS SECTION -->
-    <section id="settingsSection" class="section">
-      <div class="card">
-        <h3>Settings</h3>
-        <div class="row">
-          <div><label>Company name</label><input id="companyName" placeholder="Company" /></div>
-          <div><label>Logo</label><input type="file" id="companyLogo" /></div>
-        </div>
-        <hr style="margin:.6rem 0;border:0;border-top:1px solid var(--border)">
-        <h4>Lookup field mapping (Task → Project)</h4>
-        <p class="pill" style="margin:.25rem 0">If auto‑detection fails, enter the internal name and whether it’s multi‑value.</p>
-        <div class="row">
-          <div><label>Lookup internal name</label><input id="lookupInternalName" placeholder="e.g., Project" /></div>
-          <div><label>Allow multiple projects</label><select id="lookupIsMulti"><option value="false">No (single value)</option><option value="true">Yes (multiple)</option></select></div>
-        </div>
-        <div style="margin-top:.5rem;display:flex;gap:.4rem">
-          <button class="btn primary" id="saveSettings">Save</button>
-          <button class="btn" id="validateLookup">Validate</button>
-          <span id="settingsStatus" class="pill hidden"></span>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- MOBILE TABS: fixed & short -->
-  <nav class="tabs">
-    <a href="#home" id="tabHome" class="active">Home</a>
-    <a href="#projects" id="tabProjects">Projects</a>
-    <a href="#dashboard" id="tabDashboard">Dashboard</a>
-    <a href="#settings" id="tabSettings">Settings</a>
-  </nav>
-
-  <!-- Modals (unchanged) -->
-  <dialog id="projectModal">
-    <form method="dialog" class="modal" id="projectForm">
-      <h3>Project editor</h3>
-      <div class="row">
-        <div><label>Title</label><input name="Title" placeholder="e.g., 123 Main St" required /></div>
-        <div><label>Owner</label><input name="Owner" placeholder="Company/Client" /></div>
-        <div><label>Start Date</label><input type="date" name="StartDate" /></div>
-        <div><label>Expected Sales</label><input type="number" step="0.01" name="ExpectedSales" /></div>
-        <div><label>Active</label><input type="checkbox" name="Active" /></div>
-      </div>
-      <div style="display:flex;gap:.4rem;margin-top:.5rem"><button class="btn primary" id="projectSave">Save</button><button class="btn danger" id="projectDelete">Delete</button><button class="btn" value="cancel">Close</button></div>
-    </form>
-  </dialog>
-
-  <dialog id="taskModal">
-    <form method="dialog" class="modal" id="taskForm">
-      <h3>Task editor</h3>
-      <div class="row">
-        <div><label>Title</label><input name="Title" placeholder="Task name" required /></div>
-        <div><label>Project (lookup)</label><select id="TaskProjectSelect" name="TaskProjectSelect"></select></div>
-        <div><label>Address</label><input name="Address" placeholder="Task address" /></div>
-        <div><label>Start Date</label><input type="date" name="StartDate" /></div>
-        <div><label>End Date</label><input type="date" name="EndDate" /></div>
-        <div><label>Quantity</label><input type="number" step="0.01" name="Quantity" /></div>
-        <div><label>Unit Cost</label><input type="number" step="0.01" name="UnitCost" /></div>
-        <div><label>Total Cost</label><input type="number" step="0.01" name="TotalCost" /></div>
-        <div><label>Allocation</label><input type="number" step="0.01" name="Allocation" id="AllocationInput" /></div>
-        <div><label>Sprint</label><input name="Sprint" /></div>
-        <div><label>Assignee</label><input name="Assignee" /></div>
-        <div style="grid-column:1/2"><label>Description</label><textarea name="Description"></textarea></div>
-        <div style="grid-column:2/3"><label>Notes</label><textarea name="Notes"></textarea></div>
-        <div style="grid-column:1/3"><label>Photos (multiple)</label><input type="file" id="taskPhotos" multiple accept="image/*" /></div>
-      </div>
-      <div style="display:flex;gap:.4rem;margin-top:.5rem"><button class="btn primary" id="taskSave">Save</button><button class="btn danger" id="taskDelete">Delete</button><button class="btn" value="cancel">Close</button></div>
-    </form>
-  </dialog>
-
-  <!-- Scripts: same logic as previous build (auth, graph, settings, lookup, save task, etc.) -->
+  <!-- Local MSAL (no external CDNs) -->
+  <script src="./msal-browser.min.js"></script>
   <script>
-    function setInput(form, name, value){ const el = form && form.querySelector && form.querySelector(`[name=${name}]`); if(el) el.value = value ?? ""; }
-    function setCheck(form, name, checked){ const el = form && form.querySelector && form.querySelector(`[name=${name}]`); if(el) el.checked = !!checked; }
-    function toIsoDate(v){ if(!v) return null; const ok=/^\d{4}-\d{2}-\d{2}$/.test(v); if(ok) return v; const parts=v.replace(/\./g,'/').split(/[\/-]/); if(parts.length===3){ const y=parts[2], m=parts[1], d=parts[0]; if(y.length===4) return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; } return v; }
+    // === MSAL configuration ===
+    const msalConfig = {
+      auth: {
+        clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
+        authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
+        redirectUri: 'https://abirrahat.github.io/wolcas-webapp/auth',
+        navigateToLoginRequestUrl: false
+      },
+      cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false },
+      system: { allowRedirectInIframe: false }
+    };
+    const loginRequest = {
+      scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All','Group.Read.All'],
+      prompt: 'select_account'
+    };
+    const graphScopes = loginRequest.scopes;
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    let account = null; // active account
+    let ROLE = 'viewer'; // default
 
-    const sections={ '#home':document.getElementById('homeSection'), '#projects':document.getElementById('projectsSection'), '#dashboard':document.getElementById('dashboardSection'), '#settings':document.getElementById('settingsSection') };
-    const tabs={ '#home':document.getElementById('tabHome'), '#projects':document.getElementById('tabProjects'), '#dashboard':document.getElementById('tabDashboard'), '#settings':document.getElementById('tabSettings') };
-    function show(hash){ for(const k in sections){ sections[k].classList.toggle('active',k===hash); tabs[k].classList.toggle('active',k===hash);} }
-    function initRouting(){ const h=location.hash||'#home'; show(h); window.addEventListener('hashchange',()=>show(location.hash||'#home')); document.getElementById('homeViewProjects').addEventListener('click',()=>{location.hash='#projects';}); document.getElementById('homeNewOrder').addEventListener('click',()=>{location.hash='#projects'; document.getElementById('addProjectBtn').click();}); }
+    // Utility Graph call
+    async function graphGET(path) {
+      const token = await getToken();
+      const resp = await fetch('https://graph.microsoft.com/v1.0' + path, {
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type':'application/json' }
+      });
+      if (!resp.ok) throw new Error('Graph GET failed: ' + resp.status);
+      return await resp.json();
+    }
+    async function graphPOST(path, body) {
+      const token = await getToken();
+      const resp = await fetch('https://graph.microsoft.com/v1.0' + path, {
+        method:'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type':'application/json' }, body: JSON.stringify(body)
+      });
+      if (!resp.ok) throw new Error('Graph POST failed: ' + resp.status);
+      return await resp.json();
+    }
+    async function graphPATCH(path, body) {
+      const token = await getToken();
+      const resp = await fetch('https://graph.microsoft.com/v1.0' + path, {
+        method:'PATCH', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type':'application/json' }, body: JSON.stringify(body)
+      });
+      if (!resp.ok) throw new Error('Graph PATCH failed: ' + resp.status);
+      return await resp.json();
+    }
+    async function graphDELETE(path) {
+      const token = await getToken();
+      const resp = await fetch('https://graph.microsoft.com/v1.0' + path, {
+        method:'DELETE', headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!resp.ok) throw new Error('Graph DELETE failed: ' + resp.status);
+      return true;
+    }
 
-    const AZURE_AD={ clientId:"827656f8-3a21-4d69-b6e5-c35e2ec2fb71", authority:"https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45", redirectUri:"https://abirrahat.github.io/wolcas-webapp/auth" };
-    const GRAPH_SCOPES=["User.Read","Group.Read.All","Sites.ReadWrite.All","Files.ReadWrite.All"];
-    const SP_HOST="architektica-my.sharepoint.com"; const SP_SITE_PATH="/personal/abir_architektica_com"; const LIST_DISPLAY_NAMES={ Project:"Project", Task:"Task" };
-    const RBAC_GROUPS={ admin:["WOLCAS Admins"], editor:["WOLCAS Editors"], viewer:["WOLCAS Viewers"] };
+    async function getToken() {
+      const active = msalInstance.getActiveAccount() || account;
+      if (!active) throw new Error('No active account');
+      try {
+        const resp = await msalInstance.acquireTokenSilent({ account: active, scopes: graphScopes });
+        return resp.accessToken;
+      } catch (e) {
+        const resp = await msalInstance.acquireTokenPopup(loginRequest);
+        return resp.accessToken;
+      }
+    }
 
-    const msalInstance=new msal.PublicClientApplication({ auth:AZURE_AD, cache:{ cacheLocation:"sessionStorage", storeAuthStateInCookie:false }, system:{ allowRedirectInIframe:true } });
-    let account=null;
+    // RBAC via groups (optional): map to Admin/Editor/Viewer
+    async function resolveRole() {
+      try {
+        const me = await graphGET('/me');
+        const groups = await graphGET('/me/transitiveMemberOf?$select=displayName');
+        const names = (groups.value||[]).map(g=>g.displayName||'');
+        if (names.some(n=>n.toLowerCase().includes('wolcas') && n.toLowerCase().includes('admin'))) ROLE='admin';
+        else if (names.some(n=>n.toLowerCase().includes('wolcas') && n.toLowerCase().includes('editor'))) ROLE='editor';
+        else ROLE='viewer';
+      } catch(err) { ROLE='viewer'; }
+      applyRoleUI();
+    }
+    function applyRoleUI(){
+      // Per spec: Admin can delete & change Allocation; Editor can edit; Viewer read-only
+      document.getElementById('btnAddProject').classList.toggle('hidden', ROLE==='viewer');
+      document.getElementById('btnAddTask').classList.toggle('hidden', ROLE==='viewer');
+      document.getElementById('projDelete').classList.toggle('hidden', ROLE!=='admin');
+      document.getElementById('taskDelete').classList.toggle('hidden', ROLE!=='admin');
+      // Allocation field: editable only if admin
+      document.getElementById('taskAllocation').disabled = (ROLE!=='admin');
+    }
 
-    const signinBtn=document.getElementById('signinBtn'); const signoutBtn=document.getElementById('signoutBtn'); const userEmailSpan=document.getElementById('userEmail');
-    const addProjectBtn=document.getElementById('addProjectBtn'); const projectsTableBody=document.querySelector('#projectsTable tbody'); const projectModal=document.getElementById('projectModal'); const projectForm=document.getElementById('projectForm'); const projectSaveBtn=document.getElementById('projectSave'); const projectDeleteBtn=document.getElementById('projectDelete');
-    const addTaskBtn=document.getElementById('addTaskBtn'); const tasksTableBody=document.querySelector('#tasksTable tbody'); const taskModal=document.getElementById('taskModal'); const taskForm=document.getElementById('taskForm'); const taskSaveBtn=document.getElementById('taskSave'); const taskDeleteBtn=document.getElementById('taskDelete'); const allocationInput=document.getElementById('AllocationInput'); const taskPhotosInput=document.getElementById('taskPhotos'); const taskProjectSelect=document.getElementById('TaskProjectSelect');
+    // SharePoint list wiring
+    const SP_HOST = 'architektica-my.sharepoint.com';
+    const SP_PATH = '/personal/abir_architektica_com'; // site path
+    let spSiteId = null, projectListId = null, taskListId = null;
 
-    // Settings refs
-    const companyNameInput=document.getElementById('companyName'); const lookupNameInput=document.getElementById('lookupInternalName'); const lookupIsMultiSelect=document.getElementById('lookupIsMulti'); const saveSettingsBtn=document.getElementById('saveSettings'); const validateLookupBtn=document.getElementById('validateLookup'); const settingsStatus=document.getElementById('settingsStatus');
+    async function resolveSharePointIds(){
+      const site = await graphGET(`/sites/${SP_HOST}:${SP_PATH}`);
+      spSiteId = site.id;
+      const lists = await graphGET(`/sites/${spSiteId}/lists?$select=id,displayName`);
+      for (const l of lists.value){
+        if (l.displayName === 'Project') projectListId = l.id;
+        if (l.displayName === 'Task') taskListId = l.id;
+      }
+    }
 
-    let siteId=null, driveId=null, listIds={ Project:null, Task:null }; let role='viewer'; let currentProjectItem=null; let currentTaskItem=null; let cachedProjects=[];
-    let TASK_PROJECT_LOOKUP_INTERNAL_NAME='Project'; let TASK_PROJECT_LOOKUP_IS_MULTI=false; let taskColumns=new Map();
+    async function loadProjectsTop8(){
+      const items = await graphGET(`/sites/${spSiteId}/lists/${projectListId}/items?$top=8&$expand=fields`);
+      const tbody = document.querySelector('#projectTable tbody');
+      tbody.innerHTML='';
+      (items.value||[]).forEach(it=>{
+        const f = it.fields||{};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${f.Title||''}</td>
+          <td>${f['Project Address']||''}</td>
+          <td>${f.Owner||''}</td>
+          <td>${f['Start Date']||''}</td>
+          <td>${f['Expected Sales']||''}</td>
+          <td>${f.Active? '✔️':''}</td>
+          <td class="actions">
+            <button class="btn btn-sm ${ROLE==='viewer'?'hidden':''}" data-edit="${it.id}">Edit</button>
+            <button class="btn danger btn-sm ${ROLE==='admin'?'':'hidden'}" data-del="${it.id}">Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      // Row actions
+      tbody.querySelectorAll('[data-edit]').forEach(btn=>{
+        btn.addEventListener('click', ()=>editProject(btn.getAttribute('data-edit')));
+      });
+      tbody.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.addEventListener('click', ()=>deleteProject(btn.getAttribute('data-del')));
+      });
+    }
 
-    function loadUserSettings(){ try{ const nm=localStorage.getItem('wolcas.lookupInternalName'); const mf=localStorage.getItem('wolcas.lookupIsMulti'); const cn=localStorage.getItem('wolcas.companyName'); if(nm){ TASK_PROJECT_LOOKUP_INTERNAL_NAME=nm; lookupNameInput.value=nm; } if(mf!==null){ TASK_PROJECT_LOOKUP_IS_MULTI=(mf==='true'); lookupIsMultiSelect.value=mf; } if(cn){ companyNameInput.value=cn; } }catch(e){ console.warn('Load settings failed',e);} }
-    function saveUserSettings(){ localStorage.setItem('wolcas.companyName', companyNameInput.value||''); localStorage.setItem('wolcas.lookupInternalName', lookupNameInput.value||''); localStorage.setItem('wolcas.lookupIsMulti', String(lookupIsMultiSelect.value==='true')); settingsStatus.textContent='Saved'; settingsStatus.classList.remove('hidden'); settingsStatus.style.borderColor='var(--ok)'; settingsStatus.style.color='var(--ok)'; setTimeout(()=>settingsStatus.classList.add('hidden'),2000); }
+    async function editProject(itemId){
+      const item = await graphGET(`/sites/${spSiteId}/lists/${projectListId}/items/${itemId}?$expand=fields`);
+      const f = item.fields||{};
+      document.getElementById('projTitle').value = f.Title||'';
+      document.getElementById('projAddress').value = f['Project Address']||'';
+      document.getElementById('projOwner').value = f.Owner||'';
+      document.getElementById('projStart').value = (f['Start Date']||'');
+      document.getElementById('projSales').value = f['Expected Sales']||'';
+      document.getElementById('projActive').checked = !!f.Active;
+      document.getElementById('projSave').onclick = ()=>saveProject(itemId);
+      document.getElementById('projDelete').onclick = ()=>deleteProject(itemId);
+      document.getElementById('projDelete').classList.toggle('hidden', ROLE!=='admin');
+    }
+    async function saveProject(itemId){
+      const fields = {
+        Title: document.getElementById('projTitle').value,
+        'Project Address': document.getElementById('projAddress').value,
+        Owner: document.getElementById('projOwner').value,
+        'Start Date': document.getElementById('projStart').value,
+        'Expected Sales': parseFloat(document.getElementById('projSales').value||'0'),
+        Active: document.getElementById('projActive').checked
+      };
+      if (itemId){
+        await graphPATCH(`/sites/${spSiteId}/lists/${projectListId}/items/${itemId}/fields`, fields);
+      } else {
+        await graphPOST(`/sites/${spSiteId}/lists/${projectListId}/items`, { fields });
+      }
+      await loadProjectsTop8();
+    }
+    async function deleteProject(itemId){
+      if (ROLE!=='admin') return;
+      await graphDELETE(`/sites/${spSiteId}/lists/${projectListId}/items/${itemId}`);
+      await loadProjectsTop8();
+    }
 
-    function setSignedInUI(isSignedIn){ userEmailSpan.textContent = (isSignedIn && account) ? (account.username || account.homeAccountId) : 'Not signed in'; signoutBtn.disabled=!isSignedIn; signinBtn.disabled=isSignedIn; }
-    function setRoleUI(){ addProjectBtn.classList.toggle('hidden', role==='viewer'); addTaskBtn.classList.toggle('hidden', role==='viewer'); projectDeleteBtn.classList.toggle('hidden', role!=='admin'); taskDeleteBtn.classList.toggle('hidden', role!=='admin'); allocationInput.disabled = role!=='admin'; }
+    // Binder: auto create/update a Project item from inputs
+    ['projTitle','projAddress','projOwner','projStart','projSales','projActive'].forEach(id=>{
+      const el = ()=>document.getElementById(id);
+      document.addEventListener('change', async (e)=>{
+        if (e.target && e.target.id===id) {
+          const addr = document.getElementById('projAddress').value;
+          if (!addr) return;
+          // find by address
+          try {
+            const found = await graphGET(`/sites/${spSiteId}/lists/${projectListId}/items?$filter=fields/Project%20Address eq '${encodeURIComponent(addr)}'&$top=1&$expand=fields`);
+            const item = (found.value||[])[0];
+            await saveProject(item? item.id : null);
+          } catch(err){ /* ignore */ }
+        }
+      });
+    });
 
-    async function signIn(){ try{ const res=await msalInstance.loginPopup({ scopes:GRAPH_SCOPES }); account=res.account; setSignedInUI(true); await postLoginInit(); }catch(err){ console.warn('Popup failed',err); await msalInstance.loginRedirect({ scopes:GRAPH_SCOPES }); } }
-    function signOut(){ if(!account) return; msalInstance.logoutPopup({ account }); account=null; setSignedInUI(false); }
-    async function getToken(){ if(!account) throw new Error('No account'); try{ const s=await msalInstance.acquireTokenSilent({ account, scopes:GRAPH_SCOPES }); return s.accessToken; }catch(_){ const p=await msalInstance.acquireTokenPopup({ account, scopes:GRAPH_SCOPES }); return p.accessToken; } }
-    async function graph(endpoint, method='GET', body=null){ const token=await getToken(); const res=await fetch('https://graph.microsoft.com/v1.0'+endpoint,{ method, headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json' }, body: body?JSON.stringify(body):null }); if(!res.ok){ const text=await res.text(); throw new Error(method+' '+endpoint+' => '+res.status+' '+text); } return res.status===204?null:res.json(); }
+    // Tasks list (similar wiring)
+    async function loadTasks(){
+      const items = await graphGET(`/sites/${spSiteId}/lists/${taskListId}/items?$top=50&$expand=fields`);
+      const tbody = document.querySelector('#taskTable tbody');
+      tbody.innerHTML='';
+      (items.value||[]).forEach(it=>{
+        const f = it.fields||{};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${f.Title||''}</td>
+          <td>${f.Address||''}</td>
+          <td>${f['Start Date']||''}</td>
+          <td>${f['End Date']||''}</td>
+          <td>${f.Quantity||''}</td>
+          <td>${f['Unit Cost']||''}</td>
+          <td>${f['Total Cost']||''}</td>
+          <td>${f.Allocation||''}</td>
+          <td>${f.Sprint||''}</td>
+          <td>${f.Assignee||''}</td>
+          <td class="actions">
+            <button class="btn btn-sm ${ROLE==='viewer'?'hidden':''}" data-edit="${it.id}">Edit</button>
+            <button class="btn danger btn-sm ${ROLE==='admin'?'':'hidden'}" data-del="${it.id}">Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('[data-edit]').forEach(btn=>{
+        btn.addEventListener('click', ()=>openTaskModal(btn.getAttribute('data-edit')));
+      });
+      tbody.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.addEventListener('click', ()=>deleteTask(btn.getAttribute('data-del')));
+      });
+    }
 
-    async function detectRole(){ try{ const me=await graph('/me/memberOf?$select=displayName'); const names=(me.value||[]).map(g=>g.displayName); const isAdmin=RBAC_GROUPS.admin.some(n=>names.includes(n)); const isEditor=RBAC_GROUPS.editor.some(n=>names.includes(n)); role=isAdmin?'admin':(isEditor?'editor':'viewer'); }catch(e){ console.warn('Role detect failed',e); role='viewer'; } setRoleUI(); }
-    async function resolveSiteAndLists(){ const site=await graph(`/sites/${SP_HOST}:${SP_SITE_PATH}`); siteId=site.id; const drive=await graph(`/sites/${siteId}/drive`); driveId=drive.id; const lists=await graph(`/sites/${siteId}/lists?$select=id,displayName`); for(const l of lists.value){ if(l.displayName===LIST_DISPLAY_NAMES.Project) listIds.Project=l.id; if(l.displayName===LIST_DISPLAY_NAMES.Task) listIds.Task=l.id; } if(!listIds.Project||!listIds.Task) throw new Error('Required lists not found'); }
+    function openTaskModal(itemId){
+      document.getElementById('taskModal').style.display='flex';
+      document.getElementById('taskClose').onclick = ()=>{ document.getElementById('taskModal').style.display='none'; };
+      if (itemId){
+        graphGET(`/sites/${spSiteId}/lists/${taskListId}/items/${itemId}?$expand=fields`).then(item=>{
+          const f=item.fields||{};
+          taskTitle.value = f.Title||''; taskAddress.value=f.Address||''; taskStart.value=f['Start Date']||''; taskEnd.value=f['End Date']||'';
+          taskQty.value=f.Quantity||''; taskUnitCost.value=f['Unit Cost']||''; taskTotalCost.value=f['Total Cost']||''; taskAllocation.value=f.Allocation||'';
+          taskSprint.value=f.Sprint||''; taskAssignee.value=f.Assignee||''; taskDesc.value=f.Description||''; taskNotes.value=f.Notes||'';
+          document.getElementById('taskSave').onclick = ()=>saveTask(itemId);
+          document.getElementById('taskDelete').onclick = ()=>deleteTask(itemId);
+        });
+      } else {
+        taskTitle.value = ''; taskAddress.value=''; taskStart.value=''; taskEnd.value=''; taskQty.value=''; taskUnitCost.value=''; taskTotalCost.value=''; taskAllocation.value=''; taskSprint.value=''; taskAssignee.value=''; taskDesc.value=''; taskNotes.value='';
+        document.getElementById('taskSave').onclick = ()=>saveTask(null);
+        document.getElementById('taskDelete').classList.add('hidden');
+      }
+    }
 
-    async function detectTaskProjectLookup(){ if(localStorage.getItem('wolcas.lookupInternalName')){ console.log('Using manual lookup:', TASK_PROJECT_LOOKUP_INTERNAL_NAME, 'multi=', TASK_PROJECT_LOOKUP_IS_MULTI); return; } try{ const cols=await graph(`/sites/${siteId}/lists/${listIds.Task}/columns?$select=name,displayName,lookup`); taskColumns.clear(); for(const c of cols.value||[]){ const typ = c.lookup? 'lookup' : (c.text? 'text' : (c.number? 'number' : (c.boolean? 'boolean' : (c.dateTime? 'dateTime' : 'unknown')))); taskColumns.set(c.name, typ); if(c.lookup && c.lookup.listId===listIds.Project){ TASK_PROJECT_LOOKUP_INTERNAL_NAME=c.name; TASK_PROJECT_LOOKUP_IS_MULTI=!!c.lookup.allowMultipleValues; } } lookupNameInput.value=TASK_PROJECT_LOOKUP_INTERNAL_NAME; lookupIsMultiSelect.value=String(TASK_PROJECT_LOOKUP_IS_MULTI); }catch(e){ console.warn('Lookup detection failed',e); } }
+    async function ensureTaskPhotosFolder(){
+      // Ensure default Documents drive exists and TaskPhotos folder is created
+      const drive = await graphGET(`/sites/${spSiteId}/drive`);
+      // create folder (ignore if exists)
+      try { await graphPOST(`/sites/${spSiteId}/drive/root/children`, { name: 'TaskPhotos', folder: {}, "@microsoft.graph.conflictBehavior":"rename" }); } catch(e){}
+      return drive.id;
+    }
 
-    async function validateLookupField(){ try{ const cols=await graph(`/sites/${siteId}/lists/${listIds.Task}/columns?$select=name,lookup`); const desired=lookupNameInput.value.trim(); const found=(cols.value||[]).find(c=>c.name===desired); if(found){ const okMulti = (!!found.lookup?.allowMultipleValues) === (lookupIsMultiSelect.value==='true'); settingsStatus.textContent = okMulti? 'Valid' : 'Valid name, multi-value mismatch'; settingsStatus.style.color = okMulti? 'var(--ok)' : 'var(--danger)'; settingsStatus.style.borderColor = okMulti? 'var(--ok)' : 'var(--danger)'; } else { settingsStatus.textContent='Column not found'; settingsStatus.style.color='var(--danger)'; settingsStatus.style.borderColor='var(--danger)'; } settingsStatus.classList.remove('hidden'); setTimeout(()=>settingsStatus.classList.add('hidden'),3500); }catch(e){ settingsStatus.textContent='Validation failed'; settingsStatus.style.color='var(--danger)'; settingsStatus.style.borderColor='var(--danger)'; settingsStatus.classList.remove('hidden'); setTimeout(()=>settingsStatus.classList.add('hidden'),3500); console.warn(e); } }
+    async function saveTask(itemId){
+      const fields = {
+        Title: taskTitle.value,
+        Address: taskAddress.value,
+        'Start Date': taskStart.value,
+        'End Date': taskEnd.value,
+        Quantity: parseFloat(taskQty.value||'0'),
+        'Unit Cost': parseFloat(taskUnitCost.value||'0'),
+        'Total Cost': parseFloat(taskTotalCost.value||'0'),
+        Allocation: parseFloat(taskAllocation.value||'0'),
+        Sprint: taskSprint.value,
+        Assignee: taskAssignee.value,
+        Description: taskDesc.value,
+        Notes: taskNotes.value
+      };
+      // Relate to Project via Address lookup
+      if (fields.Address){ /* binding through Address */ }
+      if (itemId){
+        await graphPATCH(`/sites/${spSiteId}/lists/${taskListId}/items/${itemId}/fields`, fields);
+      } else {
+        const created = await graphPOST(`/sites/${spSiteId}/lists/${taskListId}/items`, { fields });
+        itemId = created.id;
+      }
+      // Photos upload
+      const files = document.getElementById('taskPhotos').files;
+      if (files && files.length){
+        await ensureTaskPhotosFolder();
+        for (const file of files){
+          const arrayBuffer = await file.arrayBuffer();
+          const uploadResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/drive/root:/TaskPhotos/${encodeURIComponent(file.name)}:/content`, {
+            method:'PUT', headers:{ 'Authorization':'Bearer '+await getToken(), 'Content-Type': file.type || 'application/octet-stream' }, body: arrayBuffer
+          });
+          if (!uploadResp.ok) console.warn('Photo upload failed', file.name);
+        }
+      }
+      document.getElementById('taskModal').style.display='none';
+      await loadTasks();
+    }
+    async function deleteTask(itemId){ if (ROLE!=='admin') return; await graphDELETE(`/sites/${spSiteId}/lists/${taskListId}/items/${itemId}`); await loadTasks(); }
 
-    async function loadProjects(){ const items=await graph(`/sites/${siteId}/lists/${listIds.Project}/items?$top=500&expand=fields`); cachedProjects=items.value||[]; renderProjects(cachedProjects); populateProjectSelect(cachedProjects); renderRecentProjects(cachedProjects); renderDashboard(); }
-    function renderProjects(items){ projectsTableBody.innerHTML=''; for(const it of items){ const f=it.fields||{}; const tr=document.createElement('tr'); tr.innerHTML=`<td>${escapeHtml(f.Title||'')}</td><td>${escapeHtml(f.Owner||'')}</td><td>${escapeHtml(f.StartDate||'')}</td><td>${escapeHtml(f.ExpectedSales||'')}</td><td>${f.Active?'Yes':'No'}</td><td><button class='btn small' data-id='${it.id}' data-action='editProject'>Edit</button>${role==='admin'?` <button class='btn small danger' data-id='${it.id}' data-action='deleteProject'>Delete</button>`:''}</td>`; projectsTableBody.appendChild(tr);} }
-    function populateProjectSelect(items){ taskProjectSelect.innerHTML = `<option value=''>Select a project…</option>`; for(const it of items){ const f=it.fields||{}; const opt=document.createElement('option'); opt.value=it.id; opt.textContent=f.Title || `(ID ${it.id})`; taskProjectSelect.appendChild(opt);} }
-    function renderRecentProjects(items){ const c=document.getElementById('recentProjects'); c.innerHTML=''; for(const it of items.slice(0,3)){ const f=it.fields||{}; const card=document.createElement('div'); card.className='card'; card.style.marginTop='.4rem'; card.innerHTML=`<div style='display:flex;justify-content:space-between;align-items:center'><div><strong>${escapeHtml(f.Title||'')}</strong> <span class='pill'>${f.Active?'active':'inactive'}</span></div><button class='btn small' data-id='${it.id}' data-action='openProject'>Open</button></div><div style='margin-top:.3rem;color:#555'>Owner: ${escapeHtml(f.Owner||'')} · Expected sales: ${escapeHtml(f.ExpectedSales||'')} · Start: ${escapeHtml(f.StartDate||'')}</div>`; c.appendChild(card);} }
-    function renderDashboard(){ const d=document.getElementById('dashboardCards'); d.innerHTML=''; const total=cachedProjects.length; const active=cachedProjects.filter(p=>p.fields?.Active).length; const sales=cachedProjects.reduce((s,p)=> s+(parseFloat(p.fields?.ExpectedSales)||0),0).toFixed(2); const cards=[{name:'Total Projects',val:total},{name:'Active Projects',val:active},{name:'Completed Projects',val:total-active},{name:'Total Sales (expected)',val:sales}]; for(const c of cards){ const div=document.createElement('div'); div.className='card'; div.innerHTML=`<h4>${c.name}</h4><div style='font-size:1.2rem;font-weight:700'>${c.val}</div>`; d.appendChild(div);} }
+    // Tabs
+    document.querySelectorAll('.tab').forEach(t=>{
+      t.addEventListener('click', ()=>{
+        document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+        t.classList.add('active');
+        const name = t.getAttribute('data-tab');
+        document.querySelectorAll('section[id^="tab-"]').forEach(s=>s.classList.add('hidden'));
+        document.getElementById('tab-'+name).classList.remove('hidden');
+      });
+    });
 
-    function openProjectModal(item){ currentProjectItem=item||null; projectForm.reset(); projectDeleteBtn.classList.toggle('hidden', !(role==='admin' && !!item)); if(item){ const f=item.fields||{}; setInput(projectForm,'Title',f.Title||''); setInput(projectForm,'Owner',f.Owner||''); setInput(projectForm,'StartDate',f.StartDate||''); setInput(projectForm,'ExpectedSales',f.ExpectedSales||''); setCheck(projectForm,'Active',!!f.Active);} projectModal.showModal(); }
-    async function saveProject(){ const fields=collectFormFields(projectForm); if(!fields) return; if(fields.StartDate) fields.StartDate=toIsoDate(fields.StartDate); if(currentProjectItem?.id){ await graph(`/sites/${siteId}/lists/${listIds.Project}/items/${currentProjectItem.id}/fields`,'PATCH',fields);} else { currentProjectItem=await graph(`/sites/${siteId}/lists/${listIds.Project}/items`,'POST',{fields}); } await loadProjects(); projectModal.close(); }
-    async function deleteProject(id){ if(role!=='admin') return alert('Only admins can delete.'); if(!confirm('Delete this project?')) return; await graph(`/sites/${siteId}/lists/${listIds.Project}/items/${id}`,'DELETE'); await loadProjects(); }
+    // Auth lifecycle
+    async function onSignedIn(){
+      document.getElementById('signInCard').style.display='none';
+      document.getElementById('appRoot').style.display='block';
+      document.getElementById('userEmail').classList.remove('hidden');
+      document.getElementById('signOutBtn').classList.remove('hidden');
+      document.getElementById('signInBtn').classList.add('hidden');
+      document.getElementById('cardSignInBtn').classList.add('hidden');
+      document.getElementById('userEmail').textContent = account?.username || '';
+      await resolveRole();
+      await resolveSharePointIds();
+      await loadProjectsTop8();
+      await loadTasks();
+    }
 
-    async function loadTasks(){ const items=await graph(`/sites/${siteId}/lists/${listIds.Task}/items?$top=500&expand=fields`); renderTasks(items.value||[]);} 
-    function renderTasks(items){ tasksTableBody.innerHTML=''; for(const it of items){ const f=it.fields||{}; const projKey=`${TASK_PROJECT_LOOKUP_INTERNAL_NAME}`; const projIdKey=`${TASK_PROJECT_LOOKUP_INTERNAL_NAME}LookupId`; const tr=document.createElement('tr'); tr.innerHTML=`<td>${escapeHtml(f.Title||'')}</td><td>${escapeHtml(f[projKey]||f[projIdKey]||'')}</td><td>${escapeHtml(f.Address||'')}</td><td>${escapeHtml(f.StartDate||'')}</td><td>${escapeHtml(f.EndDate||'')}</td><td>${escapeHtml(f.Quantity||'')}</td><td>${escapeHtml(f.UnitCost||'')}</td><td>${escapeHtml(f.TotalCost||'')}</td><td>${escapeHtml(f.Allocation||'')}</td><td>${escapeHtml(f.Sprint||'')}</td><td>${escapeHtml(f.Assignee||'')}</td><td>${role!=='viewer'?`<button class='btn small' data-id='${it.id}' data-action='editTask'>Edit</button>`:''}${role==='admin'?` <button class='btn small danger' data-id='${it.id}' data-action='deleteTask'>Delete</button>`:''}</td>`; tasksTableBody.appendChild(tr);} }
+    async function signIn(){
+      try {
+        const login = await msalInstance.loginPopup(loginRequest);
+        account = login.account;
+        msalInstance.setActiveAccount(account);
+        onSignedIn();
+      } catch (e) { console.error(e); }
+    }
+    function signOut(){ msalInstance.logoutPopup({ postLogoutRedirectUri: window.location.origin }); }
 
-    function openTaskModal(item){ currentTaskItem=item||null; taskForm.reset(); taskDeleteBtn.classList.toggle('hidden', !(role==='admin' && !!item)); if(item){ const f=item.fields||{}; for(const k of ['Title','Address','StartDate','EndDate','Quantity','UnitCost','TotalCost','Allocation','Sprint','Assignee','Description','Notes']) setInput(taskForm,k,f[k]||''); const projIdKey=`${TASK_PROJECT_LOOKUP_INTERNAL_NAME}LookupId`; taskProjectSelect.value = f[projIdKey]? String(f[projIdKey]) : ''; } else { taskProjectSelect.value=''; } taskModal.showModal(); }
+    document.getElementById('signInBtn').addEventListener('click', signIn);
+    document.getElementById('cardSignInBtn').addEventListener('click', signIn);
+    document.getElementById('signOutBtn').addEventListener('click', signOut);
 
-    function collectFormFields(form){ if(!form||!form.querySelectorAll) return null; const fields={}; for(const el of form.querySelectorAll('input,textarea,select')){ if(!el.name) continue; if(el.type==='checkbox') fields[el.name]=el.checked; else fields[el.name]=el.value; } return fields; }
-    function escapeHtml(s){ return String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c])); }
-    function sanitizeFileName(name){ return name.replace(/[^A-Za-z0-9._-]/g,'_'); }
+    // App init: if we already have an account, proceed
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length){ account = accounts[0]; msalInstance.setActiveAccount(account); onSignedIn(); }
+    });
 
-    function cleanseTaskFields(raw){ const cleaned={}; for(const [name,val] of Object.entries(raw)){ if(name==='TaskProjectSelect') continue; const v = (val===''? null : val); cleaned[name]=v; if(name==='StartDate'||name==='EndDate') cleaned[name]=toIsoDate(v); if(name==='Quantity'||name==='UnitCost'||name==='TotalCost'||name==='Allocation') cleaned[name]= (v==null? null : Number(v)); }
-      const keyBase=`${TASK_PROJECT_LOOKUP_INTERNAL_NAME}LookupId`; const selVal=taskProjectSelect.value||''; if(selVal){ const projId=parseInt(selVal,10); if(!Number.isNaN(projId)){ if(TASK_PROJECT_LOOKUP_IS_MULTI){ cleaned[`${keyBase}@odata.type`]='Collection(Edm.Int32)'; cleaned[keyBase]=[projId]; } else { cleaned[keyBase]=projId; } } } else { if(TASK_PROJECT_LOOKUP_IS_MULTI){ cleaned[`${keyBase}@odata.type`]='Collection(Edm.Int32)'; cleaned[keyBase]=[]; } else { cleaned[keyBase]=null; } } return cleaned; }
-
-    async function ensureTaskPhotosFolder(){ const children=await graph(`/sites/${siteId}/drive/root/children?$select=name,folder`); const exists=(children.value||[]).find(c=>c.name==='TaskPhotos'&&c.folder); if(!exists){ await graph(`/sites/${siteId}/drive/root/children`,'POST',{ name:'TaskPhotos', folder:{}, '@microsoft.graph.conflictBehavior':'fail' }); } }
-
-    async function saveTask(){ try{ const raw=collectFormFields(taskForm); if(!raw) return; raw.StartDate=toIsoDate(raw.StartDate); raw.EndDate=toIsoDate(raw.EndDate); const fields=cleanseTaskFields(raw); let itemId=currentTaskItem?.id; if(itemId){ await graph(`/sites/${siteId}/lists/${listIds.Task}/items/${itemId}/fields`,'PATCH',fields);} else { const created=await graph(`/sites/${siteId}/lists/${listIds.Task}/items`,'POST',{fields}); itemId=created.id; currentTaskItem=created; } const files=taskPhotosInput.files; if(files&&files.length){ await ensureTaskPhotosFolder(); const links=[]; for(const file of files){ const token=await getToken(); const res=await fetch('https://graph.microsoft.com/v1.0'+`/sites/${siteId}/drive/root:/TaskPhotos/${encodeURIComponent(sanitizeFileName(file.name))}:/content`,{ method:'PUT', headers:{ 'Authorization':'Bearer '+token, 'Content-Type': file.type||'application/octet-stream' }, body:file }); if(res.ok){ const driveItem=await res.json(); links.push(driveItem.webUrl); } else { const errText=await res.text(); console.error('Upload failed',errText); alert('Photo upload failed: '+errText); } } if(links.length){ await graph(`/sites/${siteId}/lists/${listIds.Task}/items/${itemId}/fields`,'PATCH',{ Photos: links.join('; ') }); } } await loadTasks(); taskModal.close(); }catch(e){ console.error('Task save failed',e); alert('Task save failed: '+e.message); } }
-    async function deleteTask(id){ if(role!=='admin') return alert('Only admins can delete.'); if(!confirm('Delete this task?')) return; await graph(`/sites/${siteId}/lists/${listIds.Task}/items/${id}`,'DELETE'); await loadTasks(); }
-
-    async function postLoginInit(){ loadUserSettings(); await detectRole(); await resolveSiteAndLists(); await detectTaskProjectLookup(); await Promise.all([loadProjects(), loadTasks()]); initRouting(); }
-
-    document.addEventListener('click',(e)=>{ const btn=e.target.closest('button'); if(!btn) return; const action=btn.getAttribute('data-action'); const id=btn.getAttribute('data-id'); if(action==='editProject'){ graph(`/sites/${siteId}/lists/${listIds.Project}/items/${id}?expand=fields`).then(openProjectModal);} else if(action==='deleteProject'){ deleteProject(id);} else if(action==='editTask'){ graph(`/sites/${siteId}/lists/${listIds.Task}/items/${id}?expand=fields`).then(openTaskModal);} else if(action==='deleteTask'){ deleteTask(id);} else if(action==='openProject'){ location.hash='#projects'; }});
-
-    signinBtn.addEventListener('click',signIn); signoutBtn.addEventListener('click',signOut); addProjectBtn.addEventListener('click',()=>openProjectModal(null)); projectSaveBtn.addEventListener('click',(ev)=>{ev.preventDefault(); saveProject();}); projectDeleteBtn.addEventListener('click',(ev)=>{ev.preventDefault(); if(currentProjectItem?.id) deleteProject(currentProjectItem.id);}); addTaskBtn.addEventListener('click',()=>openTaskModal(null)); taskSaveBtn.addEventListener('click',(ev)=>{ev.preventDefault(); saveTask();}); taskDeleteBtn.addEventListener('click',(ev)=>{ev.preventDefault(); if(currentTaskItem?.id) deleteTask(currentTaskItem.id);});
-
-    const saveSettingsBtnEl=document.getElementById('saveSettings'); const validateLookupBtnEl=document.getElementById('validateLookup');
-    saveSettingsBtnEl.addEventListener('click',(ev)=>{ ev.preventDefault(); saveUserSettings(); TASK_PROJECT_LOOKUP_INTERNAL_NAME = document.getElementById('lookupInternalName').value || TASK_PROJECT_LOOKUP_INTERNAL_NAME; TASK_PROJECT_LOOKUP_IS_MULTI = (document.getElementById('lookupIsMulti').value==='true'); loadTasks(); });
-    validateLookupBtnEl.addEventListener('click',(ev)=>{ ev.preventDefault(); validateLookupField(); });
-
-    setSignedInUI(false);
+    // UI buttons
+    document.getElementById('btnAddProject').addEventListener('click', ()=>{ editProject(null); });
+    document.getElementById('btnAddTask').addEventListener('click', ()=>{ openTaskModal(null); });
   </script>
 </body>
 </html>
