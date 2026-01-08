@@ -33,7 +33,7 @@
     .toolbar{display:flex;align-items:center;justify-content:space-between;margin:.25rem 0 .75rem 0}
     .btn{appearance:none;border:1px solid #d1d5db;background:#fff;color:#111; padding:.35rem .65rem;border-radius:8px;cursor:pointer}
     .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-    .btn.danger{background:#fff;color:var(--danger);border-color:var(--danger)}
+    .btn.danger{background:#fff;color:#c43e1c;border-color:#c43e1c}
     .btn:disabled{opacity:.5;cursor:not-allowed}
     table{width:100%;border-collapse:collapse}
     th,td{border-bottom:1px solid #eee;padding:.5rem;text-align:left}
@@ -48,8 +48,8 @@
     .rbac-note{font-size:.8rem;color:#666}
     .footer-note{margin-top:1rem;color:#666;font-size:.9rem}
   </style>
-  <!-- MSAL Browser -->
-  <script defer src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.11.1/dist/msal-browser.min.js"></script>
+  <!-- MSAL Browser (no defer to ensure 'msal' is available before inline code) -->
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.11.1/dist/msal-browser.min.js"></script>
 </head>
 <body>
   <header>
@@ -63,7 +63,6 @@
   </header>
 
   <main>
-    <!-- Sign-in required card -->
     <section id="signinCard" class="card">
       <h2>Welcome</h2>
       <p>Sign in with your company account to continue.</p>
@@ -71,10 +70,8 @@
       <button class="btn primary" id="signinStart">Sign in</button>
     </section>
 
-    <!-- App content (hidden until auth) -->
     <section id="appContent" class="hidden">
       <div class="grid">
-        <!-- Projects Panel -->
         <div class="card">
           <div class="toolbar">
             <h3>Projects</h3>
@@ -95,7 +92,6 @@
           </table>
         </div>
 
-        <!-- Tasks Panel -->
         <div class="card">
           <div class="toolbar">
             <h3>Tasks</h3>
@@ -127,105 +123,13 @@
     <p class="footer-note">Hosted at <a href="https://abirrahat.github.io/wolcas-webapp/" target="_blank" rel="noopener">GitHub Pages</a>.</p>
   </main>
 
-  <!-- Project Modal -->
-  <dialog id="projectModal">
-    <form method="dialog" class="modal" id="projectForm">
-      <h3>Project editor</h3>
-      <div class="row">
-        <div>
-          <label>Title (Project Address)</label>
-          <input name="Title" placeholder="e.g., 123 Main St" required />
-        </div>
-        <div>
-          <label>Owner</label>
-          <input name="Owner" placeholder="Company/Client" />
-        </div>
-        <div>
-          <label>Start Date</label>
-          <input type="date" name="StartDate" />
-        </div>
-        <div>
-          <label>Expected Sales</label>
-          <input type="number" step="0.01" name="ExpectedSales" />
-        </div>
-        <div>
-          <label>Active</label>
-          <input type="checkbox" name="Active" />
-        </div>
-      </div>
-      <div style="display:flex;gap:.5rem;margin-top:.75rem">
-        <button class="btn primary" id="projectSave">Save</button>
-        <button class="btn danger" id="projectDelete">Delete</button>
-        <button class="btn" value="cancel">Close</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Task Modal -->
-  <dialog id="taskModal">
-    <form method="dialog" class="modal" id="taskForm">
-      <h3>Task editor</h3>
-      <div class="row">
-        <div>
-          <label>Title</label>
-          <input name="Title" placeholder="Task name" required />
-        </div>
-        <div>
-          <label>Address</label>
-          <input name="Address" placeholder="Task address" />
-        </div>
-        <div>
-          <label>Start Date</label>
-          <input type="date" name="StartDate" />
-        </div>
-        <div>
-          <label>End Date</label>
-          <input type="date" name="EndDate" />
-        </div>
-        <div>
-          <label>Quantity</label>
-          <input type="number" step="0.01" name="Quantity" />
-        </div>
-        <div>
-          <label>Unit Cost</label>
-          <input type="number" step="0.01" name="UnitCost" />
-        </div>
-        <div>
-          <label>Total Cost</label>
-          <input type="number" step="0.01" name="TotalCost" />
-        </div>
-        <div>
-          <label>Allocation</label>
-          <input type="number" step="0.01" name="Allocation" id="AllocationInput" />
-        </div>
-        <div>
-          <label>Sprint</label>
-          <input name="Sprint" />
-        </div>
-        <div>
-          <label>Assignee</label>
-          <input name="Assignee" />
-        </div>
-        <div style="grid-column:1/3">
-          <label>Description</label>
-          <textarea name="Description"></textarea>
-        </div>
-        <div style="grid-column:1/3">
-          <label>Notes</label>
-          <textarea name="Notes"></textarea>
-        </div>
-        <div style="grid-column:1/3">
-          <label>Photos (multiple)</label>
-          <input type="file" id="taskPhotos" multiple accept="image/*" />
-        </div>
-      </div>
-      <div style="display:flex;gap:.5rem;margin-top:.75rem">
-        <button class="btn primary" id="taskSave">Save</button>
-        <button class="btn danger" id="taskDelete">Delete</button>
-        <button class="btn" value="cancel">Close</button>
-      </div>
-    </form>
-  </dialog>
+  <!-- Inline app script: guard against missing MSAL -->
+  <script>
+    if (typeof window.msal === 'undefined') {
+      console.error('MSAL did not load. Check CSP or network to cdn.jsdelivr.net.');
+      alert('MSAL library failed to load. Please hard-reload the page (Ctrl+Shift+R) and ensure popups are allowed.');
+    }
+  </script>
 
   <script>
     // === Configuration ===
@@ -281,8 +185,8 @@
 
     // App state
     let siteId = null, driveId = null, listIds = { Project: null, Task: null };
-    let role = "viewer"; // default locked down
-    let currentProjectItem = null; // for binder
+    let role = "viewer";
+    let currentProjectItem = null;
     let currentTaskItem = null;
 
     function setSignedInUI(isSignedIn){
@@ -291,7 +195,6 @@
       signoutBtn.disabled = !isSignedIn;
       signinBtn.disabled = isSignedIn;
     }
-
     function setRoleUI(){
       addProjectBtn.classList.toggle("hidden", role === "viewer");
       addTaskBtn.classList.toggle("hidden", role === "viewer");
@@ -308,8 +211,8 @@
         setSignedInUI(true);
         await postLoginInit();
       }catch(err){
-        console.error("Sign-in failed", err);
-        alert("Sign-in failed: " + (err.errorCode || err.message));
+        console.warn("Popup failed, trying redirect", err);
+        await msalInstance.loginRedirect({ scopes: GRAPH_SCOPES });
       }
     }
 
@@ -376,12 +279,10 @@
       }
     }
 
-    // === Projects ===
     async function loadProjects(){
       const items = await graph(`/sites/${siteId}/lists/${listIds.Project}/items?$top=8&expand=fields`);
       renderProjects(items.value || []);
     }
-
     function renderProjects(items){
       projectsTableBody.innerHTML = "";
       for(const it of items){
@@ -435,7 +336,6 @@
       await loadProjects();
     }
 
-    // Binder: auto create/update when fields change
     let binderTimeout = null;
     projectForm.addEventListener("input", ()=>{
       clearTimeout(binderTimeout);
@@ -444,12 +344,10 @@
       }, 800);
     });
 
-    // === Tasks ===
     async function loadTasks(){
       const items = await graph(`/sites/${siteId}/lists/${listIds.Task}/items?$top=50&expand=fields`);
       renderTasks(items.value || []);
     }
-
     function renderTasks(items){
       tasksTableBody.innerHTML = "";
       for(const it of items){
@@ -548,10 +446,7 @@
       }
       return fields;
     }
-
-    function escapeHtml(s){
-      return String(s).replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
-    }
+    function escapeHtml(s){ return String(s).replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;","\">":"&gt;","\"":"&quot;"}[c])); }
     function sanitizeFileName(name){ return name.replace(/[^A-Za-z0-9._-]/g, "_"); }
 
     async function postLoginInit(){
