@@ -23,16 +23,11 @@
       console.error('Local MSAL failed to load on auth page.');
     } else {
       const msalInstance = new msal.PublicClientApplication({
-        auth: {
-          clientId: \"827656f8-3a21-4d69-b6e5-c35e2ec2fb71\",
-          authority: \"https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45\",
-          redirectUri: \"https://abirrahat.github.io/wolcas-webapp/auth\"
-        },
+        auth: { clientId: \"827656f8-3a21-4d69-b6e5-c35e2ec2fb71\", authority: \"https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45\", redirectUri: \"https://abirrahat.github.io/wolcas-webapp/auth\" },
         cache: { cacheLocation: \"sessionStorage\", storeAuthStateInCookie: false },
         system: { allowRedirectInIframe: true }
       });
-      msalInstance.handleRedirectPromise()
-        .finally(() => { if (window.opener && !window.opener.closed) window.close(); });
+      msalInstance.handleRedirectPromise().finally(() => { if (window.opener && !window.opener.closed) window.close(); });
     }
   </script>
 </body>
