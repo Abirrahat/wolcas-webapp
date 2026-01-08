@@ -1,34 +1,40 @@
 <!DOCTYPE html>
-<html lang=\"en\">
+<html lang="en">
 <head>
-  <meta charset=\"utf-8\" />
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WOLCAS Auth</title>
-  <meta http-equiv=\"Content-Security-Policy\" content=\"
-    default-src 'self';
-    img-src 'self' data:;
-    style-src 'self' 'unsafe-inline';
-    script-src 'self' 'unsafe-inline';
-    connect-src 'self' https://login.microsoftonline.com;
-    frame-src 'self' https://login.microsoftonline.com;
-    form-action 'self' https://login.microsoftonline.com;
-  \" />
-  <style>body{margin:0;background:#fff;color:#222;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh}</style>
-  <script src=\"./msal-browser.min.js\"></script>
+  <style>body{font-family:system-ui,Segoe UI,Arial;padding:24px;color:#374151;} .muted{color:#6b7280}</style>
 </head>
 <body>
-  <div>Authenticating…</div>
+  <h1>WOLCAS Auth</h1>
+  <p class="muted">Authenticating… This window will close automatically.</p>
+
+  <!-- Local MSAL (no external CDNs) -->
+  <script src="./msal-browser.min.js"></script>
   <script>
-    if (typeof window.msal === 'undefined') {
-      console.error('Local MSAL failed to load on auth page.');
-    } else {
-      const msalInstance = new msal.PublicClientApplication({
-        auth: { clientId: \"827656f8-3a21-4d69-b6e5-c35e2ec2fb71\", authority: \"https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45\", redirectUri: \"https://abirrahat.github.io/wolcas-webapp/auth\" },
-        cache: { cacheLocation: \"sessionStorage\", storeAuthStateInCookie: false },
-        system: { allowRedirectInIframe: true }
+    const msalConfig = {
+      auth: {
+        clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
+        authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
+        redirectUri: 'https://abirrahat.github.io/wolcas-webapp/auth',
+        navigateToLoginRequestUrl: false
+      },
+      cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false },
+      system: { allowRedirectInIframe: true }
+    };
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    msalInstance.handleRedirectPromise()
+      .then((resp)=>{
+        if (resp && window.opener) {
+          try { window.opener.postMessage({ type:'MSAL_AUTH_SUCCESS', account: resp.account }, '*'); } catch(e){}
+        }
+        setTimeout(()=>window.close(), 300);
+      })
+      .catch((err)=>{
+        console.error(err);
+        setTimeout(()=>window.close(), 800);
       });
-      msalInstance.handleRedirectPromise().finally(() => { if (window.opener && !window.opener.closed) window.close(); });
-    }
   </script>
 </body>
 </html>
