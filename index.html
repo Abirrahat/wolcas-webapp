@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WOLCAS — Secure Online App</title>
-  <!-- CSP: local scripts only; allow Graph & AAD endpoints -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     img-src 'self' data: https://*.sharepoint.com https://graph.microsoft.com https://upload.wikimedia.org;
@@ -49,7 +48,6 @@
     .footer-note{margin-top:1rem;color:#666;font-size:.9rem}
     .pill{display:inline-block;border:1px solid #d1d5db;border-radius:999px;padding:.1rem .5rem;font-size:.8rem;color:#555}
   </style>
-  <!-- MSAL hosted LOCALLY -->
   <script src="./msal-browser.min.js"></script>
 </head>
 <body>
@@ -64,7 +62,6 @@
   </header>
 
   <main>
-    <!-- Sign-in required card -->
     <section id="signinCard" class="card">
       <h2>Welcome</h2>
       <p>Sign in with your company account to continue.</p>
@@ -72,10 +69,8 @@
       <button class="btn primary" id="signinStart">Sign in</button>
     </section>
 
-    <!-- App content (hidden until auth) -->
     <section id="appContent" class="hidden">
       <div class="grid">
-        <!-- Projects Panel -->
         <div class="card">
           <div class="toolbar">
             <h3>Projects</h3>
@@ -96,7 +91,6 @@
           </table>
         </div>
 
-        <!-- Tasks Panel -->
         <div class="card">
           <div class="toolbar">
             <h3>Tasks</h3>
@@ -129,7 +123,6 @@
     <p class="footer-note">Hosted at <a href="https://abirrahat.github.io/wolcas-webapp/" target="_blank" rel="noopener">GitHub Pages</a>.</p>
   </main>
 
-  <!-- Guard: stop early if MSAL didn't load locally -->
   <script>
     if (typeof window.msal === 'undefined') {
       console.error('Local MSAL failed to load. Ensure msal-browser.min.js is in the repo root.');
@@ -137,36 +130,26 @@
     }
   </script>
 
-  <!-- App code -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // === Configuration ===
-      const AZURE_AD = {
-        clientId: "827656f8-3a21-4d69-b6e5-c35e2ec2fb71",
-        authority: "https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45",
-        redirectUri: "https://abirrahat.github.io/wolcas-webapp/auth"
-      };
+      const AZURE_AD = { clientId: "827656f8-3a21-4d69-b6e5-c35e2ec2fb71", authority: "https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45", redirectUri: "https://abirrahat.github.io/wolcas-webapp/auth" };
       const GRAPH_SCOPES = ["User.Read","Group.Read.All","Sites.ReadWrite.All","Files.ReadWrite.All"];
 
       const SP_HOST = "architektica-my.sharepoint.com";
       const SP_SITE_PATH = "/personal/abir_architektica_com";
       const LIST_DISPLAY_NAMES = { Project: "Project", Task: "Task" };
+      const RBAC_GROUPS = { admin:["WOLCAS Admins"], editor:["WOLCAS Editors"], viewer:["WOLCAS Viewers"] };
 
-      const RBAC_GROUPS = { admin: ["WOLCAS Admins"], editor: ["WOLCAS Editors"], viewer: ["WOLCAS Viewers"] };
+      // Avoid optional chaining on LHS: use helpers
+      function setInput(form, name, value){ const el = form && form.querySelector && form.querySelector(`[name=${name}]`); if(el) el.value = value ?? ""; }
+      function setCheck(form, name, checked){ const el = form && form.querySelector && form.querySelector(`[name=${name}]`); if(el) el.checked = !!checked; }
 
-      // Lookup config (will be auto-detected)
-      let TASK_PROJECT_LOOKUP_INTERNAL_NAME = 'Project'; // fallback
+      let TASK_PROJECT_LOOKUP_INTERNAL_NAME = 'Project';
       let TASK_PROJECT_LOOKUP_IS_MULTI = false;
 
-      // === MSAL Setup ===
-      const msalInstance = new msal.PublicClientApplication({
-        auth: AZURE_AD,
-        cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false },
-        system: { allowRedirectInIframe: true }
-      });
+      const msalInstance = new msal.PublicClientApplication({ auth: AZURE_AD, cache:{ cacheLocation:"sessionStorage", storeAuthStateInCookie:false }, system:{ allowRedirectInIframe:true } });
       let account = null;
 
-      // UI elements
       const signinCard = document.getElementById("signinCard");
       const appContent = document.getElementById("appContent");
       const signinStart = document.getElementById("signinStart");
@@ -191,342 +174,63 @@
       const taskPhotosInput = document.getElementById("taskPhotos");
       const taskProjectSelect = document.getElementById("TaskProjectSelect");
 
-      // App state
       let siteId = null, driveId = null, listIds = { Project: null, Task: null };
-      let role = "viewer";
-      let currentProjectItem = null;
-      let currentTaskItem = null;
-      let cachedProjects = [];
+      let role = "viewer"; let currentProjectItem = null; let currentTaskItem = null; let cachedProjects = [];
 
-      function setSignedInUI(isSignedIn){
-        signinCard?.classList.toggle("hidden", isSignedIn);
-        appContent?.classList.toggle("hidden", !isSignedIn);
-        if(signoutBtn) signoutBtn.disabled = !isSignedIn;
-        if(signinBtn) signinBtn.disabled = isSignedIn;
-      }
-      function setRoleUI(){
-        addProjectBtn?.classList.toggle("hidden", role === "viewer");
-        addTaskBtn?.classList.toggle("hidden", role === "viewer");
-        projectDeleteBtn?.classList.toggle("hidden", role !== "admin");
-        taskDeleteBtn?.classList.toggle("hidden", role !== "admin");
-        if(allocationInput) allocationInput.disabled = role !== "admin";
-      }
+      function setSignedInUI(isSignedIn){ signinCard && signinCard.classList.toggle("hidden", isSignedIn); appContent && appContent.classList.toggle("hidden", !isSignedIn); signoutBtn && (signoutBtn.disabled = !isSignedIn); signinBtn && (signinBtn.disabled = isSignedIn); }
+      function setRoleUI(){ addProjectBtn && addProjectBtn.classList.toggle("hidden", role === "viewer"); addTaskBtn && addTaskBtn.classList.toggle("hidden", role === "viewer"); projectDeleteBtn && projectDeleteBtn.classList.toggle("hidden", role !== "admin"); taskDeleteBtn && taskDeleteBtn.classList.toggle("hidden", role !== "admin"); allocationInput && (allocationInput.disabled = role !== "admin"); }
 
-      async function signIn(){
-        try{
-          const loginResponse = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES });
-          account = loginResponse.account;
-          if(userEmailSpan) userEmailSpan.textContent = account.username || account.homeAccountId;
-          setSignedInUI(true);
-          await postLoginInit();
-        }catch(err){
-          console.warn("Popup failed, trying redirect", err);
-          await msalInstance.loginRedirect({ scopes: GRAPH_SCOPES });
-        }
-      }
-      function signOut(){
-        if(!account) return;
-        msalInstance.logoutPopup({ account });
-        account = null; if(userEmailSpan) userEmailSpan.textContent = "Not signed in"; setSignedInUI(false);
-      }
+      async function signIn(){ try{ const loginResponse = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES }); account = loginResponse.account; userEmailSpan && (userEmailSpan.textContent = account.username || account.homeAccountId); setSignedInUI(true); await postLoginInit(); } catch(err){ console.warn("Popup failed, trying redirect", err); await msalInstance.loginRedirect({ scopes: GRAPH_SCOPES }); } }
+      function signOut(){ if(!account) return; msalInstance.logoutPopup({ account }); account = null; userEmailSpan && (userEmailSpan.textContent = "Not signed in"); setSignedInUI(false); }
 
-      async function getToken(){
-        if(!account) throw new Error("No account");
-        try{ const res = await msalInstance.acquireTokenSilent({ account, scopes: GRAPH_SCOPES }); return res.accessToken; }
-        catch(_){ const res = await msalInstance.acquireTokenPopup({ account, scopes: GRAPH_SCOPES }); return res.accessToken; }
-      }
+      async function getToken(){ if(!account) throw new Error("No account"); try{ const res = await msalInstance.acquireTokenSilent({ account, scopes: GRAPH_SCOPES }); return res.accessToken; } catch(_){ const res = await msalInstance.acquireTokenPopup({ account, scopes: GRAPH_SCOPES }); return res.accessToken; } }
+      async function graph(endpoint, method="GET", body=null, headers={}){ const token = await getToken(); const res = await fetch("https://graph.microsoft.com/v1.0" + endpoint, { method, headers:{ "Authorization":"Bearer "+token, "Content-Type":"application/json", ...headers }, body: body ? JSON.stringify(body) : null }); if(!res.ok){ const text = await res.text(); throw new Error(method+" "+endpoint+" => "+res.status+" " + text); } return res.status === 204 ? null : res.json(); }
 
-      async function graph(endpoint, method="GET", body=null, headers={}){
-        const token = await getToken();
-        const res = await fetch("https://graph.microsoft.com/v1.0" + endpoint, {
-          method,
-          headers: { "Authorization":"Bearer "+token, "Content-Type":"application/json", ...headers },
-          body: body ? JSON.stringify(body) : null
-        });
-        if(!res.ok){ const text = await res.text(); throw new Error(method+" "+endpoint+" => "+res.status+" " + text); }
-        return res.status === 204 ? null : res.json();
-      }
+      async function detectRole(){ try{ const meGroups = await graph("/me/memberOf?$select=displayName"); const names = (meGroups.value||[]).map(g => g.displayName); const isAdmin = RBAC_GROUPS.admin.some(n => names.includes(n)); const isEditor = RBAC_GROUPS.editor.some(n => names.includes(n)); role = isAdmin ? "admin" : (isEditor ? "editor" : "viewer"); }catch(e){ console.warn("Group lookup failed, defaulting to viewer", e); role = "viewer"; } setRoleUI(); }
+      async function resolveSiteAndLists(){ const site = await graph(`/sites/${SP_HOST}:${SP_SITE_PATH}`); siteId = site.id; const drive = await graph(`/sites/${siteId}/drive`); driveId = drive.id; const lists = await graph(`/sites/${siteId}/lists?$select=id,displayName`); for(const l of lists.value){ if(l.displayName === LIST_DISPLAY_NAMES.Project){ listIds.Project = l.id; } if(l.displayName === LIST_DISPLAY_NAMES.Task){ listIds.Task = l.id; } } if(!listIds.Project || !listIds.Task) throw new Error("Required lists not found: Project/Task"); }
+      async function detectTaskProjectLookup(){ try{ const cols = await graph(`/sites/${siteId}/lists/${listIds.Task}/columns?$select=name,displayName,lookup`); const match = (cols.value||[]).find(c => c.lookup && c.lookup.listId === listIds.Project); if(match){ TASK_PROJECT_LOOKUP_INTERNAL_NAME = match.name; TASK_PROJECT_LOOKUP_IS_MULTI = !!match.lookup.allowMultipleValues; } } catch(e){ console.warn('Lookup detection failed; using fallback', e); } }
 
-      async function detectRole(){
-        try{
-          const meGroups = await graph("/me/memberOf?$select=displayName");
-          const names = (meGroups.value||[]).map(g => g.displayName);
-          const isAdmin = RBAC_GROUPS.admin.some(n => names.includes(n));
-          const isEditor = RBAC_GROUPS.editor.some(n => names.includes(n));
-          role = isAdmin ? "admin" : (isEditor ? "editor" : "viewer");
-        }catch(e){ console.warn("Group lookup failed, defaulting to viewer", e); role = "viewer"; }
-        setRoleUI();
-      }
+      async function loadProjects(){ const items = await graph(`/sites/${siteId}/lists/${listIds.Project}/items?$top=500&expand=fields`); cachedProjects = items.value || []; renderProjects(cachedProjects); populateProjectSelect(cachedProjects); }
+      function renderProjects(items){ projectsTableBody.innerHTML = ""; for(const it of items){ const f = it.fields || {}; const tr = document.createElement("tr"); tr.innerHTML = `<td>${escapeHtml(f.Title||"")}</td><td>${escapeHtml(f.Owner||"")}</td><td>${escapeHtml(f.StartDate||"")}</td><td>${escapeHtml(f.ExpectedSales||"")}</td><td>${f.Active?"Yes":"No"}</td><td><button class='btn' data-id='${it.id}' data-action='editProject'>Edit</button>${role==='admin'?` <button class='btn danger' data-id='${it.id}' data-action='deleteProject'>Delete</button>`:''}</td>`; projectsTableBody.appendChild(tr); } }
+      function populateProjectSelect(items){ if(!taskProjectSelect) return; taskProjectSelect.innerHTML = `<option value=''>Select a project…</option>`; for(const it of items){ const f = it.fields||{}; const opt = document.createElement('option'); opt.value = it.id; opt.textContent = f.Title || `(ID ${it.id})`; taskProjectSelect.appendChild(opt); } }
 
-      async function resolveSiteAndLists(){
-        const site = await graph(`/sites/${SP_HOST}:${SP_SITE_PATH}`);
-        siteId = site.id;
-        const drive = await graph(`/sites/${siteId}/drive`);
-        driveId = drive.id;
-        const lists = await graph(`/sites/${siteId}/lists?$select=id,displayName`);
-        for(const l of lists.value){
-          if(l.displayName === LIST_DISPLAY_NAMES.Project){ listIds.Project = l.id; }
-          if(l.displayName === LIST_DISPLAY_NAMES.Task){ listIds.Task = l.id; }
-        }
-        if(!listIds.Project || !listIds.Task) throw new Error("Required lists not found: Project/Task");
-      }
+      function openProjectModal(item){ currentProjectItem = item || null; projectForm && projectForm.reset(); projectDeleteBtn && projectDeleteBtn.classList.toggle("hidden", !(role === "admin" && !!item)); if(item){ const f = item.fields||{}; setInput(projectForm, 'Title', f.Title||""); setInput(projectForm, 'Owner', f.Owner||""); setInput(projectForm, 'StartDate', f.StartDate||""); setInput(projectForm, 'ExpectedSales', f.ExpectedSales||""); setCheck(projectForm, 'Active', !!f.Active); } projectModal && projectModal.showModal(); }
+      async function saveProject(){ const fields = collectFormFields(projectForm); if(!fields) return; const payload = { fields }; if(currentProjectItem?.id){ await graph(`/sites/${siteId}/lists/${listIds.Project}/items/${currentProjectItem.id}/fields`, "PATCH", fields); } else { currentProjectItem = await graph(`/sites/${siteId}/lists/${listIds.Project}/items`, "POST", payload); } await loadProjects(); projectModal && projectModal.close(); }
+      async function deleteProject(id){ if(role !== "admin") return alert("Only admins can delete."); if(!confirm("Delete this project?")) return; await graph(`/sites/${siteId}/lists/${listIds.Project}/items/${id}`, "DELETE"); await loadProjects(); }
 
-      async function detectTaskProjectLookup(){
-        try{
-          const cols = await graph(`/sites/${siteId}/lists/${listIds.Task}/columns?$select=name,displayName,lookup`);
-          const match = (cols.value||[]).find(c => c.lookup && c.lookup.listId === listIds.Project);
-          if(match){ TASK_PROJECT_LOOKUP_INTERNAL_NAME = match.name; TASK_PROJECT_LOOKUP_IS_MULTI = !!match.lookup.allowMultipleValues; }
-        }catch(e){ console.warn('Lookup detection failed; using fallback', e); }
-      }
+      async function loadTasks(){ const items = await graph(`/sites/${siteId}/lists/${listIds.Task}/items?$top=500&expand=fields`); renderTasks(items.value || []); }
+      function renderTasks(items){ tasksTableBody.innerHTML = ""; for(const it of items){ const f = it.fields || {}; const tr = document.createElement("tr"); const projKey = `${TASK_PROJECT_LOOKUP_INTERNAL_NAME}`; const projIdKey = `${TASK_PROJECT_LOOKUP_INTERNAL_NAME}LookupId`; tr.innerHTML = `<td>${escapeHtml(f.Title||"")}</td><td>${escapeHtml(f[projKey]||f[projIdKey]||"")}</td><td>${escapeHtml(f.Address||"")}</td><td>${escapeHtml(f.StartDate||"")}</td><td>${escapeHtml(f.EndDate||"")}</td><td>${escapeHtml(f.Quantity||"")}</td><td>${escapeHtml(f.UnitCost||"")}</td><td>${escapeHtml(f.TotalCost||"")}</td><td>${escapeHtml(f.Allocation||"")}</td><td>${escapeHtml(f.Sprint||"")}</td><td>${escapeHtml(f.Assignee||"")}</td><td>${role!=='viewer'?`<button class='btn' data-id='${it.id}' data-action='editTask'>Edit</button>`:''}${role==='admin'?` <button class='btn danger' data-id='${it.id}' data-action='deleteTask'>Delete</button>`:''}</td>`; tasksTableBody.appendChild(tr); } }
 
-      // === Projects ===
-      async function loadProjects(){
-        const items = await graph(`/sites/${siteId}/lists/${listIds.Project}/items?$top=500&expand=fields`);
-        cachedProjects = items.value || [];
-        renderProjects(cachedProjects);
-        populateProjectSelect(cachedProjects);
-      }
+      function openTaskModal(item){ currentTaskItem = item || null; taskForm && taskForm.reset(); taskDeleteBtn && taskDeleteBtn.classList.toggle("hidden", !(role === "admin" && !!item)); if(item){ const f = item.fields||{}; for(const k of ["Title","Address","StartDate","EndDate","Quantity","UnitCost","TotalCost","Allocation","Sprint","Assignee","Description","Notes"]){ setInput(taskForm, k, f[k] || ""); } const projIdKey = `${TASK_PROJECT_LOOKUP_INTERNAL_NAME}LookupId`; const currentProjId = f[projIdKey]; if(taskProjectSelect){ taskProjectSelect.value = currentProjId ? String(currentProjId) : ""; } } else { if(taskProjectSelect){ taskProjectSelect.value = ""; } } taskModal && taskModal.showModal(); }
+      async function saveTask(){ const fields = collectFormFields(taskForm); if(!fields) return; if(currentTaskItem?.fields && role !== "admin") fields.Allocation = currentTaskItem.fields.Allocation; const keyBase = `${TASK_PROJECT_LOOKUP_INTERNAL_NAME}LookupId`; const selVal = taskProjectSelect ? taskProjectSelect.value : ""; if(selVal){ const projId = parseInt(selVal,10); if(!Number.isNaN(projId)){ if(TASK_PROJECT_LOOKUP_IS_MULTI){ fields[`${keyBase}@odata.type`] = 'Collection(Edm.Int32)'; fields[keyBase] = [projId]; } else { fields[keyBase] = projId; } } } else { if(TASK_PROJECT_LOOKUP_IS_MULTI){ fields[`${keyBase}@odata.type`] = 'Collection(Edm.Int32)'; fields[keyBase] = []; } else { fields[keyBase] = null; } }
+        const payload = { fields }; let itemId = currentTaskItem?.id; if(itemId){ await graph(`/sites/${siteId}/lists/${listIds.Task}/items/${itemId}/fields`, "PATCH", fields); } else { const created = await graph(`/sites/${siteId}/lists/${listIds.Task}/items`, "POST", payload); itemId = created.id; currentTaskItem = created; }
+        const files = taskPhotosInput && taskPhotosInput.files; if(files && files.length){ await ensureTaskPhotosFolder(); const links = []; for(const file of files){ const safeName = sanitizeFileName(file.name); const uploadUrl = `/sites/${siteId}/drive/root:/TaskPhotos/${encodeURIComponent(safeName)}:/content`; const token = await getToken(); const res = await fetch("https://graph.microsoft.com/v1.0" + uploadUrl, { method:"PUT", headers:{ "Authorization":"Bearer "+token, "Content-Type": file.type || "application/octet-stream" }, body:file }); if(res.ok){ const driveItem = await res.json(); links.push(driveItem.webUrl); } else { const errText = await res.text(); console.error("Upload failed", errText); alert("Photo upload failed: " + errText); } } if(links.length){ await graph(`/sites/${siteId}/lists/${listIds.Task}/items/${itemId}/fields`, "PATCH", { Photos: links.join("; ") }); } }
+        await loadTasks(); taskModal && taskModal.close(); }
+      async function deleteTask(id){ if(role !== "admin") return alert("Only admins can delete."); if(!confirm("Delete this task?")) return; await graph(`/sites/${siteId}/lists/${listIds.Task}/items/${id}`, "DELETE"); await loadTasks(); }
 
-      function renderProjects(items){
-        projectsTableBody.innerHTML = "";
-        for(const it of items){
-          const f = it.fields || {};
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${escapeHtml(f.Title||"")}</td>
-            <td>${escapeHtml(f.Owner||"")}</td>
-            <td>${escapeHtml(f.StartDate||"")}</td>
-            <td>${escapeHtml(f.ExpectedSales||"")}</td>
-            <td>${f.Active?"Yes":"No"}</td>
-            <td>
-              <button class="btn" data-id="${it.id}" data-action="editProject">Edit</button>
-              ${role === 'admin' ? `<button class='btn danger' data-id='${it.id}' data-action='deleteProject'>Delete</button>` : ''}
-            </td>`;
-          projectsTableBody.appendChild(tr);
-        }
-      }
-
-      function populateProjectSelect(items){
-        if(!taskProjectSelect) return;
-        taskProjectSelect.innerHTML = `<option value="">Select a project…</option>`;
-        for(const it of items){
-          const f = it.fields||{};
-          const opt = document.createElement('option');
-          opt.value = it.id; // SharePoint list item ID
-          opt.textContent = f.Title || `(ID ${it.id})`;
-          taskProjectSelect.appendChild(opt);
-        }
-      }
-
-      function openProjectModal(item){
-        currentProjectItem = item || null;
-        projectForm?.reset();
-        projectDeleteBtn?.classList.toggle("hidden", !(role === "admin" && !!item));
-        if(item){
-          const f = item.fields||{};
-          projectForm?.querySelector("[name=Title]").value = f.Title||"";
-          projectForm?.querySelector("[name=Owner]").value = f.Owner||"";
-          projectForm?.querySelector("[name=StartDate]").value = f.StartDate||"";
-          projectForm?.querySelector("[name=ExpectedSales]").value = f.ExpectedSales||"";
-          const activeEl = projectForm?.querySelector("[name=Active]"); if(activeEl) activeEl.checked = !!f.Active;
-        }
-        projectModal?.showModal();
-      }
-
-      async function saveProject(){
-        const fields = collectFormFields(projectForm); if(!fields) return;
-        const payload = { fields };
-        if(currentProjectItem?.id){
-          await graph(`/sites/${siteId}/lists/${listIds.Project}/items/${currentProjectItem.id}/fields`, "PATCH", fields);
-        }else{
-          currentProjectItem = await graph(`/sites/${siteId}/lists/${listIds.Project}/items`, "POST", payload);
-        }
-        await loadProjects();
-        projectModal?.close();
-      }
-
-      async function deleteProject(id){
-        if(role !== "admin") return alert("Only admins can delete.");
-        if(!confirm("Delete this project?")) return;
-        await graph(`/sites/${siteId}/lists/${listIds.Project}/items/${id}`, "DELETE");
-        await loadProjects();
-      }
-
-      // === Tasks ===
-      async function loadTasks(){
-        const items = await graph(`/sites/${siteId}/lists/${listIds.Task}/items?$top=500&expand=fields`);
-        renderTasks(items.value || []);
-      }
-
-      function renderTasks(items){
-        tasksTableBody.innerHTML = "";
-        for(const it of items){
-          const f = it.fields || {};
-          const tr = document.createElement("tr");
-          const projKey = `${TASK_PROJECT_LOOKUP_INTERNAL_NAME}`; // displays value
-          const projIdKey = `${TASK_PROJECT_LOOKUP_INTERNAL_NAME}LookupId`;
-          tr.innerHTML = `
-            <td>${escapeHtml(f.Title||"")}</td>
-            <td>${escapeHtml(f[projKey]||f[projIdKey]||"")}</td>
-            <td>${escapeHtml(f.Address||"")}</td>
-            <td>${escapeHtml(f.StartDate||"")}</td>
-            <td>${escapeHtml(f.EndDate||"")}</td>
-            <td>${escapeHtml(f.Quantity||"")}</td>
-            <td>${escapeHtml(f.UnitCost||"")}</td>
-            <td>${escapeHtml(f.TotalCost||"")}</td>
-            <td>${escapeHtml(f.Allocation||"")}</td>
-            <td>${escapeHtml(f.Sprint||"")}</td>
-            <td>${escapeHtml(f.Assignee||"")}</td>
-            <td>
-              ${role !== 'viewer' ? `<button class='btn' data-id='${it.id}' data-action='editTask'>Edit</button>` : ''}
-              ${role === 'admin' ? `<button class='btn danger' data-id='${it.id}' data-action='deleteTask'>Delete</button>` : ''}
-            </td>`;
-          tasksTableBody.appendChild(tr);
-        }
-      }
-
-      function openTaskModal(item){
-        currentTaskItem = item || null;
-        taskForm?.reset();
-        taskDeleteBtn?.classList.toggle("hidden", !(role === "admin" && !!item));
-        if(item){
-          const f = item.fields||{};
-          for(const k of ["Title","Address","StartDate","EndDate","Quantity","UnitCost","TotalCost","Allocation","Sprint","Assignee","Description","Notes"]){
-            const el = taskForm?.querySelector(`[name=${k}]`); if(el){ el.value = f[k] || ""; }
-          }
-          // Preselect project
-          if(taskProjectSelect){
-            const projIdKey = `${TASK_PROJECT_LOOKUP_INTERNAL_NAME}LookupId`;
-            const currentProjId = f[projIdKey];
-            if(currentProjId){ taskProjectSelect.value = String(currentProjId); }
-          }
-        } else {
-          // default: no project selected
-          if(taskProjectSelect){ taskProjectSelect.value = ""; }
-        }
-        taskModal?.showModal();
-      }
-
-      async function saveTask(){
-        const fields = collectFormFields(taskForm); if(!fields) return;
-        // Enforce per-field RBAC: Allocation only admin can change
-        if(currentTaskItem?.fields && role !== "admin") fields.Allocation = currentTaskItem.fields.Allocation;
-
-        // Wire Lookup: Task -> Project
-        const keyBase = `${TASK_PROJECT_LOOKUP_INTERNAL_NAME}LookupId`;
-        const selVal = taskProjectSelect?.value || "";
-        if(selVal){
-          const projId = parseInt(selVal, 10);
-          if(!Number.isNaN(projId)){
-            if(TASK_PROJECT_LOOKUP_IS_MULTI){
-              fields[`${keyBase}@odata.type`] = 'Collection(Edm.Int32)';
-              fields[keyBase] = [projId];
-            }else{
-              fields[keyBase] = projId;
-            }
-          }
-        }else{
-          // If no selection, clear lookup (set to null or [] depending on multi)
-          if(TASK_PROJECT_LOOKUP_IS_MULTI){
-            fields[`${keyBase}@odata.type`] = 'Collection(Edm.Int32)';
-            fields[keyBase] = [];
-          }else{
-            fields[keyBase] = null;
-          }
-        }
-
-        const payload = { fields };
-        let itemId = currentTaskItem?.id;
-        if(itemId){
-          await graph(`/sites/${siteId}/lists/${listIds.Task}/items/${itemId}/fields`, "PATCH", fields);
-        }else{
-          const created = await graph(`/sites/${siteId}/lists/${listIds.Task}/items`, "POST", payload);
-          itemId = created.id; currentTaskItem = created;
-        }
-
-        // Photos upload (optional)
-        const files = taskPhotosInput?.files;
-        if(files && files.length){
-          await ensureTaskPhotosFolder();
-          const links = [];
-          for(const file of files){
-            const safeName = sanitizeFileName(file.name);
-            const uploadUrl = `/sites/${siteId}/drive/root:/TaskPhotos/${encodeURIComponent(safeName)}:/content`;
-            const token = await getToken();
-            const res = await fetch("https://graph.microsoft.com/v1.0" + uploadUrl, {
-              method:"PUT",
-              headers: { "Authorization":"Bearer "+token, "Content-Type": file.type || "application/octet-stream" },
-              body: file
-            });
-            if(res.ok){ const driveItem = await res.json(); links.push(driveItem.webUrl); }
-            else{ const errText = await res.text(); console.error("Upload failed", errText); alert("Photo upload failed: " + errText); }
-          }
-          if(links.length){ await graph(`/sites/${siteId}/lists/${listIds.Task}/items/${itemId}/fields`, "PATCH", { Photos: links.join("; ") }); }
-        }
-
-        await loadTasks();
-        taskModal?.close();
-      }
-
-      async function deleteTask(id){
-        if(role !== "admin") return alert("Only admins can delete.");
-        if(!confirm("Delete this task?")) return;
-        await graph(`/sites/${siteId}/lists/${listIds.Task}/items/${id}`, "DELETE");
-        await loadTasks();
-      }
-
-      async function ensureTaskPhotosFolder(){
-        const children = await graph(`/sites/${siteId}/drive/root/children?$select=name,folder`);
-        const exists = children.value.find(c => c.name === "TaskPhotos" && c.folder);
-        if(!exists){ await graph(`/sites/${siteId}/drive/root/children`, "POST", { name:"TaskPhotos", folder:{}, "@microsoft.graph.conflictBehavior":"fail" }); }
-      }
-
-      function collectFormFields(form){
-        if(!form) return null;
-        const fields = {};
-        for(const el of form.querySelectorAll("input,textarea,select")){
-          if(!el.name) continue;
-          if(el.type === "checkbox") fields[el.name] = el.checked;
-          else fields[el.name] = el.value;
-        }
-        return fields;
-      }
+      async function ensureTaskPhotosFolder(){ const children = await graph(`/sites/${siteId}/drive/root/children?$select=name,folder`); const exists = children.value.find(c => c.name === "TaskPhotos" && c.folder); if(!exists){ await graph(`/sites/${siteId}/drive/root/children`, "POST", { name:"TaskPhotos", folder:{}, "@microsoft.graph.conflictBehavior":"fail" }); } }
+      function collectFormFields(form){ if(!form || !form.querySelectorAll) return null; const fields = {}; for(const el of form.querySelectorAll("input,textarea,select")){ if(!el.name) continue; if(el.type === "checkbox") fields[el.name] = el.checked; else fields[el.name] = el.value; } return fields; }
       function escapeHtml(s){ return String(s).replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
       function sanitizeFileName(name){ return name.replace(/[^A-Za-z0-9._-]/g, "_"); }
 
-      async function postLoginInit(){
-        await detectRole();
-        await resolveSiteAndLists();
-        await detectTaskProjectLookup();
-        await Promise.all([loadProjects(), loadTasks()]);
-      }
+      async function postLoginInit(){ await detectRole(); await resolveSiteAndLists(); await detectTaskProjectLookup(); await Promise.all([loadProjects(), loadTasks()]); }
 
-      // Row action handlers
-      document.addEventListener("click", (e)=>{
-        const btn = e.target.closest("button"); if(!btn) return;
-        const action = btn.getAttribute("data-action"); const id = btn.getAttribute("data-id");
-        if(action === "editProject"){ graph(`/sites/${siteId}/lists/${listIds.Project}/items/${id}?expand=fields`).then(item => openProjectModal(item)); }
-        else if(action === "deleteProject"){ deleteProject(id); }
-        else if(action === "editTask"){ graph(`/sites/${siteId}/lists/${listIds.Task}/items/${id}?expand=fields`).then(item => openTaskModal(item)); }
-        else if(action === "deleteTask"){ deleteTask(id); }
-      });
+      document.addEventListener("click", (e)=>{ const btn = e.target.closest("button"); if(!btn) return; const action = btn.getAttribute("data-action"); const id = btn.getAttribute("data-id"); if(action === "editProject"){ graph(`/sites/${siteId}/lists/${listIds.Project}/items/${id}?expand=fields`).then(item => openProjectModal(item)); } else if(action === "deleteProject"){ deleteProject(id); } else if(action === "editTask"){ graph(`/sites/${siteId}/lists/${listIds.Task}/items/${id}?expand=fields`).then(item => openTaskModal(item)); } else if(action === "deleteTask"){ deleteTask(id); } });
 
-      // Safe bindings
-      signinStart?.addEventListener("click", signIn);
-      signinBtn?.addEventListener("click", signIn);
-      signoutBtn?.addEventListener("click", signOut);
-      addProjectBtn?.addEventListener("click", ()=> openProjectModal(null));
-      projectSaveBtn?.addEventListener("click", (ev)=>{ ev.preventDefault(); saveProject(); });
-      projectDeleteBtn?.addEventListener("click", (ev)=>{ ev.preventDefault(); if(currentProjectItem?.id) deleteProject(currentProjectItem.id); });
-      addTaskBtn?.addEventListener("click", ()=> openTaskModal(null));
-      taskSaveBtn?.addEventListener("click", (ev)=>{ ev.preventDefault(); saveTask(); });
-      taskDeleteBtn?.addEventListener("click", (ev)=>{ ev.preventDefault(); if(currentTaskItem?.id) deleteTask(currentTaskItem.id); });
+      signinStart && signinStart.addEventListener("click", signIn);
+      signinBtn && signinBtn.addEventListener("click", signIn);
+      signoutBtn && signoutBtn.addEventListener("click", signOut);
+      addProjectBtn && addProjectBtn.addEventListener("click", ()=> openProjectModal(null));
+      projectSaveBtn && projectSaveBtn.addEventListener("click", (ev)=>{ ev.preventDefault(); saveProject(); });
+      projectDeleteBtn && projectDeleteBtn.addEventListener("click", (ev)=>{ ev.preventDefault(); if(currentProjectItem?.id) deleteProject(currentProjectItem.id); });
+      addTaskBtn && addTaskBtn.addEventListener("click", ()=> openTaskModal(null));
+      taskSaveBtn && taskSaveBtn.addEventListener("click", (ev)=>{ ev.preventDefault(); saveTask(); });
+      taskDeleteBtn && taskDeleteBtn.addEventListener("click", (ev)=>{ ev.preventDefault(); if(currentTaskItem?.id) deleteTask(currentTaskItem.id); });
 
       setSignedInUI(false);
     });
   </script>
 
-  <!-- Project Modal -->
   <dialog id="projectModal">
     <form method="dialog" class="modal" id="projectForm">
       <h3>Project editor</h3>
@@ -560,7 +264,6 @@
     </form>
   </dialog>
 
-  <!-- Task Modal -->
   <dialog id="taskModal">
     <form method="dialog" class="modal" id="taskForm">
       <h3>Task editor</h3>
