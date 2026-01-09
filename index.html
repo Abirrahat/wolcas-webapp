@@ -4,417 +4,1740 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WOLCAS</title>
-  <!-- CSP updated to avoid inline/script/logo blocks and allow Graph/AAD only -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://upload.wikimedia.org; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com; frame-src 'self' https://login.microsoftonline.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self' https://login.microsoftonline.com;" />
-  <!-- Use project-relative favicon to stop domain-root 404 -->
-  <link rel="icon" href="./Construction_icon.svg" type="image/svg+xml" />
+
+  <!-- CSP tuned for GitHub Pages + MSAL + Microsoft Graph. Kept permissive to avoid blocking inline scripts, per requirements. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src https://login.microsoftonline.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com https://*.sharepoint.com;" />
+
   <style>
-    /* ===== Preserve your original compact layout (no redesign) ===== */
-    body { font-family: Segoe UI, Tahoma, Arial, sans-serif; margin:0; background:#fff; color:#111; }
-    header { display:flex; align-items:center; gap:12px; padding:8px 12px; border-bottom:1px solid #eee; }
-    header img.logo { height:56px; width:auto; }
-    header h1 { font-size:18px; margin:0; font-weight:600; }
-    header nav { margin-left:auto; display:flex; align-items:center; gap:8px; }
-    .badge { background:#eef2ff; color:#3741a7; border:1px solid #c7cff7; padding:4px 8px; border-radius:14px; font-size:12px; }
-    .btn { display:inline-block; padding:6px 10px; border:1px solid #222; border-radius:6px; background:#fff; cursor:pointer; }
-    .btn.primary { background:#2563eb; color:#fff; border-color:#2563eb; }
-    .btn.danger { background:#bf1c1c; color:#fff; border-color:#bf1c1c; }
-    .toolbar { padding:8px 12px; border-bottom:1px solid #eee; }
-    .tabs { display:flex; gap:16px; }
-    .tab { padding:6px 8px; border-radius:6px; border:1px solid #eee; background:#fafafa; cursor:pointer; }
-    .tab.active { background:#fff; border-color:#ddd; }
-    main { padding:8px 12px; }
-    .grid { display:grid; grid-template-columns: 1fr 380px; gap:18px; align-items:start; }
+    :root { --primary:#1E3A8A; --secondary:#475569; --accent:#F97316; --bg:#F8FAFC; --text:#0F172A; --card:#ffffff; --border:#e5e7eb; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial; color:var(--text); background:var(--bg); padding-bottom:72px; overflow-x:hidden; }
+    body.signed-out { background:#fff; padding-bottom:0; }
+
+    header.sticky { position:sticky; top:0; z-index:1000; background:var(--card); border-bottom:1px solid var(--border); }
+    .header-inner { display:flex; align-items:center; gap:12px; padding:10px 16px; }
+    .auth { display:flex; align-items:center; gap:10px; }
+    .auth .email { font-size:0.95rem; color:var(--secondary); max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .app-title { font-weight:800; letter-spacing:0.5px; color:var(--primary); }
+    .company { margin-left:auto; display:flex; align-items:center; gap:10px; color:var(--secondary); font-size:0.95rem; }
+    .company img { width:56px; height:56px; border-radius:8px; object-fit:cover; border:1px solid var(--border); }
+
+    .container { width:min(100%, 1100px); margin-inline:auto; padding:16px; }
+    h1,h2,h3 { margin:8px 0; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.04); padding:16px; width:100%; overflow-wrap:anywhere; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:16px; align-items:start; }
+
+    .btn { display:inline-flex; align-items:center; gap:6px; padding:10px 14px; border-radius:10px; border:1px solid var(--border); cursor:pointer; text-decoration:none; font-weight:700; background:#fff; color:var(--primary); }
+    .btn.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .btn.secondary { background:#fff; color:var(--primary); }
+    .btn.small { padding:6px 10px; font-size:0.9rem; }
+    .btn.link { background:transparent; border-color:transparent; color:var(--primary); padding:6px 8px; }
+    .btn:disabled { opacity:0.55; cursor:not-allowed; }
+
+    .badge { display:inline-block; padding:6px 10px; border-radius:999px; font-size:0.9rem; border:1px solid var(--border); background:#fff; }
+    .badge.active { color:#065f46; background:#ecfdf5; border-color:#a7f3d0; }
+    .badge.completed { color:#1f2937; background:#e5e7eb; border-color:#d1d5db; }
+
+    .input-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .input-row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+    label { font-weight:700; font-size:0.9rem; color:var(--secondary); }
+    input[type=text], input[type=number], input[type=date], textarea { width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:#fff; font-size:1rem; }
+    textarea { min-height:72px; }
+
+    /* Bottom nav */
+    .bottom-nav { position:fixed; bottom:0; left:0; right:0; height:64px; border-top:1px solid var(--border); background:#fff; display:flex; justify-content:space-around; align-items:center; z-index:1000; }
+    .bottom-nav a { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:var(--secondary); text-decoration:none; font-weight:800; }
+    .bottom-nav a.active { color:var(--primary); }
+
+    #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#111827; color:#fff; padding:10px 14px; border-radius:10px; display:none; z-index:1100; }
+
+    /* Project sub-tab bar */
+    .subtabs { position:sticky; top:76px; background:#fff; border-bottom:1px solid var(--border); padding:8px; display:flex; gap:8px; z-index:900; align-items:center; }
+    .subtabs button { padding:8px 12px; border-radius:999px; border:1px solid var(--border); background:#fff; cursor:pointer; font-weight:800; }
+    .subtabs button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .scroll-panel { max-height:52vh; overflow:auto; padding:12px 0; }
+    .preview { max-width:120px; max-height:120px; border-radius:8px; border:1px solid var(--border); object-fit:cover; }
+
+    /* Centered modal */
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.2); display:none; align-items:center; justify-content:center; z-index:1050; }
+    .modal { width:min(840px, 92vw); }
+    .modal .card { border-radius:16px; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+
+    /* Tables */
     table { width:100%; border-collapse:collapse; }
-    th, td { padding:8px; border-bottom:1px solid #eee; text-align:left; font-size:14px; }
-    .right-actions { text-align:right; margin-bottom:8px; }
-    .hidden { display:none !important; }
-    .panel { border:1px solid #ddd; padding:10px; border-radius:6px; background:#fff; }
-    .field { margin-bottom:8px; }
-    .field label { display:block; font-size:12px; color:#555; margin-bottom:4px; }
-    .field input, .field textarea, .field select { width:100%; padding:6px; border:1px solid #ccc; border-radius:4px; }
-    /* Sign-in only card (white) */
-    #signInCard { max-width:400px; margin:80px auto; border:1px solid #e5e7eb; border-radius:10px; padding:18px; background:#fff; }
-    #signInCard h2 { margin:0 0 6px; font-size:18px; }
-    #signInCard p { margin:0 0 12px; color:#666; }
+    th, td { border:1px solid var(--border); padding:8px; text-align:left; }
+    th { background:#f3f4f6; position:sticky; top:0; z-index:1; }
+
+    .muted { color:#6b7280; }
+
+    /* Confirm actions */
+    .confirm-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+
+    /* Status row */
+    .status-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .status-text { flex:1 1 auto; min-width:0; }
+    .status-pill { display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); background:#fff; font-weight:900; border-radius:999px; height:34px; padding:0 14px; white-space:nowrap; line-height:1; flex:0 0 auto; text-transform:capitalize; }
+    .status-pill.active { color:#065f46; background:#ecfdf5; border-color:#a7f3d0; }
+    .status-pill.completed { color:#1f2937; background:#e5e7eb; border-color:#d1d5db; }
+
+    /* Signed-out view */
+    #signinOnly { display:none; }
+    body.signed-out #signinOnly { display:block; }
+    body.signed-out header.sticky { border-bottom:none; }
+    body.signed-out main, body.signed-out .bottom-nav { display:none !important; }
+
+    /* Small helper */
+    .row-actions { display:flex; gap:8px; flex-wrap:wrap; }
   </style>
 </head>
-<body>
-  <header>
-    <img class="logo" alt="Logo" src="https://upload.wikimedia.org/wikipedia/commons/5/59/Construction_icon.svg" />
-    <h1>WOLCAS</h1>
-    <nav>
-      <span id="userEmail" class="badge hidden"></span>
-      <button id="signInBtn" class="btn primary">Sign in</button>
-      <button id="signOutBtn" class="btn danger hidden">Sign out</button>
-    </nav>
+<body class="signed-out">
+  <header class="sticky">
+    <div class="header-inner">
+      <div class="auth">
+        <span class="email" id="userEmail"></span>
+        <button class="btn small secondary" id="btnAuth">Sign in</button>
+      </div>
+      <div class="app-title">WOLCAS</div>
+      <div class="company"><img id="companyLogo" alt="logo" /><span id="companyName">Company</span></div>
+    </div>
   </header>
 
-  <div class="toolbar">
-    <div class="tabs">
-      <div class="tab active" data-tab="projects">📁 Projects</div>
-      <div class="tab" data-tab="tasks">📝 Tasks</div>
-      <div class="tab" data-tab="dashboard">📊 Dashboard</div>
-      <div class="tab" data-tab="settings">⚙️ Settings</div>
+  <!-- Signed-out only -->
+  <section id="signinOnly" class="container">
+    <div class="card" style="max-width:520px; margin:18vh auto 0 auto; text-align:center;">
+      <h2 style="margin-top:0;">WOLCAS</h2>
+      <p class="muted">Sign in with your company account to use the app.</p>
+      <button class="btn primary" id="btnSignInCard">Sign in</button>
+      <div class="muted" style="margin-top:12px; font-size:0.9rem;">If you see a permission prompt, your admin may need to grant consent.</div>
     </div>
-  </div>
-
-  <!-- Sign-in Only (white background) -->
-  <section id="signInCard">
-    <h2>Sign in to continue</h2>
-    <p>Only permitted company users can use WOLCAS.</p>
-    <button id="cardSignInBtn" class="btn primary">Sign in with Microsoft</button>
   </section>
 
-  <main id="appRoot" class="hidden">
-    <!-- ===== Projects Tab (table left, editor right) ===== -->
-    <section id="tab-projects">
-      <div class="right-actions"><button id="btnAddProject" class="btn hidden">Add Project</button></div>
-      <div class="grid">
-        <div>
-          <table id="projectTable">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Project Address</th>
-                <th>Owner</th>
-                <th>Start Date</th>
-                <th>Expected Sales</th>
-                <th>Active</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <aside class="panel">
-          <div class="field"><label>Title</label><input id="projTitle" /></div>
-          <div class="field"><label>Project Address</label><input id="projAddress" /></div>
-          <div class="field"><label>Owner</label><input id="projOwner" /></div>
-          <div class="field"><label>Start Date</label><input id="projStart" type="date" /></div>
-          <div class="field"><label>Expected Sales</label><input id="projSales" type="number" step="0.01" /></div>
-          <div class="field"><label><input id="projActive" type="checkbox" /> Active</label></div>
+  <main id="views">
+    <!-- HOME -->
+    <section id="home" class="container" hidden>
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
           <div>
-            <button id="projSave" class="btn">Save</button>
-            <button id="projDelete" class="btn danger hidden">Delete</button>
+            <h1 style="margin-top:0;">Welcome to WOLCAS</h1>
+            <p class="muted" style="margin-bottom:0;">Create and track projects, tasks, allocations, photos, and reports.</p>
           </div>
-        </aside>
-      </div>
-    </section>
-
-    <!-- ===== Tasks Tab ===== -->
-    <section id="tab-tasks" class="hidden">
-      <div class="right-actions"><button id="btnAddTask" class="btn hidden">Add Task</button></div>
-      <div class="grid">
-        <div>
-          <table id="taskTable">
-            <thead>
-              <tr>
-                <th>Task name</th>
-                <th>Address</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Quantity</th>
-                <th>Unit Cost</th>
-                <th>Total Cost</th>
-                <th>Allocation</th>
-                <th>Sprint</th>
-                <th>Assignee</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+          <div class="row-actions">
+            <button class="btn primary" id="btnNewProject">Add Project</button>
+            <a class="btn secondary" href="#projects" id="btnGoProjects">Projects</a>
+          </div>
         </div>
-        <aside class="panel">
-          <div class="field"><label>Title</label><input id="taskTitle" /></div>
-          <div class="field"><label>Address</label><input id="taskAddress" /></div>
-          <div class="field"><label>Start Date</label><input id="taskStart" type="date" /></div>
-          <div class="field"><label>End Date</label><input id="taskEnd" type="date" /></div>
-          <div class="field"><label>Quantity</label><input id="taskQty" type="number" step="0.01" /></div>
-          <div class="field"><label>Unit Cost</label><input id="taskUnitCost" type="number" step="0.01" /></div>
-          <div class="field"><label>Total Cost</label><input id="taskTotalCost" type="number" step="0.01" /></div>
-          <div class="field"><label>Allocation</label><input id="taskAllocation" type="number" step="0.01" /></div>
-          <div class="field"><label>Sprint</label><input id="taskSprint" /></div>
-          <div class="field"><label>Assignee</label><input id="taskAssignee" /></div>
-          <div class="field"><label>Description</label><textarea id="taskDesc"></textarea></div>
-          <div class="field"><label>Notes</label><textarea id="taskNotes"></textarea></div>
-          <div class="field"><label>Photos</label><input id="taskPhotos" type="file" accept="image/*" multiple /></div>
-          <div>
-            <button id="taskSave" class="btn">Save</button>
-            <button id="taskDelete" class="btn danger hidden">Delete</button>
+      </div>
+      <div class="card" style="margin-top:12px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <h2 style="margin:0;">Recent projects</h2>
+          <a class="btn small secondary" href="#projects">View all</a>
+        </div>
+        <div id="homeRecent" class="grid" style="margin-top:12px;"></div>
+      </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section id="projects" class="container" hidden>
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <img id="projectsLogo" style="width:32px;height:32px;border-radius:6px;border:1px solid var(--border);object-fit:cover" alt="logo" />
+            <h2 style="margin:0">Projects</h2>
           </div>
-        </aside>
+          <div class="row-actions">
+            <button class="btn small primary" id="btnAddProjectTop">Add Project</button>
+            <a class="btn small secondary" id="openProjectList" target="_blank" rel="noopener">Open in SharePoint</a>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;" class="input-row">
+          <div>
+            <label>Search</label>
+            <input id="projSearch" type="text" placeholder="Search by address or owner" />
+          </div>
+          <div>
+            <label>Role</label>
+            <input id="roleDisplay" type="text" disabled />
+          </div>
+        </div>
+        <div id="projectsGrid" class="grid" style="margin-top:12px;"></div>
       </div>
     </section>
 
-    <!-- ===== Dashboard ===== -->
-    <section id="tab-dashboard" class="hidden">
-      <div class="panel">
-        <h3>Dashboard</h3>
-        <ul id="dashboardTotals"></ul>
-        <hr />
-        <h4>Recent Activity</h4>
-        <ul id="recentActivity"></ul>
+    <!-- PROJECT DETAILS -->
+    <section id="projectView" class="container" hidden>
+      <div class="card" id="projectHeader"></div>
+      <div class="subtabs">
+        <button data-tab="view" class="active">View</button>
+        <button data-tab="add" id="tabAddTask">Add Task</button>
+        <button data-tab="edit" id="tabEditTask">Edit Task</button>
+        <button data-tab="photos" id="tabPhotos">Photos</button>
+        <button id="btnReports" class="btn small secondary" style="margin-left:auto">Reports</button>
+      </div>
+
+      <div id="projectPanels">
+        <div id="panel-view" class="scroll-panel"></div>
+
+        <div id="panel-add" class="scroll-panel" hidden>
+          <div class="card">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+              <h3 style="margin:0;">Add a task</h3>
+              <a class="btn small secondary" id="openTaskList" target="_blank" rel="noopener">Open tasks in SharePoint</a>
+            </div>
+            <div class="input-row" style="margin-top:10px;">
+              <div><label>Task name</label><input id="add-name" type="text"/></div>
+              <div><label>Address</label><input id="add-address" type="text" disabled /></div>
+            </div>
+            <div class="input-row" style="margin-top:10px;">
+              <div><label>Start Date</label><input id="add-start" type="date"/></div>
+              <div><label>End Date</label><input id="add-end" type="date"/></div>
+            </div>
+            <div class="input-row" style="margin-top:10px;">
+              <div><label>Description</label><textarea id="add-desc"></textarea></div>
+              <div><label>Notes</label><textarea id="add-notes"></textarea></div>
+            </div>
+            <div class="input-row3" style="margin-top:10px;">
+              <div><label>Quantity</label><input id="add-qty" type="number" step="any"/></div>
+              <div><label>Unit Cost</label><input id="add-unit" type="number" step="any"/></div>
+              <div><label>Total Cost</label><input id="add-total" type="number" step="any"/></div>
+            </div>
+            <div class="input-row3" style="margin-top:10px;">
+              <div><label>Allocation</label><input id="add-allocation" type="number" step="any"/></div>
+              <div><label>Sprint</label><input id="add-sprint" type="text"/></div>
+              <div><label>Assignee</label><input id="add-assignee" type="text"/></div>
+            </div>
+            <div style="margin-top:10px">
+              <label>Photos</label>
+              <input id="add-photos" type="file" multiple accept="image/*" />
+              <div id="add-previews" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px"></div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn primary" id="btnSaveTask">Save</button>
+              <button class="btn" id="btnCancelAddTask">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="panel-edit" class="scroll-panel" hidden>
+          <div class="card">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+              <h3 style="margin:0;">Edit task</h3>
+              <div class="row-actions">
+                <button class="btn small" id="btnDeleteTask" style="display:none;">Delete</button>
+              </div>
+            </div>
+
+            <div class="input-row" style="margin-top:10px;">
+              <div>
+                <label>Select task</label>
+                <select id="taskSelect" style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--border);"></select>
+              </div>
+              <div>
+                <label>Address</label>
+                <input id="edit-address" type="text" disabled />
+              </div>
+            </div>
+
+            <div class="input-row" style="margin-top:10px;">
+              <div><label>Task name</label><input id="edit-name" type="text"/></div>
+              <div><label>Assignee</label><input id="edit-assignee" type="text"/></div>
+            </div>
+            <div class="input-row" style="margin-top:10px;">
+              <div><label>Start Date</label><input id="edit-start" type="date"/></div>
+              <div><label>End Date</label><input id="edit-end" type="date"/></div>
+            </div>
+            <div class="input-row" style="margin-top:10px;">
+              <div><label>Description</label><textarea id="edit-desc"></textarea></div>
+              <div><label>Notes</label><textarea id="edit-notes"></textarea></div>
+            </div>
+            <div class="input-row3" style="margin-top:10px;">
+              <div><label>Quantity</label><input id="edit-qty" type="number" step="any"/></div>
+              <div><label>Unit Cost</label><input id="edit-unit" type="number" step="any"/></div>
+              <div><label>Total Cost</label><input id="edit-total" type="number" step="any"/></div>
+            </div>
+            <div class="input-row3" style="margin-top:10px;">
+              <div><label>Allocation</label><input id="edit-allocation" type="number" step="any"/></div>
+              <div><label>Sprint</label><input id="edit-sprint" type="text"/></div>
+              <div><label>Quantity Unit</label><input id="edit-unitname" type="text"/></div>
+            </div>
+
+            <div style="margin-top:10px">
+              <label>Add more photos</label>
+              <input id="edit-photos" type="file" multiple accept="image/*" />
+              <div id="edit-thumbs" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px"></div>
+            </div>
+
+            <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn primary" id="btnUpdateTask">Save changes</button>
+              <button class="btn" id="btnCancelEditTask">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="panel-photos" class="scroll-panel" hidden>
+          <div id="photosGrid" class="grid"></div>
+        </div>
       </div>
     </section>
 
-    <!-- ===== Settings ===== -->
-    <section id="tab-settings" class="hidden">
-      <div class="panel">
-        <div class="field"><label>Company name</label><input id="companyName" /></div>
-        <div class="field"><label>Logo URL</label><input id="companyLogo" /></div>
-        <div><button id="settingsSave" class="btn">Save</button></div>
+    <!-- DASHBOARD -->
+    <section id="dashboard" class="container" hidden>
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <img id="dashLogo" style="width:32px;height:32px;border-radius:6px;border:1px solid var(--border);object-fit:cover" alt="logo" />
+            <h2 style="margin:0">Dashboard</h2>
+          </div>
+          <button class="btn small secondary" id="btnRefresh">Refresh</button>
+        </div>
+        <div class="grid" style="margin-top:12px;">
+          <div class="card"><h3>Total Projects</h3><div id="mTotalProjects" class="badge"></div></div>
+          <div class="card"><h3>Active Projects</h3><div id="mActiveProjects" class="badge active"></div></div>
+          <div class="card"><h3>Completed Projects</h3><div id="mCompletedProjects" class="badge completed"></div></div>
+          <div class="card"><h3>Total Costs (tasks)</h3><div id="mTotalCosts" class="badge"></div></div>
+          <div class="card"><h3>Total Sales (expected)</h3><div id="mTotalSales" class="badge"></div></div>
+        </div>
+        <div class="card" style="margin-top:12px;"><h3>Recent Activity</h3><ul id="activityList" style="padding-left:18px; margin:8px 0;"></ul></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="settings" class="container" hidden>
+      <div class="card">
+        <h2>Settings</h2>
+        <div class="input-row">
+          <div><label>Company name</label><input id="set-name" type="text"/></div>
+          <div><label>Logo (URL)</label><input id="set-logo" type="text" placeholder="https://..."/></div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <h3 style="margin-top:0;">SharePoint / Graph configuration</h3>
+          <div class="input-row">
+            <div><label>Site URL</label><input id="set-siteurl" type="text"/></div>
+            <div><label>Projects list name</label><input id="set-projectlist" type="text"/></div>
+          </div>
+          <div class="input-row" style="margin-top:10px;">
+            <div><label>Tasks list name</label><input id="set-tasklist" type="text"/></div>
+            <div><label>Photos folder (Documents)</label><input id="set-photofolder" type="text"/></div>
+          </div>
+          <div class="input-row" style="margin-top:10px;">
+            <div><label>Admin group ID (optional)</label><input id="set-adminGroup" type="text" placeholder="00000000-0000-0000-0000-000000000000"/></div>
+            <div><label>Editor group ID (optional)</label><input id="set-editorGroup" type="text" placeholder="00000000-0000-0000-0000-000000000000"/></div>
+          </div>
+          <div class="input-row" style="margin-top:10px;">
+            <div><label>Viewer group ID (optional)</label><input id="set-viewerGroup" type="text" placeholder="00000000-0000-0000-0000-000000000000"/></div>
+            <div><label>Lookup field internal name (Task → Project)</label><input id="set-lookupField" type="text" placeholder="ProjectLookup"/></div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn primary" id="btnSaveSettings">Save</button>
+          <button class="btn" id="btnResetSettings">Reset</button>
+        </div>
+
+        <div class="muted" style="margin-top:10px; font-size:0.9rem;">Tip: SharePoint column internal names may differ from display names. If fields do not save, adjust mappings in code or list settings.</div>
       </div>
     </section>
   </main>
 
-  <!-- Local MSAL (no external CDNs) -->
+  <!-- Bottom navigation -->
+  <nav class="bottom-nav" aria-label="Bottom navigation">
+    <a href="#home" id="navHome"><span>🏠</span><span>Home</span></a>
+    <a href="#projects" id="navProjects"><span>🗂️</span><span>Projects</span></a>
+    <a href="#dashboard" id="navDash"><span>📊</span><span>Dashboard</span></a>
+    <a href="#settings" id="navSettings"><span>⚙️</span><span>Settings</span></a>
+  </nav>
+
+  <div id="toast"></div>
+  <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="card" id="modalCard"></div></div></div>
+
+  <!-- Local MSAL library (required) -->
   <script src="./msal-browser.min.js"></script>
+
   <script>
-    // ===== MSAL SPA config (no client secret in front-end) =====
-    const msalConfig = {
-      auth: {
-        clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
-        authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
-        redirectUri: 'https://abirrahat.github.io/wolcas-webapp/auth',
-        navigateToLoginRequestUrl: false
-      },
-      cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false },
-      system: { allowRedirectInIframe: false }
-    };
+  /**********************
+   * WOLCAS (Online, SharePoint-backed)
+   * - Single page app + dedicated /auth page for MSAL popup redirects
+   * - Data stored in SharePoint Lists (Projects + Tasks)
+   * - Photos uploaded to Documents library folder
+   *
+   * Notes:
+   * - Do NOT store client secrets in a static website.
+   * - Access control must be enforced by SharePoint permissions and Azure AD.
+   **********************/
+
+  /* ---- Azure AD / MSAL config ---- */
+  const AAD = {
+    clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
+    tenantId: '97d84781-b85c-4034-a0d0-588e7b442e45',
+    // Main app URL (GitHub Pages)
+    appUrl: 'https://abirrahat.github.io/wolcas-webapp/',
+    // Dedicated auth page used as redirect inside the popup
+    authUrl: 'https://abirrahat.github.io/wolcas-webapp/auth/'
+  };
+
+  const GRAPH_SCOPES = [
+    'User.Read',
+    'Sites.ReadWrite.All',
+    'Files.ReadWrite.All',
+    'Group.Read.All'
+  ];
+
+  const msalConfig = {
+    auth: {
+      clientId: AAD.clientId,
+      authority: `https://login.microsoftonline.com/${AAD.tenantId}`,
+      redirectUri: AAD.appUrl,
+      postLogoutRedirectUri: AAD.appUrl,
+      navigateToLoginRequestUrl: false
+    },
+    cache: {
+      cacheLocation: 'sessionStorage',
+      storeAuthStateInCookie: false
+    }
+  };
+
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+  /* ---- App config (saved in localStorage; data is NOT cached) ---- */
+  const CFG_KEY = 'wolcas_cfg_v1';
+  const defaultCfg = {
+    companyName: 'Company',
+    companyLogo: '',
+    siteUrl: 'https://architektica-my.sharepoint.com/personal/abir_architektica_com',
+    projectListName: 'Project',
+    taskListName: 'Task',
+    photosFolder: 'TaskPhotos',
+    adminGroupId: '',
+    editorGroupId: '',
+    viewerGroupId: '',
+    // Lookup internal name (without LookupId suffix). Example: "ProjectAddress" -> Graph expects "ProjectAddressLookupId" for lookup.
+    taskProjectLookupInternalName: 'Project'
+  };
+
+  function loadCfg(){
+    try{
+      const raw = localStorage.getItem(CFG_KEY);
+      if(!raw) return structuredClone(defaultCfg);
+      const parsed = JSON.parse(raw);
+      return { ...structuredClone(defaultCfg), ...parsed };
+    }catch(e){
+      console.warn(e);
+      return structuredClone(defaultCfg);
+    }
+  }
+  function saveCfg(cfg){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+
+  /* ---- Role-based access ---- */
+  const Roles = Object.freeze({ admin:'admin', editor:'editor', viewer:'viewer' });
+  let ROLE = Roles.viewer;
+
+  /* ---- In-memory state ---- */
+  const state = {
+    cfg: loadCfg(),
+    account: null,
+    user: { name:'', email:'' },
+    sharepoint: {
+      siteId: null,
+      projectsListId: null,
+      tasksListId: null,
+      driveId: null
+    },
+    projects: [], // { id(itemId), fields, tasksCount, ... }
+    tasksByProject: new Map(), // projectItemId -> [tasks]
+    activity: []
+  };
+
+  /* ---- UI helpers ---- */
+  function qs(id){ return document.getElementById(id); }
+  function toast(msg){ const t=qs('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none', 2200); }
+  function escapeHtml(s){ return (s??'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function escapeAttr(s){ return escapeHtml(s).replace(/\n/g,' '); }
+  function fmtMoney(v){ const n=parseFloat((v??'').toString().replace(/[^0-9.\-]/g,'')); if(Number.isNaN(n)) return (v??'').toString(); return n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function parseNum(v){ const n=parseFloat((v??'').toString().replace(/[^0-9.\-]/g,'')); return Number.isNaN(n) ? 0 : n; }
+  function setBodySignedIn(signedIn){ document.body.classList.toggle('signed-out', !signedIn); }
+
+  function setActiveNav(hash){
+    document.querySelectorAll('.bottom-nav a').forEach(a => a.classList.toggle('active', a.getAttribute('href')===hash));
+  }
+  function showView(id){
+    document.querySelectorAll('main > section').forEach(s => s.hidden = (s.id !== id));
+  }
+  function setScrollableHeights(){
+    try{
+      const headerH = document.querySelector('header.sticky')?.offsetHeight || 0;
+      const bottomH = document.querySelector('.bottom-nav')?.offsetHeight || 0;
+      const subtabsH = document.querySelector('.subtabs')?.offsetHeight || 0;
+      const available = Math.max(240, window.innerHeight - headerH - bottomH - subtabsH - 24);
+      document.querySelectorAll('.scroll-panel').forEach(p => { p.style.maxHeight = available+'px'; p.style.overflow='auto'; });
+    }catch(e){ console.warn(e); }
+  }
+
+  /* ---- Guard: block app when not signed in ---- */
+  function requireSignedIn(){
+    if(!state.account) throw new Error('Not signed in');
+  }
+
+  /* ---- Auth flow ---- */
+  async function initAuth(){
+    await msalInstance.initialize();
+
+    // If a redirect flow happened (rare here), handle it.
+    try{
+      const redirectRes = await msalInstance.handleRedirectPromise();
+      if(redirectRes?.account){
+        msalInstance.setActiveAccount(redirectRes.account);
+      }
+    }catch(e){
+      console.warn('handleRedirectPromise', e);
+    }
+
+    const accounts = msalInstance.getAllAccounts();
+    if(accounts.length){
+      // Prefer existing active account, else first
+      state.account = msalInstance.getActiveAccount() || accounts[0];
+      msalInstance.setActiveAccount(state.account);
+      await onSignedIn();
+    } else {
+      onSignedOut();
+    }
+  }
+
+  function onSignedOut(){
+    state.account = null;
+    state.user = { name:'', email:'' };
+    ROLE = Roles.viewer;
+    qs('userEmail').textContent='';
+    qs('btnAuth').textContent='Sign in';
+    setBodySignedIn(false);
+  }
+
+  async function signIn(){
     const loginRequest = {
-      scopes: ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All','Group.Read.All'],
-      prompt: 'select_account'
+      scopes: GRAPH_SCOPES,
+      prompt: 'select_account',
+      redirectUri: AAD.authUrl
     };
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-    let account = null; let ROLE = 'viewer';
+    const res = await msalInstance.loginPopup(loginRequest);
+    if(!res?.account) throw new Error('No account returned');
+    msalInstance.setActiveAccount(res.account);
+    state.account = res.account;
+    await onSignedIn(res);
+  }
 
-    // ===== Tabs (unchanged behavior) =====
-    document.querySelectorAll('.tab').forEach(t=>{
-      t.addEventListener('click', ()=>{
-        document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-        t.classList.add('active');
-        const name = t.getAttribute('data-tab');
-        document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
-        document.getElementById('tab-'+name).classList.remove('hidden');
-      });
+  async function signOut(){
+    requireSignedIn();
+    await msalInstance.logoutPopup({ account: state.account, postLogoutRedirectUri: AAD.appUrl });
+    onSignedOut();
+  }
+
+  async function getToken(scopes = GRAPH_SCOPES){
+    requireSignedIn();
+    const account = msalInstance.getActiveAccount();
+    try{
+      const r = await msalInstance.acquireTokenSilent({ scopes, account });
+      return r.accessToken;
+    }catch(e){
+      // If silent fails, use popup. Keep redirectUri to /auth so popup closes cleanly.
+      const r = await msalInstance.acquireTokenPopup({ scopes, redirectUri: AAD.authUrl });
+      return r.accessToken;
+    }
+  }
+
+  /* ---- Graph helpers ---- */
+  async function graphFetch(url, options={}){
+    const token = await getToken();
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+        ...(options.headers || {})
+      }
     });
-
-    // ===== Graph helpers =====
-    const graphBase = 'https://graph.microsoft.com/v1.0';
-    async function getToken(){
-      const active = msalInstance.getActiveAccount() || account; if (!active) throw new Error('No active account');
-      try { const s = await msalInstance.acquireTokenSilent({ account: active, scopes: loginRequest.scopes }); return s.accessToken; }
-      catch(e){ const p = await msalInstance.acquireTokenPopup(loginRequest); return p.accessToken; }
+    if(!res.ok){
+      const text = await res.text().catch(()=> '');
+      throw new Error(`Graph error ${res.status}: ${text}`);
     }
-    async function graph(path, opts={}){
-      const token = await getToken();
-      const resp = await fetch(graphBase+path, { ...opts, headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json', ...(opts.headers||{}) } });
-      if (!resp.ok){ const txt = await resp.text(); throw new Error('Graph '+(opts.method||'GET')+' failed '+resp.status+' '+txt); }
-      return resp.status===204 ? {} : await resp.json();
+    if(res.status === 204) return null;
+    return await res.json();
+  }
+  function graphUrl(path){ return `https://graph.microsoft.com/v1.0${path}`; }
+
+  async function resolveSharePoint(){
+    const cfg = state.cfg;
+    // Resolve site by URL
+    const siteUrl = new URL(cfg.siteUrl);
+    const host = siteUrl.host;
+    const path = siteUrl.pathname.replace(/\/$/, '');
+    const site = await graphFetch(graphUrl(`/sites/${host}:${path}`));
+    state.sharepoint.siteId = site.id;
+
+    // Resolve lists by display name
+    const lists = await graphFetch(graphUrl(`/sites/${state.sharepoint.siteId}/lists?$select=id,displayName`));
+    const pList = (lists.value||[]).find(l => l.displayName === cfg.projectListName);
+    const tList = (lists.value||[]).find(l => l.displayName === cfg.taskListName);
+    if(!pList || !tList) throw new Error('Could not find Project/Task lists. Check Settings.');
+    state.sharepoint.projectsListId = pList.id;
+    state.sharepoint.tasksListId = tList.id;
+
+    // Resolve default drive (Documents library)
+    const drive = await graphFetch(graphUrl(`/sites/${state.sharepoint.siteId}/drive?$select=id,webUrl`));
+    state.sharepoint.driveId = drive.id;
+
+    // Set SharePoint list links
+    // We keep the user-provided list URLs in prompt, but derive generic "open" links from site URL if possible.
+    qs('openProjectList').href = cfg.siteUrl + `/Lists/${encodeURIComponent(cfg.projectListName)}/AllItems.aspx`;
+    qs('openTaskList').href = cfg.siteUrl + `/Lists/${encodeURIComponent(cfg.taskListName)}/AllItems.aspx`;
+  }
+
+  async function ensureFolder(path){
+    // path: e.g., 'TaskPhotos' or 'TaskPhotos/<taskItemId>'
+    const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+    // Try get
+    try{
+      await graphFetch(graphUrl(`/drives/${state.sharepoint.driveId}/root:/${encodedPath}`));
+      return;
+    }catch(e){
+      // Create by creating children iteratively
     }
 
-    // ===== RBAC: map via groups =====
-    async function resolveRole(){
+    const parts = path.split('/').filter(Boolean);
+    let current = '';
+    for(const part of parts){
+      const parentPath = current;
+      current = current ? `${current}/${part}` : part;
+      const currentEncoded = current.split('/').map(encodeURIComponent).join('/');
       try{
-        const groups = await graph('/me/transitiveMemberOf?$select=displayName');
-        const names = (groups.value||[]).map(g=>g.displayName?.toLowerCase()||'');
-        if (names.some(n=> n.includes('wolcas') && n.includes('admin'))) ROLE='admin';
-        else if (names.some(n=> n.includes('wolcas') && n.includes('editor'))) ROLE='editor';
-        else ROLE='viewer';
-      }catch{ ROLE='viewer'; }
-      applyRoleUI();
-    }
-    function applyRoleUI(){
-      document.getElementById('btnAddProject').classList.toggle('hidden', ROLE==='viewer');
-      document.getElementById('btnAddTask').classList.toggle('hidden', ROLE==='viewer');
-      document.getElementById('projDelete').classList.toggle('hidden', ROLE!=='admin');
-      document.getElementById('taskDelete').classList.toggle('hidden', ROLE!=='admin');
-      // Allocation editable only for admin
-      document.getElementById('taskAllocation').disabled = (ROLE!=='admin');
-    }
-
-    // ===== SharePoint site/list IDs =====
-    const SP_HOST = 'architektica-my.sharepoint.com';
-    const SP_PATH = '/personal/abir_architektica_com';
-    let spSiteId=null, projectListId=null, taskListId=null;
-    async function resolveSharePointIds(){
-      const site = await graph(`/sites/${SP_HOST}:${SP_PATH}`);
-      spSiteId = site.id;
-      const lists = await graph(`/sites/${spSiteId}/lists?$select=id,displayName`);
-      for (const l of (lists.value||[])){
-        if (l.displayName==='Project') projectListId = l.id;
-        if (l.displayName==='Task') taskListId = l.id;
+        await graphFetch(graphUrl(`/drives/${state.sharepoint.driveId}/root:/${currentEncoded}`));
+      }catch(_){
+        const parentEncoded = parentPath.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+        const parentEndpoint = parentEncoded ? graphUrl(`/drives/${state.sharepoint.driveId}/root:/${parentEncoded}:/children`) : graphUrl(`/drives/${state.sharepoint.driveId}/root/children`);
+        await graphFetch(parentEndpoint, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            name: part,
+            folder: {},
+            '@microsoft.graph.conflictBehavior': 'fail'
+          })
+        });
       }
     }
+  }
 
-    // ===== Projects =====
-    async function loadProjectsTop8(){
-      const items = await graph(`/sites/${spSiteId}/lists/${projectListId}/items?$top=8&$expand=fields`);
-      const tbody = document.querySelector('#projectTable tbody'); tbody.innerHTML='';
-      (items.value||[]).forEach(it=>{
-        const f = it.fields||{};
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${f.Title||''}</td>
-          <td>${f['Project Address']||''}</td>
-          <td>${f.Owner||''}</td>
-          <td>${f['Start Date']||''}</td>
-          <td>${f['Expected Sales']||''}</td>
-          <td>${f.Active? '✔️':''}</td>
-          <td>
-            <button class="btn ${ROLE==='viewer'?'hidden':''}" data-edit="${it.id}">Edit</button>
-            <button class="btn danger ${ROLE==='admin'?'':'hidden'}" data-del="${it.id}">Delete</button>
-          </td>`;
-        tbody.appendChild(tr);
-      });
-      tbody.querySelectorAll('[data-edit]').forEach(btn=> btn.addEventListener('click', ()=> editProject(btn.getAttribute('data-edit'))));
-      tbody.querySelectorAll('[data-del]').forEach(btn=> btn.addEventListener('click', ()=> deleteProject(btn.getAttribute('data-del'))));
+  async function uploadSmallFileToDrive(folderPath, file){
+    // For files up to ~4MB. Use simple upload.
+    const fullPath = `${folderPath}/${file.name}`.split('/').filter(Boolean).join('/');
+    const encoded = fullPath.split('/').map(encodeURIComponent).join('/');
+    const url = graphUrl(`/drives/${state.sharepoint.driveId}/root:/${encoded}:/content`);
+    const token = await getToken();
+    const res = await fetch(url, {
+      method:'PUT',
+      headers:{ 'Authorization': `Bearer ${token}` },
+      body: file
+    });
+    if(!res.ok){
+      const text = await res.text().catch(()=> '');
+      throw new Error(`Upload failed ${res.status}: ${text}`);
     }
-    async function editProject(id){
-      if (!id){
-        projTitle.value=''; projAddress.value=''; projOwner.value='';
-        projStart.value=''; projSales.value=''; projActive.checked=false;
-        document.getElementById('projDelete').classList.add('hidden');
-        document.getElementById('projSave').onclick = ()=> saveProject(null);
-        return;
-      }
-      const item = await graph(`/sites/${spSiteId}/lists/${projectListId}/items/${id}?$expand=fields`);
-      const f = item.fields||{};
-      projTitle.value=f.Title||''; projAddress.value=f['Project Address']||''; projOwner.value=f.Owner||'';
-      projStart.value=f['Start Date']||''; projSales.value=f['Expected Sales']||''; projActive.checked=!!f.Active;
-      document.getElementById('projDelete').classList.toggle('hidden', ROLE!=='admin');
-      document.getElementById('projSave').onclick = ()=> saveProject(id);
-      document.getElementById('projDelete').onclick = ()=> deleteProject(id);
+    return await res.json();
+  }
+
+  /* ---- RBAC determination ---- */
+  async function computeRoleFromClaimsOrGroups(idTokenClaims){
+    // 1) App roles via "roles" claim
+    const roles = idTokenClaims?.roles || [];
+    const normalized = roles.map(r => (r||'').toString().toLowerCase());
+    if(normalized.includes('admin')) return Roles.admin;
+    if(normalized.includes('editor')) return Roles.editor;
+    if(normalized.includes('viewer')) return Roles.viewer;
+
+    // 2) Optional: group membership (requires Group.Read.All + admin consent)
+    const cfg = state.cfg;
+    const adminId = (cfg.adminGroupId||'').trim();
+    const editorId = (cfg.editorGroupId||'').trim();
+    const viewerId = (cfg.viewerGroupId||'').trim();
+    if(!adminId && !editorId && !viewerId) return Roles.editor; // default
+
+    // Request transitive groups
+    const meGroups = await graphFetch(graphUrl(`/me/transitiveMemberOf/microsoft.graph.group?$select=id`));
+    const ids = new Set((meGroups.value||[]).map(g => (g.id||'').toLowerCase()));
+    if(adminId && ids.has(adminId.toLowerCase())) return Roles.admin;
+    if(editorId && ids.has(editorId.toLowerCase())) return Roles.editor;
+    if(viewerId && ids.has(viewerId.toLowerCase())) return Roles.viewer;
+
+    // If specified groups but user not in any, lock to viewer
+    return Roles.viewer;
+  }
+
+  function applyRoleToUI(){
+    qs('roleDisplay').value = ROLE;
+
+    const canEdit = (ROLE !== Roles.viewer);
+    const isAdmin = (ROLE === Roles.admin);
+
+    // Global buttons
+    qs('btnNewProject').style.display = canEdit ? '' : 'none';
+    qs('btnAddProjectTop').style.display = canEdit ? '' : 'none';
+
+    // Task tabs
+    qs('tabAddTask').disabled = !canEdit;
+    qs('tabEditTask').disabled = !canEdit;
+
+    // Per-field RBAC: only admin can edit Allocation
+    qs('add-allocation').disabled = !isAdmin;
+    qs('edit-allocation').disabled = !isAdmin;
+
+    // Delete task button
+    qs('btnDeleteTask').style.display = isAdmin ? '' : 'none';
+
+    // Add buttons inside project view
+    qs('btnSaveTask').disabled = !canEdit;
+    qs('btnUpdateTask').disabled = !canEdit;
+  }
+
+  /* ---- SharePoint list field mapping ---- */
+  // IMPORTANT: These are display-name-based guesses. Adjust internal names if your list uses different internal names.
+  const FIELD = {
+    project: {
+      address: 'ProjectAddress',
+      owner: 'Owner',
+      start: 'StartDate',
+      expectedSales: 'ExpectedSales',
+      active: 'Active',
+      // Optional: we also set Title to address for convenience
+      title: 'Title'
+    },
+    task: {
+      title: 'Title',
+      address: 'Address',
+      start: 'StartDate',
+      end: 'EndDate',
+      quantity: 'Quantity',
+      unitCost: 'UnitCost',
+      totalCost: 'TotalCost',
+      allocation: 'Allocation',
+      sprint: 'Sprint',
+      assignee: 'Assignee',
+      unit: 'QuantityUnit',
+      description: 'Description',
+      notes: 'Notes'
     }
-    async function saveProject(id){
-      const fields = {
-        Title: projTitle.value,
-        'Project Address': projAddress.value,
-        Owner: projOwner.value,
-        'Start Date': projStart.value,
-        'Expected Sales': parseFloat(projSales.value||'0'),
-        Active: projActive.checked
+  };
+
+  function lookupIdFieldName(){
+    // Graph expects <LookupInternalName>LookupId
+    const base = (state.cfg.taskProjectLookupInternalName || 'Project').trim();
+    return base.endsWith('LookupId') ? base : `${base}LookupId`;
+  }
+
+  /* ---- Data ops: Projects ---- */
+  async function loadProjects(limit=8){
+    requireSignedIn();
+    const listId = state.sharepoint.projectsListId;
+    const selectFields = [FIELD.project.title, FIELD.project.address, FIELD.project.owner, FIELD.project.start, FIELD.project.expectedSales, FIELD.project.active].join(',');
+    const q = `?$top=${limit}&$expand=fields($select=${encodeURIComponent(selectFields)})&$select=id,createdDateTime,lastModifiedDateTime`;
+    const res = await graphFetch(graphUrl(`/sites/${state.sharepoint.siteId}/lists/${listId}/items${q}`));
+
+    const items = (res.value||[]).map(it => {
+      const f = it.fields || {};
+      const address = f[FIELD.project.address] || f[FIELD.project.title] || '';
+      return {
+        itemId: it.id,
+        createdDateTime: it.createdDateTime,
+        lastModifiedDateTime: it.lastModifiedDateTime,
+        address,
+        owner: f[FIELD.project.owner] || '',
+        startDate: f[FIELD.project.start] || '',
+        expectedSales: f[FIELD.project.expectedSales] || '',
+        active: (typeof f[FIELD.project.active] === 'boolean') ? f[FIELD.project.active] : (String(f[FIELD.project.active]||'').toLowerCase()==='true'),
+        rawFields: f
       };
-      if (id) await graph(`/sites/${spSiteId}/lists/${projectListId}/items/${id}/fields`, { method:'PATCH', body: JSON.stringify(fields) });
-      else await graph(`/sites/${spSiteId}/lists/${projectListId}/items`, { method:'POST', body: JSON.stringify({ fields }) });
-      await loadProjectsTop8();
-    }
-    async function deleteProject(id){ if (ROLE!=='admin') return; await graph(`/sites/${spSiteId}/lists/${projectListId}/items/${id}`, { method:'DELETE' }); await loadProjectsTop8(); }
-
-    // Binder: auto create/update based on Project Address
-    ['projTitle','projAddress','projOwner','projStart','projSales','projActive'].forEach(id=>{
-      document.getElementById(id).addEventListener('change', async ()=>{
-        const addr = document.getElementById('projAddress').value; if (!addr) return;
-        try{
-          const found = await graph(`/sites/${spSiteId}/lists/${projectListId}/items?$filter=fields/Project%20Address eq '${encodeURIComponent(addr)}'&$top=1&$expand=fields`);
-          const item = (found.value||[])[0]; await saveProject(item? item.id : null);
-        }catch{}
-      });
     });
 
-    // ===== Tasks =====
-    async function loadTasks(){
-      const items = await graph(`/sites/${spSiteId}/lists/${taskListId}/items?$top=50&$expand=fields`);
-      const tbody = document.querySelector('#taskTable tbody'); tbody.innerHTML='';
-      (items.value||[]).forEach(it=>{
-        const f = it.fields||{};
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${f.Title||''}</td>
-          <td>${f.Address||''}</td>
-          <td>${f['Start Date']||''}</td>
-          <td>${f['End Date']||''}</td>
-          <td>${f.Quantity||''}</td>
-          <td>${f['Unit Cost']||''}</td>
-          <td>${f['Total Cost']||''}</td>
-          <td>${f.Allocation||''}</td>
-          <td>${f.Sprint||''}</td>
-          <td>${f.Assignee||''}</td>
-          <td>
-            <button class="btn ${ROLE==='viewer'?'hidden':''}" data-edit="${it.id}">Edit</button>
-            <button class="btn danger ${ROLE==='admin'?'':'hidden'}" data-del="${it.id}">Delete</button>
-          </td>`;
-        tbody.appendChild(tr);
+    // Sort most recent first
+    items.sort((a,b) => (b.lastModifiedDateTime||b.createdDateTime||'').localeCompare(a.lastModifiedDateTime||a.createdDateTime||''));
+    state.projects = items;
+  }
+
+  async function createOrUpdateProject(existingItemId, data){
+    requireSignedIn();
+    const listId = state.sharepoint.projectsListId;
+    const fields = {};
+    fields[FIELD.project.title] = data.address || 'Untitled';
+    fields[FIELD.project.address] = data.address || '';
+    fields[FIELD.project.owner] = data.owner || '';
+    fields[FIELD.project.start] = data.startDate || '';
+    fields[FIELD.project.expectedSales] = data.expectedSales || '';
+    fields[FIELD.project.active] = !!data.active;
+
+    if(existingItemId){
+      await graphFetch(graphUrl(`/sites/${state.sharepoint.siteId}/lists/${listId}/items/${existingItemId}/fields`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields)
       });
-      tbody.querySelectorAll('[data-edit]').forEach(btn=> btn.addEventListener('click', ()=> openTaskEditor(btn.getAttribute('data-edit'))));
-      tbody.querySelectorAll('[data-del]').forEach(btn=> btn.addEventListener('click', ()=> deleteTask(btn.getAttribute('data-del'))));
+      state.activity.unshift({ ts: Date.now(), text: `Updated project: ${data.address||''}` });
+      return existingItemId;
     }
-    async function openTaskEditor(id){
-      if (!id){
-        taskTitle.value=''; taskAddress.value=''; taskStart.value=''; taskEnd.value=''; taskQty.value=''; taskUnitCost.value=''; taskTotalCost.value=''; taskAllocation.value=''; taskSprint.value=''; taskAssignee.value=''; taskDesc.value=''; taskNotes.value='';
-        document.getElementById('taskDelete').classList.add('hidden');
-        document.getElementById('taskSave').onclick = ()=> saveTask(null);
+
+    const created = await graphFetch(graphUrl(`/sites/${state.sharepoint.siteId}/lists/${listId}/items`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields })
+    });
+    state.activity.unshift({ ts: Date.now(), text: `Created project: ${data.address||''}` });
+    return created.id;
+  }
+
+  async function deleteProject(itemId){
+    requireSignedIn();
+    const listId = state.sharepoint.projectsListId;
+    await graphFetch(graphUrl(`/sites/${state.sharepoint.siteId}/lists/${listId}/items/${itemId}`), { method:'DELETE' });
+    state.activity.unshift({ ts: Date.now(), text: `Deleted project` });
+  }
+
+  /* ---- Data ops: Tasks ---- */
+  async function loadTasksForProject(projectItemId){
+    requireSignedIn();
+    const listId = state.sharepoint.tasksListId;
+    const selectFields = [FIELD.task.title, FIELD.task.address, FIELD.task.start, FIELD.task.end, FIELD.task.quantity, FIELD.task.unit, FIELD.task.unitCost, FIELD.task.totalCost, FIELD.task.allocation, FIELD.task.sprint, FIELD.task.assignee, FIELD.task.description, FIELD.task.notes, lookupIdFieldName()].join(',');
+
+    // Filter tasks by lookup id. Graph supports $filter with fields/<LookupField>LookupId eq <id> for lists.
+    const filter = `fields/${lookupIdFieldName()} eq ${projectItemId}`;
+    const q = `?$top=500&$expand=fields($select=${encodeURIComponent(selectFields)})&$select=id,createdDateTime,lastModifiedDateTime&$filter=${encodeURIComponent(filter)}`;
+
+    let res;
+    try{
+      res = await graphFetch(graphUrl(`/sites/${state.sharepoint.siteId}/lists/${listId}/items${q}`));
+    }catch(e){
+      // If filter fails (some tenants restrict), fallback to getting first 500 and filtering client-side.
+      const fallback = await graphFetch(graphUrl(`/sites/${state.sharepoint.siteId}/lists/${listId}/items?$top=500&$expand=fields`));
+      res = { value: (fallback.value||[]).filter(it => String(it.fields?.[lookupIdFieldName()]||'') === String(projectItemId)) };
+    }
+
+    const tasks = (res.value||[]).map(it => {
+      const f=it.fields||{};
+      return {
+        itemId: it.id,
+        title: f[FIELD.task.title] || '',
+        address: f[FIELD.task.address] || '',
+        startDate: f[FIELD.task.start] || '',
+        endDate: f[FIELD.task.end] || '',
+        quantity: f[FIELD.task.quantity] ?? '',
+        quantityUnit: f[FIELD.task.unit] ?? '',
+        unitCost: f[FIELD.task.unitCost] ?? '',
+        totalCost: f[FIELD.task.totalCost] ?? '',
+        allocation: f[FIELD.task.allocation] ?? '',
+        sprint: f[FIELD.task.sprint] ?? '',
+        assignee: f[FIELD.task.assignee] ?? '',
+        description: f[FIELD.task.description] ?? '',
+        notes: f[FIELD.task.notes] ?? '',
+        createdDateTime: it.createdDateTime,
+        lastModifiedDateTime: it.lastModifiedDateTime
+      };
+    });
+
+    tasks.sort((a,b) => (b.lastModifiedDateTime||b.createdDateTime||'').localeCompare(a.lastModifiedDateTime||a.createdDateTime||''));
+    state.tasksByProject.set(String(projectItemId), tasks);
+    return tasks;
+  }
+
+  async function createTask(projectItemId, projectAddress, data){
+    requireSignedIn();
+    const listId = state.sharepoint.tasksListId;
+    const fields = {};
+    fields[FIELD.task.title] = data.title || 'Untitled';
+    fields[FIELD.task.address] = projectAddress || data.address || '';
+    fields[FIELD.task.start] = data.startDate || '';
+    fields[FIELD.task.end] = data.endDate || '';
+    fields[FIELD.task.quantity] = data.quantity === '' ? null : Number(data.quantity);
+    fields[FIELD.task.unit] = data.quantityUnit || '';
+    fields[FIELD.task.unitCost] = data.unitCost === '' ? null : Number(data.unitCost);
+    fields[FIELD.task.totalCost] = data.totalCost === '' ? null : Number(data.totalCost);
+    fields[FIELD.task.allocation] = data.allocation === '' ? null : Number(data.allocation);
+    fields[FIELD.task.sprint] = data.sprint || '';
+    fields[FIELD.task.assignee] = data.assignee || '';
+    fields[FIELD.task.description] = data.description || '';
+    fields[FIELD.task.notes] = data.notes || '';
+    fields[lookupIdFieldName()] = Number(projectItemId);
+
+    const created = await graphFetch(graphUrl(`/sites/${state.sharepoint.siteId}/lists/${listId}/items`), {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ fields })
+    });
+
+    state.activity.unshift({ ts: Date.now(), text: `Created task: ${data.title||''}` });
+    return created.id;
+  }
+
+  async function updateTask(taskItemId, projectAddress, data){
+    requireSignedIn();
+    const listId = state.sharepoint.tasksListId;
+    const fields = {};
+    fields[FIELD.task.title] = data.title || 'Untitled';
+    fields[FIELD.task.address] = projectAddress || data.address || '';
+    fields[FIELD.task.start] = data.startDate || '';
+    fields[FIELD.task.end] = data.endDate || '';
+    fields[FIELD.task.quantity] = data.quantity === '' ? null : Number(data.quantity);
+    fields[FIELD.task.unit] = data.quantityUnit || '';
+    fields[FIELD.task.unitCost] = data.unitCost === '' ? null : Number(data.unitCost);
+    fields[FIELD.task.totalCost] = data.totalCost === '' ? null : Number(data.totalCost);
+    if(ROLE === Roles.admin){
+      fields[FIELD.task.allocation] = data.allocation === '' ? null : Number(data.allocation);
+    }
+    fields[FIELD.task.sprint] = data.sprint || '';
+    fields[FIELD.task.assignee] = data.assignee || '';
+    fields[FIELD.task.description] = data.description || '';
+    fields[FIELD.task.notes] = data.notes || '';
+
+    await graphFetch(graphUrl(`/sites/${state.sharepoint.siteId}/lists/${listId}/items/${taskItemId}/fields`), {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(fields)
+    });
+
+    state.activity.unshift({ ts: Date.now(), text: `Updated task: ${data.title||''}` });
+  }
+
+  async function deleteTask(taskItemId){
+    requireSignedIn();
+    const listId = state.sharepoint.tasksListId;
+    await graphFetch(graphUrl(`/sites/${state.sharepoint.siteId}/lists/${listId}/items/${taskItemId}`), { method:'DELETE' });
+    state.activity.unshift({ ts: Date.now(), text: `Deleted task` });
+  }
+
+  /* ---- UI: Project cards & navigation ---- */
+  function renderProjectCard(p){
+    const el = document.createElement('div');
+    el.className = 'card';
+    const status = p.active ? 'active' : 'completed';
+    el.innerHTML = `
+      <div class="status-row">
+        <div class="status-text">
+          <h3 style="margin:0">${escapeHtml(p.address || '(No address)')}</h3>
+          <div class="muted">Owner: ${escapeHtml(p.owner||'')}</div>
+        </div>
+        <span class="status-pill ${status}">${status}</span>
+      </div>
+      <div style="margin-top:8px; display:flex; gap:12px; flex-wrap:wrap;" class="muted">
+        <div><strong>Start:</strong> ${escapeHtml(p.startDate||'')}</div>
+        <div><strong>Expected sales:</strong> ${escapeHtml(p.expectedSales||'')}</div>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;" class="row-actions">
+        <a class="btn small secondary" href="#project:${encodeURIComponent(p.itemId)}">Open</a>
+        <button class="btn small" data-action="edit">Edit</button>
+        <button class="btn small" data-action="toggle">${p.active ? 'Mark Complete' : 'Mark Active'}</button>
+        <button class="btn small" data-action="delete">Delete</button>
+      </div>
+    `;
+
+    const canEdit = (ROLE !== Roles.viewer);
+    const isAdmin = (ROLE === Roles.admin);
+
+    el.querySelector('[data-action="edit"]').style.display = canEdit ? '' : 'none';
+    el.querySelector('[data-action="toggle"]').style.display = canEdit ? '' : 'none';
+    el.querySelector('[data-action="delete"]').style.display = isAdmin ? '' : 'none';
+
+    el.querySelector('[data-action="edit"]').onclick = () => openProjectModal(p);
+    el.querySelector('[data-action="toggle"]').onclick = async () => {
+      try{
+        await createOrUpdateProject(p.itemId, {
+          address: p.address,
+          owner: p.owner,
+          startDate: p.startDate,
+          expectedSales: p.expectedSales,
+          active: !p.active
+        });
+        await refreshAll();
+        toast('Project updated');
+      }catch(e){
+        console.error(e);
+        toast('Failed to update project');
+      }
+    };
+    el.querySelector('[data-action="delete"]').onclick = async () => {
+      const ok = await confirmDialog('Delete Project', `Are you sure you want to delete: ${escapeHtml(p.address||'this project')}?`);
+      if(!ok) return;
+      try{
+        await deleteProject(p.itemId);
+        await refreshAll();
+        toast('Project deleted');
+      }catch(e){
+        console.error(e);
+        toast('Failed to delete project');
+      }
+    };
+
+    return el;
+  }
+
+  async function initHome(){
+    const container = qs('homeRecent');
+    container.innerHTML = '';
+    if(!state.projects.length){
+      container.innerHTML = '<div class="muted">No projects yet</div>';
+      return;
+    }
+    state.projects.slice(0,6).forEach(p => container.appendChild(renderProjectCard(p)));
+  }
+
+  async function initProjects(){
+    const q = (qs('projSearch').value || '').toLowerCase();
+    const grid = qs('projectsGrid');
+    grid.innerHTML = '';
+    const items = state.projects.filter(p => {
+      const hay = `${p.address||''} ${p.owner||''}`.toLowerCase();
+      return hay.includes(q);
+    });
+    if(!items.length){
+      grid.innerHTML = '<div class="muted">No projects</div>';
+      return;
+    }
+    items.forEach(p => grid.appendChild(renderProjectCard(p)));
+  }
+
+  /* ---- UI: Project view ---- */
+  let currentProjectId = null;
+
+  function setSubtab(tab){
+    document.querySelectorAll('.subtabs button[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('#projectPanels > div').forEach(div => div.hidden = (div.id !== `panel-${tab}`));
+    setScrollableHeights();
+  }
+
+  async function initProjectView(projectItemId){
+    currentProjectId = String(projectItemId);
+    const p = state.projects.find(x => String(x.itemId) === String(projectItemId));
+    if(!p){
+      qs('projectHeader').innerHTML = '<div class="muted">Project not found</div>';
+      return;
+    }
+
+    // Header
+    qs('projectHeader').innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+        <div>
+          <h2 style="margin:0">${escapeHtml(p.address||'(No address)')}</h2>
+          <div class="muted">Owner: ${escapeHtml(p.owner||'')}</div>
+          <div style="margin-top:8px; display:flex; gap:10px; flex-wrap:wrap;">
+            <span class="badge ${p.active ? 'active' : 'completed'}">${p.active ? 'active' : 'completed'}</span>
+            <span class="badge">Start: ${escapeHtml(p.startDate||'')}</span>
+            <span class="badge">Expected Sales: ${escapeHtml(p.expectedSales||'')}</span>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button class="btn small" id="btnEditProjectInline">Edit</button>
+          <button class="btn small" id="btnToggleProjectInline">${p.active ? 'Mark Complete' : 'Mark Active'}</button>
+        </div>
+      </div>
+    `;
+
+    // RBAC
+    const canEdit = (ROLE !== Roles.viewer);
+    qs('btnEditProjectInline').style.display = canEdit ? '' : 'none';
+    qs('btnToggleProjectInline').style.display = canEdit ? '' : 'none';
+
+    qs('btnEditProjectInline').onclick = () => openProjectModal(p);
+    qs('btnToggleProjectInline').onclick = async () => {
+      try{
+        await createOrUpdateProject(p.itemId, {
+          address: p.address, owner: p.owner, startDate: p.startDate, expectedSales: p.expectedSales, active: !p.active
+        });
+        await refreshAll();
+        toast('Project updated');
+      }catch(e){ console.error(e); toast('Failed'); }
+    };
+
+    // Fill task address field from project automatically
+    qs('add-address').value = p.address || '';
+    qs('edit-address').value = p.address || '';
+
+    // Load tasks
+    const tasks = await loadTasksForProject(p.itemId);
+
+    // Populate select
+    const sel = qs('taskSelect');
+    sel.innerHTML = '';
+    const opt0 = document.createElement('option');
+    opt0.value = ''; opt0.textContent = '— Select —';
+    sel.appendChild(opt0);
+    tasks.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.itemId;
+      opt.textContent = t.title || '(Untitled)';
+      sel.appendChild(opt);
+    });
+
+    sel.onchange = () => {
+      const id = sel.value;
+      const t = tasks.find(x => String(x.itemId)===String(id));
+      fillEditTaskForm(p, t);
+    };
+
+    // Default tab
+    setSubtab('view');
+
+    // Render view list
+    renderTasksList(p, tasks);
+
+    // Photos grid
+    await renderPhotosGrid(p, tasks);
+
+    // Tabs click
+    document.querySelectorAll('.subtabs button[data-tab]').forEach(b => {
+      b.onclick = () => {
+        // Block viewer from entering add/edit
+        if((b.dataset.tab === 'add' || b.dataset.tab === 'edit') && ROLE === Roles.viewer){
+          toast('Viewer cannot edit');
+          return;
+        }
+        setSubtab(b.dataset.tab);
+      };
+    });
+
+    // Reports
+    qs('btnReports').onclick = () => openReportsModal(p, tasks);
+
+    // Add panel: photo previews
+    qs('add-photos').onchange = () => showPreviews(qs('add-photos').files, qs('add-previews'));
+    qs('edit-photos').onchange = () => showPreviews(qs('edit-photos').files, qs('edit-thumbs'));
+
+    // Add task save
+    qs('btnSaveTask').onclick = async () => {
+      try{
+        if(ROLE === Roles.viewer) { toast('Viewer cannot add'); return; }
+        const data = readAddTaskForm();
+        if(!data.title.trim()) { toast('Task name required'); return; }
+        const taskId = await createTask(p.itemId, p.address, data);
+
+        // Upload photos
+        const files = qs('add-photos').files;
+        if(files && files.length){
+          const folderPath = `${state.cfg.photosFolder}/${taskId}`;
+          await ensureFolder(folderPath);
+          for(const f of files){
+            if(f.size <= 4 * 1024 * 1024){
+              await uploadSmallFileToDrive(folderPath, f);
+            } else {
+              // For large files, a resumable upload session would be needed.
+              toast('Large photo skipped (>4MB).');
+            }
+          }
+        }
+
+        clearAddTaskForm();
+        await refreshAll();
+        location.hash = `#project:${encodeURIComponent(p.itemId)}`;
+        toast('Task saved');
+        setSubtab('view');
+      }catch(e){
+        console.error(e);
+        toast('Failed to save task');
+      }
+    };
+
+    qs('btnCancelAddTask').onclick = () => { clearAddTaskForm(); setSubtab('view'); };
+
+    qs('btnUpdateTask').onclick = async () => {
+      try{
+        if(ROLE === Roles.viewer) { toast('Viewer cannot edit'); return; }
+        const taskItemId = qs('taskSelect').value;
+        if(!taskItemId) { toast('Select a task'); return; }
+        const data = readEditTaskForm();
+        await updateTask(taskItemId, p.address, data);
+
+        const files = qs('edit-photos').files;
+        if(files && files.length){
+          const folderPath = `${state.cfg.photosFolder}/${taskItemId}`;
+          await ensureFolder(folderPath);
+          for(const f of files){
+            if(f.size <= 4 * 1024 * 1024){
+              await uploadSmallFileToDrive(folderPath, f);
+            } else {
+              toast('Large photo skipped (>4MB).');
+            }
+          }
+        }
+
+        qs('edit-photos').value='';
+        await refreshAll();
+        toast('Task updated');
+        setSubtab('view');
+      }catch(e){
+        console.error(e);
+        toast('Failed to update task');
+      }
+    };
+
+    qs('btnCancelEditTask').onclick = () => { clearEditTaskForm(); setSubtab('view'); };
+
+    // Delete task
+    qs('btnDeleteTask').onclick = async () => {
+      if(ROLE !== Roles.admin) return;
+      const taskItemId = qs('taskSelect').value;
+      if(!taskItemId) { toast('Select a task'); return; }
+      const ok = await confirmDialog('Delete Task', 'Are you sure you want to delete this task?');
+      if(!ok) return;
+      try{
+        await deleteTask(taskItemId);
+        clearEditTaskForm();
+        await refreshAll();
+        toast('Task deleted');
+        setSubtab('view');
+      }catch(e){ console.error(e); toast('Failed'); }
+    };
+
+    // Update RBAC controls for this view
+    applyRoleToUI();
+  }
+
+  function renderTasksList(project, tasks){
+    const panel = qs('panel-view');
+    panel.innerHTML = '';
+    if(!tasks.length){ panel.innerHTML = '<div class="muted">No tasks yet</div>'; return; }
+
+    const canEdit = (ROLE !== Roles.viewer);
+    const isAdmin = (ROLE === Roles.admin);
+
+    tasks.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'card';
+      const alloc = (t.allocation !== '' && t.allocation !== null && t.allocation !== undefined) ? ('$' + fmtMoney(t.allocation)) : '';
+      row.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div>
+            <strong>${escapeHtml(t.title || '(Untitled)')}</strong>
+            <span class="badge" style="margin-left:6px">${escapeHtml(t.assignee||'')}</span>
+          </div>
+          <div class="row-actions">
+            <button class="btn small secondary" data-action="edit">Edit</button>
+            <button class="btn small" data-action="delete">Delete</button>
+          </div>
+        </div>
+        <div class="muted" style="margin-top:6px">${escapeHtml(t.description||'')}</div>
+        <div style="margin-top:8px; display:flex; gap:12px; flex-wrap:wrap;" class="muted">
+          <div><strong>Start:</strong> ${escapeHtml(t.startDate||'')}</div>
+          <div><strong>End:</strong> ${escapeHtml(t.endDate||'')}</div>
+          <div><strong>Qty:</strong> ${escapeHtml(t.quantity??'')}</div>
+          <div><strong>Unit:</strong> ${escapeHtml(t.quantityUnit??'')}</div>
+          <div><strong>Unit Cost:</strong> ${escapeHtml(t.unitCost??'')}</div>
+          <div><strong>Total:</strong> ${escapeHtml(t.totalCost??'')}</div>
+          <div><strong>Allocation:</strong> ${escapeHtml(alloc)}</div>
+          <div><strong>Sprint:</strong> ${escapeHtml(t.sprint??'')}</div>
+        </div>
+        <div class="muted" style="margin-top:8px; font-size:0.9rem;">Photos are stored in Documents/${escapeHtml(state.cfg.photosFolder)}/${escapeHtml(t.itemId)}/</div>
+      `;
+
+      const btnEdit = row.querySelector('[data-action="edit"]');
+      const btnDel = row.querySelector('[data-action="delete"]');
+      btnEdit.style.display = canEdit ? '' : 'none';
+      btnDel.style.display = isAdmin ? '' : 'none';
+
+      btnEdit.onclick = () => {
+        setSubtab('edit');
+        qs('taskSelect').value = t.itemId;
+        fillEditTaskForm(project, t);
+      };
+      btnDel.onclick = async () => {
+        if(ROLE !== Roles.admin) return;
+        const ok = await confirmDialog('Delete Task', `Delete task: ${escapeHtml(t.title||'')}?`);
+        if(!ok) return;
+        try{
+          await deleteTask(t.itemId);
+          await refreshAll();
+          toast('Task deleted');
+        }catch(e){ console.error(e); toast('Failed'); }
+      };
+
+      panel.appendChild(row);
+    });
+  }
+
+  function showPreviews(fileList, container){
+    container.innerHTML='';
+    if(!fileList || !fileList.length) return;
+    [...fileList].forEach(file => {
+      const img = document.createElement('img');
+      img.className='preview';
+      const fr = new FileReader();
+      fr.onload = e => img.src = e.target.result;
+      fr.readAsDataURL(file);
+      container.appendChild(img);
+    });
+  }
+
+  function readAddTaskForm(){
+    return {
+      title: qs('add-name').value || '',
+      address: qs('add-address').value || '',
+      startDate: qs('add-start').value || '',
+      endDate: qs('add-end').value || '',
+      quantity: qs('add-qty').value || '',
+      quantityUnit: '',
+      unitCost: qs('add-unit').value || '',
+      totalCost: qs('add-total').value || '',
+      allocation: qs('add-allocation').value || '',
+      sprint: qs('add-sprint').value || '',
+      assignee: qs('add-assignee').value || '',
+      description: qs('add-desc').value || '',
+      notes: qs('add-notes').value || ''
+    };
+  }
+  function clearAddTaskForm(){
+    ['add-name','add-start','add-end','add-desc','add-notes','add-qty','add-unit','add-total','add-allocation','add-sprint','add-assignee'].forEach(id => { const el=qs(id); if(el) el.value=''; });
+    qs('add-photos').value='';
+    qs('add-previews').innerHTML='';
+  }
+
+  function fillEditTaskForm(project, task){
+    if(!task){ clearEditTaskForm(); return; }
+    qs('edit-address').value = project.address || '';
+    qs('edit-name').value = task.title || '';
+    qs('edit-assignee').value = task.assignee || '';
+    qs('edit-start').value = task.startDate || '';
+    qs('edit-end').value = task.endDate || '';
+    qs('edit-desc').value = task.description || '';
+    qs('edit-notes').value = task.notes || '';
+    qs('edit-qty').value = task.quantity ?? '';
+    qs('edit-unit').value = task.unitCost ?? '';
+    qs('edit-total').value = task.totalCost ?? '';
+    qs('edit-allocation').value = task.allocation ?? '';
+    qs('edit-sprint').value = task.sprint ?? '';
+    qs('edit-unitname').value = task.quantityUnit ?? '';
+
+    // admin-only allocation editing enforced by disabling input elsewhere
+    qs('edit-thumbs').innerHTML = '<div class="muted">Upload additional photos to Documents/' + escapeHtml(state.cfg.photosFolder) + '/' + escapeHtml(task.itemId) + '/</div>';
+    qs('edit-photos').value='';
+  }
+
+  function readEditTaskForm(){
+    return {
+      title: qs('edit-name').value || '',
+      address: qs('edit-address').value || '',
+      startDate: qs('edit-start').value || '',
+      endDate: qs('edit-end').value || '',
+      quantity: qs('edit-qty').value || '',
+      quantityUnit: qs('edit-unitname').value || '',
+      unitCost: qs('edit-unit').value || '',
+      totalCost: qs('edit-total').value || '',
+      allocation: qs('edit-allocation').value || '',
+      sprint: qs('edit-sprint').value || '',
+      assignee: qs('edit-assignee').value || '',
+      description: qs('edit-desc').value || '',
+      notes: qs('edit-notes').value || ''
+    };
+  }
+
+  function clearEditTaskForm(){
+    qs('taskSelect').value='';
+    ['edit-name','edit-assignee','edit-start','edit-end','edit-desc','edit-notes','edit-qty','edit-unit','edit-total','edit-allocation','edit-sprint','edit-unitname'].forEach(id => { const el=qs(id); if(el) el.value=''; });
+    qs('edit-photos').value='';
+    qs('edit-thumbs').innerHTML='';
+  }
+
+  async function renderPhotosGrid(project, tasks){
+    const grid = qs('photosGrid');
+    grid.innerHTML='';
+    if(!tasks.length){ grid.innerHTML = '<div class="muted">No tasks yet</div>'; return; }
+
+    // For simplicity we show instructions rather than listing drive files (which can be slow without paging).
+    tasks.forEach(t => {
+      const card = document.createElement('div');
+      card.className='card';
+      card.innerHTML = `
+        <h3 style="margin-top:0;">${escapeHtml(t.title || '(Untitled)')}</h3>
+        <div class="muted">Photos folder:</div>
+        <div><code>Documents/${escapeHtml(state.cfg.photosFolder)}/${escapeHtml(t.itemId)}/</code></div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  /* ---- Modals ---- */
+  function openModal(html){
+    qs('modalCard').innerHTML = html;
+    qs('modalBackdrop').style.display='flex';
+  }
+  function closeModal(){
+    qs('modalBackdrop').style.display='none';
+    qs('modalCard').innerHTML='';
+  }
+
+  async function confirmDialog(title, message, confirmText='Delete', cancelText='Cancel'){
+    return new Promise((resolve)=>{
+      openModal(`
+        <div class="modal-header">
+          <h3 style="margin:0">${escapeHtml(title)}</h3>
+          <button class="btn small link" id="btnCloseModal">✖</button>
+        </div>
+        <div style="margin-top:10px">${escapeHtml(message)}</div>
+        <div class="confirm-actions">
+          <button class="btn" id="btnCancel">${escapeHtml(cancelText)}</button>
+          <button class="btn primary" id="btnConfirm">${escapeHtml(confirmText)}</button>
+        </div>
+      `);
+      qs('btnCloseModal').onclick = ()=>{ closeModal(); resolve(false); };
+      qs('btnCancel').onclick = ()=>{ closeModal(); resolve(false); };
+      qs('btnConfirm').onclick = ()=>{ closeModal(); resolve(true); };
+    });
+  }
+
+  function openProjectModal(existing){
+    const canEdit = (ROLE !== Roles.viewer);
+    if(!canEdit){ toast('Viewer cannot edit'); return; }
+
+    const isEdit = !!existing;
+    const cfg = state.cfg;
+
+    openModal(`
+      <div class="modal-header">
+        <h3 style="margin:0">${isEdit ? 'Edit Project' : 'Add Project'}</h3>
+        <button class="btn small link" id="btnCloseModal">✖</button>
+      </div>
+      <div class="input-row" style="margin-top:10px;">
+        <div style="grid-column:1/-1">
+          <label>Project Address</label>
+          <input id="pm-address" type="text" value="${escapeAttr(existing?.address || '')}" />
+        </div>
+      </div>
+      <div class="input-row" style="margin-top:10px;">
+        <div>
+          <label>Owner</label>
+          <input id="pm-owner" type="text" value="${escapeAttr(existing?.owner || '')}" />
+        </div>
+        <div>
+          <label>Start Date</label>
+          <input id="pm-start" type="date" value="${escapeAttr(existing?.startDate || '')}" />
+        </div>
+      </div>
+      <div class="input-row" style="margin-top:10px;">
+        <div>
+          <label>Expected Sales</label>
+          <input id="pm-sales" type="number" step="any" value="${escapeAttr(existing?.expectedSales || '')}" />
+        </div>
+        <div>
+          <label>Active</label>
+          <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+            <input id="pm-active" type="checkbox" ${existing ? (existing.active ? 'checked' : '') : 'checked'} />
+            <span class="muted">Check for active project</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn primary" id="pm-save">Save</button>
+        <button class="btn" id="pm-cancel">Cancel</button>
+      </div>
+    `);
+
+    qs('btnCloseModal').onclick = closeModal;
+    qs('pm-cancel').onclick = closeModal;
+    qs('pm-save').onclick = async () => {
+      try{
+        const data = {
+          address: (qs('pm-address').value||'').trim(),
+          owner: (qs('pm-owner').value||'').trim(),
+          startDate: qs('pm-start').value || '',
+          expectedSales: (qs('pm-sales').value||'').trim(),
+          active: !!qs('pm-active').checked
+        };
+        if(!data.address){ toast('Project address required'); return; }
+        const id = await createOrUpdateProject(existing?.itemId || null, data);
+        closeModal();
+        await refreshAll();
+        toast('Project saved');
+        location.hash = `#project:${encodeURIComponent(id)}`;
+      }catch(e){
+        console.error(e);
+        toast('Failed to save project');
+      }
+    };
+  }
+
+  function openReportsModal(project, tasks){
+    // Simple summary report
+    const totalCosts = tasks.reduce((acc,t)=> acc + parseNum(t.totalCost), 0);
+    const totalAlloc = tasks.reduce((acc,t)=> acc + parseNum(t.allocation), 0);
+
+    const rows = tasks.map(t => `
+      <tr>
+        <td>${escapeHtml(t.title||'')}</td>
+        <td>${escapeHtml(t.startDate||'')}</td>
+        <td>${escapeHtml(t.endDate||'')}</td>
+        <td style="text-align:right">${escapeHtml(t.quantity??'')}</td>
+        <td>${escapeHtml(t.quantityUnit??'')}</td>
+        <td style="text-align:right">${escapeHtml(fmtMoney(t.unitCost))}</td>
+        <td style="text-align:right">${escapeHtml(fmtMoney(t.totalCost))}</td>
+        <td style="text-align:right">${escapeHtml(fmtMoney(t.allocation))}</td>
+        <td>${escapeHtml(t.sprint??'')}</td>
+        <td>${escapeHtml(t.assignee??'')}</td>
+      </tr>
+    `).join('');
+
+    openModal(`
+      <div class="modal-header">
+        <h3 style="margin:0">Reports - ${escapeHtml(project.address||'')}</h3>
+        <button class="btn small link" id="btnCloseModal">✖</button>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+        <span class="badge">Tasks: ${tasks.length}</span>
+        <span class="badge">Total Cost: $${escapeHtml(fmtMoney(totalCosts))}</span>
+        <span class="badge">Total Allocation: $${escapeHtml(fmtMoney(totalAlloc))}</span>
+        <span class="badge">Expected Sales: $${escapeHtml(fmtMoney(project.expectedSales))}</span>
+      </div>
+      <div class="scroll-panel" style="margin-top:12px; max-height:55vh;">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Task</th><th>Start</th><th>End</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Total Cost</th><th>Allocation</th><th>Sprint</th><th>Assignee</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || '<tr><td colspan="10" class="muted">No tasks</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+        <button class="btn" id="btnPrint">Print</button>
+        <button class="btn primary" id="btnDone">Done</button>
+      </div>
+    `);
+
+    qs('btnCloseModal').onclick = closeModal;
+    qs('btnDone').onclick = closeModal;
+    qs('btnPrint').onclick = () => window.print();
+  }
+
+  /* ---- Dashboard ---- */
+  function initDashboard(){
+    const total = state.projects.length;
+    const active = state.projects.filter(p => p.active).length;
+    const completed = total - active;
+
+    // Aggregate costs by loading tasks for each project in memory (if already loaded) else 0
+    let totalCosts = 0;
+    for(const p of state.projects){
+      const tasks = state.tasksByProject.get(String(p.itemId)) || [];
+      totalCosts += tasks.reduce((acc,t) => acc + parseNum(t.totalCost), 0);
+    }
+    const totalSales = state.projects.reduce((acc,p) => acc + parseNum(p.expectedSales), 0);
+
+    qs('mTotalProjects').textContent = total;
+    qs('mActiveProjects').textContent = active;
+    qs('mCompletedProjects').textContent = completed;
+    qs('mTotalCosts').textContent = '$' + fmtMoney(totalCosts);
+    qs('mTotalSales').textContent = '$' + fmtMoney(totalSales);
+
+    const ul = qs('activityList');
+    ul.innerHTML = '';
+    const items = state.activity.slice(0,10);
+    if(!items.length){
+      ul.innerHTML = '<li class="muted">No recent activity</li>';
+      return;
+    }
+    items.forEach(a => {
+      const li = document.createElement('li');
+      const dt = new Date(a.ts);
+      li.textContent = `${dt.toLocaleString()} — ${a.text}`;
+      ul.appendChild(li);
+    });
+  }
+
+  /* ---- Settings ---- */
+  function initSettings(){
+    const cfg = state.cfg;
+    qs('set-name').value = cfg.companyName || '';
+    qs('set-logo').value = cfg.companyLogo || '';
+    qs('set-siteurl').value = cfg.siteUrl || '';
+    qs('set-projectlist').value = cfg.projectListName || '';
+    qs('set-tasklist').value = cfg.taskListName || '';
+    qs('set-photofolder').value = cfg.photosFolder || '';
+    qs('set-adminGroup').value = cfg.adminGroupId || '';
+    qs('set-editorGroup').value = cfg.editorGroupId || '';
+    qs('set-viewerGroup').value = cfg.viewerGroupId || '';
+    qs('set-lookupField').value = cfg.taskProjectLookupInternalName || '';
+
+    qs('btnSaveSettings').onclick = async () => {
+      state.cfg.companyName = (qs('set-name').value || '').trim() || 'Company';
+      state.cfg.companyLogo = (qs('set-logo').value || '').trim();
+      state.cfg.siteUrl = (qs('set-siteurl').value || '').trim();
+      state.cfg.projectListName = (qs('set-projectlist').value || '').trim() || 'Project';
+      state.cfg.taskListName = (qs('set-tasklist').value || '').trim() || 'Task';
+      state.cfg.photosFolder = (qs('set-photofolder').value || '').trim() || 'TaskPhotos';
+      state.cfg.adminGroupId = (qs('set-adminGroup').value || '').trim();
+      state.cfg.editorGroupId = (qs('set-editorGroup').value || '').trim();
+      state.cfg.viewerGroupId = (qs('set-viewerGroup').value || '').trim();
+      state.cfg.taskProjectLookupInternalName = (qs('set-lookupField').value || '').trim() || 'Project';
+
+      saveCfg(state.cfg);
+      applyCompanyBranding();
+
+      try{
+        await resolveSharePoint();
+        toast('Settings saved');
+      }catch(e){
+        console.error(e);
+        toast('Saved, but could not resolve SharePoint. Check values.');
+      }
+    };
+
+    qs('btnResetSettings').onclick = () => {
+      state.cfg = structuredClone(defaultCfg);
+      saveCfg(state.cfg);
+      initSettings();
+      applyCompanyBranding();
+      toast('Reset to defaults');
+    };
+  }
+
+  function applyCompanyBranding(){
+    qs('companyName').textContent = state.cfg.companyName || 'Company';
+    qs('companyLogo').src = state.cfg.companyLogo || '';
+    qs('projectsLogo').src = state.cfg.companyLogo || '';
+    qs('dashLogo').src = state.cfg.companyLogo || '';
+  }
+
+  /* ---- Router ---- */
+  async function route(){
+    setScrollableHeights();
+    const h = location.hash || '#home';
+    setActiveNav(h.startsWith('#project:') ? '#projects' : h);
+
+    if(!state.account){
+      // Keep signed-out screen, ignore routing.
+      return;
+    }
+
+    if(h === '#home'){
+      showView('home');
+      await initHome();
+    } else if(h === '#projects'){
+      showView('projects');
+      await initProjects();
+    } else if(h.startsWith('#project:')){
+      showView('projectView');
+      const id = decodeURIComponent(h.split(':')[1] || '');
+      await initProjectView(id);
+    } else if(h === '#dashboard'){
+      showView('dashboard');
+      initDashboard();
+    } else if(h === '#settings'){
+      showView('settings');
+      initSettings();
+    } else {
+      location.hash = '#home';
+    }
+  }
+
+  /* ---- Refresh ---- */
+  async function refreshAll(){
+    requireSignedIn();
+    await resolveSharePoint();
+    await loadProjects(8);
+    // Only keep tasks for currently open project (optional)
+    // But for dashboard totals, we can lazily load when opening a project.
+    await initProjects();
+    await initHome();
+    applyCompanyBranding();
+  }
+
+  /* ---- Signed-in bootstrap ---- */
+  async function onSignedIn(loginResult){
+    // Basic tenant safety check
+    const claims = loginResult?.idTokenClaims || msalInstance.getActiveAccount()?.idTokenClaims;
+
+    // Get user profile
+    try{
+      const me = await graphFetch(graphUrl('/me?$select=displayName,mail,userPrincipalName'));
+      state.user.name = me.displayName || '';
+      state.user.email = me.mail || me.userPrincipalName || state.account?.username || '';
+    }catch(e){
+      console.warn(e);
+      state.user.email = state.account?.username || '';
+    }
+
+    // Enforce tenant
+    try{
+      const idClaims = loginResult?.idTokenClaims || {};
+      const tid = (idClaims.tid || '').toString();
+      if(tid && tid !== AAD.tenantId){
+        toast('Wrong tenant account. Signing out.');
+        await signOut();
         return;
       }
-      const item = await graph(`/sites/${spSiteId}/lists/${taskListId}/items/${id}?$expand=fields`);
-      const f=item.fields||{};
-      taskTitle.value=f.Title||''; taskAddress.value=f.Address||''; taskStart.value=f['Start Date']||''; taskEnd.value=f['End Date']||'';
-      taskQty.value=f.Quantity||''; taskUnitCost.value=f['Unit Cost']||''; taskTotalCost.value=f['Total Cost']||''; taskAllocation.value=f.Allocation||'';
-      taskSprint.value=f.Sprint||''; taskAssignee.value=f.Assignee||''; taskDesc.value=f.Description||''; taskNotes.value=f.Notes||'';
-      document.getElementById('taskDelete').classList.toggle('hidden', ROLE!=='admin');
-      document.getElementById('taskSave').onclick = ()=> saveTask(id);
-      document.getElementById('taskDelete').onclick = ()=> deleteTask(id);
-    }
-    async function ensureTaskPhotosFolder(){
-      try{ await graph(`/sites/${spSiteId}/drive/root/children`, { method:'POST', body: JSON.stringify({ name:'TaskPhotos', folder:{}, '@microsoft.graph.conflictBehavior':'rename' }) }); }catch{}
-    }
-    async function saveTask(id){
-      const fields = { Title: taskTitle.value, Address: taskAddress.value, 'Start Date': taskStart.value, 'End Date': taskEnd.value, Quantity: parseFloat(taskQty.value||'0'), 'Unit Cost': parseFloat(taskUnitCost.value||'0'), 'Total Cost': parseFloat(taskTotalCost.value||'0'), Allocation: parseFloat(taskAllocation.value||'0'), Sprint: taskSprint.value, Assignee: taskAssignee.value, Description: taskDesc.value, Notes: taskNotes.value };
-      if (id) await graph(`/sites/${spSiteId}/lists/${taskListId}/items/${id}/fields`, { method:'PATCH', body: JSON.stringify(fields) });
-      else { const created = await graph(`/sites/${spSiteId}/lists/${taskListId}/items`, { method:'POST', body: JSON.stringify({ fields }) }); id = created.id; }
-      // Photos
-      const files = document.getElementById('taskPhotos').files; if (files && files.length){
-        await ensureTaskPhotosFolder();
-        const token = await getToken();
-        for (const f of files){
-          const buf = await f.arrayBuffer();
-          const up = await fetch(`${graphBase}/sites/${spSiteId}/drive/root:/TaskPhotos/${encodeURIComponent(f.name)}:/content`, { method:'PUT', headers:{ 'Authorization':'Bearer '+token, 'Content-Type': f.type || 'application/octet-stream' }, body: buf });
-          if (!up.ok) console.warn('Upload failed', f.name);
-        }
-      }
-      await loadTasks();
-    }
-    async function deleteTask(id){ if (ROLE!=='admin') return; await graph(`/sites/${spSiteId}/lists/${taskListId}/items/${id}`, { method:'DELETE' }); await loadTasks(); }
+    }catch(_){ }
 
-    // ===== Auth lifecycle (open same-origin /auth popup to avoid COOP warnings) =====
-    async function onSignedIn(){
-      document.getElementById('signInCard').classList.add('hidden');
-      document.getElementById('appRoot').classList.remove('hidden');
-      document.getElementById('userEmail').classList.remove('hidden');
-      document.getElementById('signOutBtn').classList.remove('hidden');
-      document.getElementById('signInBtn').classList.add('hidden');
-      document.getElementById('cardSignInBtn').classList.add('hidden');
-      document.getElementById('userEmail').textContent = account?.username || '';
-      await resolveRole();
-      await resolveSharePointIds();
-      await loadProjectsTop8();
-      await loadTasks();
+    // Role
+    try{
+      const idClaims = loginResult?.idTokenClaims || {};
+      ROLE = await computeRoleFromClaimsOrGroups(idClaims);
+    }catch(e){
+      console.warn('Role check failed, defaulting to editor', e);
+      ROLE = Roles.editor;
     }
-    function signIn(){
-      const popup = window.open('./auth', 'WOLCAS_AUTH', 'width=520,height=680,noopener,noreferrer');
-      window.addEventListener('message', async (ev) => {
-        if (ev.data && ev.data.type === 'MSAL_AUTH_SUCCESS') {
-          account = ev.data.account;
-          msalInstance.setActiveAccount(account);
-          await onSignedIn();
-        }
-      }, { once: true });
+
+    state.account = msalInstance.getActiveAccount();
+    qs('userEmail').textContent = state.user.email || '';
+    qs('btnAuth').textContent = 'Sign out';
+    setBodySignedIn(true);
+
+    state.cfg = loadCfg();
+    applyCompanyBranding();
+
+    try{
+      await resolveSharePoint();
+      await loadProjects(8);
+    }catch(e){
+      console.error(e);
+      toast('SharePoint connection failed. Check Settings.');
     }
-    function signOut(){ msalInstance.logoutPopup({ postLogoutRedirectUri: window.location.origin }); }
 
-    document.getElementById('signInBtn').addEventListener('click', signIn);
-    document.getElementById('cardSignInBtn').addEventListener('click', signIn);
-    document.getElementById('signOutBtn').addEventListener('click', signOut);
+    applyRoleToUI();
 
-    document.getElementById('btnAddProject').addEventListener('click', ()=> editProject(null));
-    document.getElementById('btnAddTask').addEventListener('click', ()=> openTaskEditor(null));
+    // Wire UI events
+    qs('projSearch').oninput = () => initProjects();
 
-    window.addEventListener('DOMContentLoaded', ()=>{
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length){ account = accounts[0]; msalInstance.setActiveAccount(account); onSignedIn(); }
-    });
+    qs('btnNewProject').onclick = () => openProjectModal(null);
+    qs('btnAddProjectTop').onclick = () => openProjectModal(null);
+
+    qs('btnRefresh').onclick = async () => { try{ await refreshAll(); toast('Refreshed'); }catch(e){ console.error(e); toast('Refresh failed'); } };
+
+    // Route now that signed in
+    await route();
+  }
+
+  /* ---- Header auth button wiring ---- */
+  qs('btnAuth').onclick = async () => {
+    try{
+      if(state.account) await signOut();
+      else await signIn();
+    }catch(e){
+      console.error(e);
+      toast('Auth failed');
+    }
+  };
+  qs('btnSignInCard').onclick = async () => {
+    try{ await signIn(); }catch(e){ console.error(e); toast('Sign-in failed'); }
+  };
+
+  /* ---- Startup ---- */
+  window.addEventListener('hashchange', () => { route().catch(e => console.error(e)); });
+  window.addEventListener('resize', setScrollableHeights);
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Apply branding even before sign-in
+    applyCompanyBranding();
+    setScrollableHeights();
+    try{
+      await initAuth();
+    }catch(e){
+      console.error(e);
+      onSignedOut();
+    }
+  });
+
   </script>
 </body>
 </html>
