@@ -1,58 +1,58 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Auth</title>
+  <title>WOLCAS Auth</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff;color:#111827;}
-    .card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;max-width:520px;}
-    .muted{color:#6b7280;}
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial;
+      margin:0; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#fff; color:#111827; }
+    .card { border:1px solid #e5e7eb; border-radius:12px; padding:16px; max-width:560px; width:92vw; }
+    .muted { color:#6b7280; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h3 style="margin-top:0">Signing you in…</h3>
-    <p class="muted">This window will close automatically.</p>
-    <div id="msg" class="muted"></div>
+    <h2 style="margin:0 0 8px 0;">Signing you in…</h2>
+    <div class="muted">This window should close automatically.</div>
+    <div id="status" class="muted" style="margin-top:10px;"></div>
   </div>
 
-  <script src="../msal-browser.min.js"></script>
+  ../msal-browser.min.js</script>
   <script>
-    const AAD = {
+    const APP = {
       clientId: "827656f8-3a21-4d69-b6e5-c35e2ec2fb71",
       tenantId: "97d84781-b85c-4034-a0d0-588e7b442e45",
+      redirectUriMain: "https://abirrahat.github.io/wolcas-webapp/",
+      redirectUriAuth: "https://abirrahat.github.io/wolcas-webapp/auth"
     };
-
-    const BASE_PATH = (() => {
-      const p = location.pathname;
-      if (p.includes('/auth')) return p.split('/auth')[0] + '/';
-      return p.endsWith('/') ? p : p.substring(0, p.lastIndexOf('/') + 1);
-    })();
-    const REDIRECT_MAIN = location.origin + BASE_PATH;
-    const REDIRECT_AUTH = location.origin + BASE_PATH + 'auth';
 
     const msalConfig = {
       auth: {
-        clientId: AAD.clientId,
-        authority: `https://login.microsoftonline.com/${AAD.tenantId}`,
-        redirectUri: REDIRECT_AUTH,
+        clientId: APP.clientId,
+        authority: `https://login.microsoftonline.com/${APP.tenantId}`,
+        redirectUri: APP.redirectUriAuth,
         navigateToLoginRequestUrl: false
       },
-      cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
+      cache: {
+        cacheLocation: "localStorage",
+        storeAuthStateInCookie: false
+      }
     };
 
     const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    (async () => {
-      try{
-        if (msalInstance.initialize) await msalInstance.initialize();
+    (async function () {
+      const el = document.getElementById("status");
+      try {
         await msalInstance.handleRedirectPromise();
-        // Close popup/redirect helper
-        window.close();
-      }catch(e){
+        el.textContent = "Done. Closing…";
+        // MSAL stores tokens in the same-origin cache. Close popup.
+        setTimeout(() => window.close(), 250);
+      } catch (e) {
         console.error(e);
-        document.getElementById('msg').textContent = 'Auth error: ' + (e.message || e);
+        el.textContent = "Auth failed. You can close this window.";
       }
     })();
   </script>
