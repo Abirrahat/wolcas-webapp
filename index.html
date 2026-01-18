@@ -184,6 +184,9 @@
             width: 100%;
             max-width: 500px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    /* Limit the height and allow scrolling inside modals when content is long */
+    max-height: 80vh;
+    overflow-y: auto;
         }
         .modal input,
         .modal select,
@@ -206,6 +209,12 @@
             object-fit: cover;
             border-radius: 4px;
             border: 1px solid var(--border);
+        }
+
+        /* Make tasks content scrollable to handle many tasks gracefully */
+        #tasksContent {
+            max-height: 70vh;
+            overflow-y: auto;
         }
 
         /* Responsive styles */
@@ -496,9 +505,23 @@
             document.getElementById('authButton').textContent = 'Sign Out';
             // Determine user role via Graph groups
             await determineUserRole();
-            // If the list has already been detected, load projects from it
+            // Load persisted settings and, if available, fetch columns and apply
+            // mapping. Then load projects if mapping contains a projectRef.
+            await loadSettings();
             if (siteId && taskListId) {
-                await loadProjects();
+                try {
+                    await fetchColumns();
+                    applyMappingToUI();
+                    // Show mapping UI if columns exist
+                    document.getElementById('mappingCard').style.display = '';
+                } catch (e) {
+                    console.warn('Failed to fetch columns on login:', e);
+                }
+                // If a project reference column is defined in the mapping,
+                // automatically load projects
+                if (mapping && mapping.projectRef) {
+                    await loadProjects();
+                }
             }
             navigateTo('home');
         }
@@ -531,6 +554,61 @@
                 throw new Error(`${response.status} ${response.statusText}: ${text}`);
             }
             return response.status === 204 ? null : await response.json();
+        }
+
+        /** Persist siteId, taskListId and mapping to localStorage so that
+         * settings persist across page reloads. Called after detection and
+         * mapping save.
+         */
+        function saveSettings() {
+            const data = {
+                siteId,
+                taskListId,
+                mapping
+            };
+            try {
+                localStorage.setItem('wolcas_settings', JSON.stringify(data));
+            } catch (e) {
+                console.warn('Could not save settings', e);
+            }
+        }
+
+        /** Load saved settings from localStorage. Populates siteId, taskListId
+         * and mapping if stored. Does not call fetchColumns or loadProjects
+         * automatically.
+         */
+        async function loadSettings() {
+            try {
+                const dataStr = localStorage.getItem('wolcas_settings');
+                if (!dataStr) return;
+                const data = JSON.parse(dataStr);
+                siteId = data.siteId || null;
+                taskListId = data.taskListId || null;
+                if (data.mapping) {
+                    // Merge mapping values rather than overwrite the entire object
+                    mapping.project = data.mapping.project || mapping.project;
+                    mapping.task = data.mapping.task || mapping.task;
+                    mapping.projectRef = data.mapping.projectRef || mapping.projectRef;
+                }
+            } catch (e) {
+                console.warn('Could not load settings', e);
+            }
+        }
+
+        /** Apply loaded mapping values to the mapping UI. Should be called after
+         * fetchColumns() builds the mapping select elements.
+         */
+        function applyMappingToUI() {
+            const selects = document.querySelectorAll('#mappingFields select');
+            selects.forEach(sel => {
+                const type = sel.dataset.type;
+                const key = sel.dataset.key;
+                if (type === 'project' && mapping.project && mapping.project[key]) {
+                    sel.value = mapping.project[key];
+                } else if (type === 'task' && mapping.task && mapping.task[key]) {
+                    sel.value = mapping.task[key];
+                }
+            });
         }
 
         /**
@@ -616,6 +694,8 @@
                 // Fetch column definitions for mapping
                 await fetchColumns();
                 alert('List detected. Please map the fields.');
+                // Save siteId and taskListId immediately after detection
+                saveSettings();
                 document.getElementById('mappingCard').style.display = '';
             } catch (e) {
                 console.error('Failed to detect list:', e);
@@ -747,6 +827,8 @@
             // name column. This ensures tasks can be filtered by project
             // without requiring a separate lookup column.
             mapping.projectRef = mapping.project.name || null;
+            // Persist mapping along with existing siteId and taskListId
+            saveSettings();
             alert('Mapping saved. You can now load projects.');
             loadProjects();
         });
@@ -781,16 +863,16 @@
                             sales: fields[mapping.project.sales] || '',
                             // Normalize boolean status values into human-readable strings. If
                             // the status field contains true/false or 'true'/'false', we
-                            // convert it to 'Yes'/'No' for display purposes.
+                            // convert it to 'Active'/'Completed' for display purposes.
                             status: (() => {
                                 let s = fields[mapping.project.status];
                                 if (typeof s === 'boolean') {
-                                    return s ? 'Yes' : 'No';
+                                    return s ? 'Active' : 'Completed';
                                 }
                                 if (typeof s === 'string') {
                                     const lower = s.toLowerCase();
-                                    if (lower === 'true') return 'Yes';
-                                    if (lower === 'false') return 'No';
+                                    if (lower === 'true') return 'Active';
+                                    if (lower === 'false') return 'Completed';
                                 }
                                 return s || '';
                             })(),
@@ -816,11 +898,11 @@
                         {
                             let s = fields[mapping.project.status];
                             if (typeof s === 'boolean') {
-                                s = s ? 'Yes' : 'No';
+                                s = s ? 'Active' : 'Completed';
                             } else if (typeof s === 'string') {
                                 const lower = s.toLowerCase();
-                                if (lower === 'true') s = 'Yes';
-                                else if (lower === 'false') s = 'No';
+                                if (lower === 'true') s = 'Active';
+                                else if (lower === 'false') s = 'Completed';
                             }
                             if (s !== undefined && s !== null) {
                                 proj.status = s || proj.status;
@@ -851,8 +933,9 @@
                     <td>${project.status || ''}</td>
                     <td>
                         <button class="btn secondary" data-id="${project.id}" data-action="edit">Edit</button>
-                        ${userRole === 'admin' ? `<button class="btn secondary" data-id="${project.id}" data-action="delete">Delete</button>` : ''}
-                        <button class="btn secondary" data-id="${project.id}" data-action="viewTasks">Tasks</button>
+                        ${userRole !== 'viewer' ? `<button class="btn secondary" data-id="${project.id}" data-action="delete">Delete</button>` : ''}
+                        ${userRole !== 'viewer' ? `<button class="btn secondary" data-id="${project.id}" data-action="toggleStatus">${project.status && project.status.toString().toLowerCase() === 'active' ? 'Mark Completed' : 'Mark Active'}</button>` : ''}
+                        <button class="btn secondary" data-id="${project.id}" data-action="viewTasks">Open</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -872,6 +955,8 @@
                 if (confirm('Delete this project and all its tasks?')) {
                     deleteProject(project);
                 }
+            } else if (action === 'toggleStatus') {
+                toggleProjectStatus(project);
             } else if (action === 'viewTasks') {
                 selectedProject = project;
                 navigateTo('tasks');
@@ -948,6 +1033,18 @@
             };
             const fields = {};
             ['name','address','owner','startDate','sales','status','description'].forEach(key => {
+                // Do not render an input for "name" when adding a project. Display it
+                // as read-only when editing. The project name will be generated
+                // automatically when saving a new project.
+                if (key === 'name') {
+                    if (isEdit) {
+                        const nameEl = document.createElement('p');
+                        nameEl.style.fontWeight = 'bold';
+                        nameEl.textContent = 'Project Name: ' + (project ? project.name : '');
+                        form.appendChild(nameEl);
+                    }
+                    return;
+                }
                 const labelKey = mapping.project[key] ? key.charAt(0).toUpperCase() + key.slice(1) : key;
                 const display = labelKey.replace(/([A-Z])/g, ' $1');
                 const { label: lbl, input } = createInput(display, project ? project[key] : '', key);
@@ -1023,9 +1120,21 @@
                             await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items`, 'POST', { fields: fieldsPayload });
                         }
                     } else {
-                        // Create a new list item representing the project. For projects
-                        // we intentionally leave the task name column blank so it is
-                        // recognized as a project row.
+                        // Compute a project name automatically. Use address value if provided,
+                        // otherwise owner value, or fall back to a timestamp-based name.
+                        if (mapping.project && mapping.project.name) {
+                            let autoName = '';
+                            if (fields.address && fields.address.value) {
+                                autoName = fields.address.value.trim();
+                            } else if (fields.owner && fields.owner.value) {
+                                autoName = fields.owner.value.trim();
+                            } else {
+                                autoName = 'Project ' + Date.now();
+                            }
+                            spFields[mapping.project.name] = autoName;
+                        }
+                        // Create a new list item representing the project. We intentionally
+                        // leave the task name column blank so it is recognized as a project row.
                         const fieldsPayload = { ...spFields };
                         if (mapping.task.name) {
                             fieldsPayload[mapping.task.name] = '';
@@ -1104,6 +1213,55 @@
                 }
             } catch (err) {
                 alert('Failed to delete project: ' + err.message);
+            }
+        }
+
+        /** Toggle a project's status between Active (true) and Completed (false).
+         * Updates the dedicated project row and refreshes the projects list.
+         * Optionally updates tasks' status if a task status column is mapped.
+         * @param {Object} project
+         */
+        async function toggleProjectStatus(project) {
+            if (!mapping.project || !mapping.project.status) {
+                alert('Status column is not mapped.');
+                return;
+            }
+            // Determine current boolean: treat 'Active' (case-insensitive) as true
+            const currentActive = project.status && project.status.toString().toLowerCase() === 'active';
+            const newBool = !currentActive;
+            const rowId = project.projectRowId || project.id;
+            const patch = {};
+            patch[mapping.project.status] = newBool;
+            try {
+                // Update the project row status
+                await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items/${rowId}/fields`, 'PATCH', patch);
+                // If tasks have a status column mapped, update tasks for this project to keep consistency
+                if (mapping.task && mapping.task.status && mapping.projectRef) {
+                    const filter = encodeURIComponent(`fields/${mapping.projectRef} eq '${project.name.replace(/'/g, "\\'")}'`);
+                    let items;
+                    try {
+                        const resp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items?$expand=fields&$filter=${filter}`);
+                        items = resp.value || [];
+                    } catch (e) {
+                        const respAll = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items?$expand=fields`);
+                        items = (respAll.value || []).filter(i => {
+                            const val = i.fields && i.fields[mapping.projectRef];
+                            return val && val.toString().toLowerCase() === project.name.toLowerCase();
+                        });
+                    }
+                    for (const it of items) {
+                        const tpatch = {};
+                        tpatch[mapping.task.status] = newBool;
+                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items/${it.id}/fields`, 'PATCH', tpatch);
+                    }
+                }
+                await loadProjects();
+                // If the toggled project is currently selected in tasks view, reload tasks
+                if (selectedProject && selectedProject.name === project.name) {
+                    await loadTasksForProject(project);
+                }
+            } catch (err) {
+                alert('Failed to toggle status: ' + err.message);
             }
         }
         // Task logic
@@ -1199,13 +1357,52 @@
                     <td>${task.assignee}</td>
                     <td>
                         <button class="btn secondary" data-id="${task.id}" data-action="edit">Edit</button>
-                        ${userRole === 'admin' ? `<button class="btn secondary" data-id="${task.id}" data-action="delete">Delete</button>` : ''}
+                        ${userRole !== 'viewer' ? `<button class="btn secondary" data-id="${task.id}" data-action="delete">Delete</button>` : ''}
                     </td>
                 `;
                 tbody.appendChild(row);
             });
             table.appendChild(tbody);
             container.appendChild(table);
+            // Summary of tasks for the project. We aggregate numeric values
+            // across tasks (Quantity, Unit Cost, Total Cost) and display a summary
+            // below the table.
+            (function() {
+                let totalTasks = tasks.length;
+                let sumQuantity = 0;
+                let sumUnitCost = 0;
+                let sumTotalCost = 0;
+                tasks.forEach(t => {
+                    const q = parseFloat(String(t.quantity).replace(/,/g, ''));
+                    const uc = parseFloat(String(t.unitCost).replace(/,/g, ''));
+                    const tc = parseFloat(String(t.totalCost).replace(/,/g, ''));
+                    if (!isNaN(q)) sumQuantity += q;
+                    if (!isNaN(uc)) sumUnitCost += uc;
+                    if (!isNaN(tc)) sumTotalCost += tc;
+                });
+                const summaryDiv = document.createElement('div');
+                summaryDiv.style.marginTop = '16px';
+                summaryDiv.innerHTML = `<strong>Summary:</strong> Tasks: ${totalTasks}, Total Quantity: ${sumQuantity}, Total Unit Cost: ${sumUnitCost.toFixed(2)}, Total Cost: ${sumTotalCost.toFixed(2)}`;
+                container.appendChild(summaryDiv);
+                // Report buttons
+                const reportDiv = document.createElement('div');
+                reportDiv.style.marginTop = '8px';
+                reportDiv.style.display = 'flex';
+                reportDiv.style.gap = '8px';
+                if (userRole !== 'viewer') {
+                    const excelBtn = document.createElement('button');
+                    excelBtn.className = 'btn secondary';
+                    excelBtn.textContent = 'Download Excel';
+                    excelBtn.onclick = () => exportTasksToCsv(project);
+                    reportDiv.appendChild(excelBtn);
+                    const pdfBtn = document.createElement('button');
+                    pdfBtn.className = 'btn secondary';
+                    pdfBtn.textContent = 'Download PDF';
+                    pdfBtn.onclick = () => exportTasksToPdf(project);
+                    reportDiv.appendChild(pdfBtn);
+                }
+                container.appendChild(reportDiv);
+            })();
             // Handle clicks for edit/delete
             tbody.addEventListener('click', ev => {
                 const btn = ev.target;
@@ -1345,12 +1542,13 @@
                     const taskCol = mapping.task[k];
                     if (col && taskCol && project[k] && !/^Link/.test(taskCol)) {
                         let val = project[k];
-                        // Convert boolean-like strings for status to true/false
+                        // Convert boolean-like strings for status to true/false. Support
+                        // 'Active'/'Completed', 'Yes'/'No', or 'true'/'false' values.
                         if (k === 'status' && typeof val === 'string') {
                             const lower = val.toLowerCase();
-                            if (lower === 'yes' || lower === 'true') {
+                            if (lower === 'active' || lower === 'yes' || lower === 'true') {
                                 val = true;
-                            } else if (lower === 'no' || lower === 'false') {
+                            } else if (lower === 'completed' || lower === 'no' || lower === 'false') {
                                 val = false;
                             }
                         }
@@ -1436,6 +1634,90 @@
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': file.type },
                 body: file
             });
+        }
+
+        /** Export tasks for a project as CSV (Excel). Creates a CSV string and triggers
+         * download. Values are quoted and commas in values escaped.
+         */
+        function exportTasksToCsv(project) {
+            if (!tasks || tasks.length === 0) {
+                alert('No tasks to export.');
+                return;
+            }
+            const header = ['Task Name','Start Date','End Date','Quantity','Unit','Unit Cost','Total Cost','Allocation','Sprint','Assignee','Description','Notes'];
+            const rows = tasks.map(t => [
+                t.name,
+                t.startDate,
+                t.endDate,
+                t.quantity,
+                t.unit,
+                t.unitCost,
+                t.totalCost,
+                t.allocation,
+                t.sprint,
+                t.assignee,
+                t.description,
+                t.notes
+            ]);
+            const escapeCsv = (val) => {
+                if (val === null || val === undefined) return '';
+                const s = String(val).replace(/"/g,'""');
+                return `"${s}"`;
+            };
+            let csv = header.map(escapeCsv).join(',') + '\r\n';
+            rows.forEach(row => {
+                csv += row.map(escapeCsv).join(',') + '\r\n';
+            });
+            const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            const fileName = (project.name || 'tasks') + '_tasks.csv';
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        /** Export tasks for a project as PDF by opening a printable page. Uses
+         * the browser's print-to-PDF functionality. This opens a new window
+         * containing a simple table and invokes print() on it.
+         */
+        function exportTasksToPdf(project) {
+            if (!tasks || tasks.length === 0) {
+                alert('No tasks to export.');
+                return;
+            }
+            const win = window.open('', '', 'width=800,height=600');
+            win.document.write('<html><head><title>Tasks Report</title><style>table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:4px;}th{background:#f0f0f0;}</style></head><body>');
+            win.document.write('<h2>Tasks for ' + (project.name || '') + '</h2>');
+            win.document.write('<table><thead><tr><th>Name</th><th>Start</th><th>End</th><th>Quantity</th><th>Unit</th><th>Unit Cost</th><th>Total Cost</th><th>Allocation</th><th>Sprint</th><th>Assignee</th><th>Description</th><th>Notes</th></tr></thead><tbody>');
+            tasks.forEach(t => {
+                win.document.write('<tr>');
+                win.document.write('<td>' + (t.name||'') + '</td>');
+                win.document.write('<td>' + (t.startDate||'') + '</td>');
+                win.document.write('<td>' + (t.endDate||'') + '</td>');
+                win.document.write('<td>' + (t.quantity||'') + '</td>');
+                win.document.write('<td>' + (t.unit||'') + '</td>');
+                win.document.write('<td>' + (t.unitCost||'') + '</td>');
+                win.document.write('<td>' + (t.totalCost||'') + '</td>');
+                win.document.write('<td>' + (t.allocation||'') + '</td>');
+                win.document.write('<td>' + (t.sprint||'') + '</td>');
+                win.document.write('<td>' + (t.assignee||'') + '</td>');
+                win.document.write('<td>' + (t.description||'') + '</td>');
+                win.document.write('<td>' + (t.notes||'') + '</td>');
+                win.document.write('</tr>');
+            });
+            win.document.write('</tbody></table>');
+            win.document.write('</body></html>');
+            win.document.close();
+            win.focus();
+            // Delay print call slightly to allow content to render
+            setTimeout(() => {
+                try {
+                    win.print();
+                } catch (e) {}
+                win.close();
+            }, 500);
         }
     </script>
 </body>
