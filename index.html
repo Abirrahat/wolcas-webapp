@@ -351,7 +351,16 @@
                 authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
                 // Use a separate redirect page to process the auth response. A blank or simple page is recommended
                 // when using popup APIs【229921885133186†L178-L182】.
-                redirectUri: window.location.origin + '/auth.html'
+                // Compute redirect URI relative to the directory where index.html resides. This ensures that
+                // if the app is hosted in a sub-path (e.g. GitHub Pages), the auth page resolves correctly.
+                redirectUri: (function() {
+                    const origin = window.location.origin;
+                    // Remove the last segment of the path (usually the file name or empty string)
+                    const segments = window.location.pathname.split('/');
+                    segments.pop();
+                    const base = segments.join('/') || '/';
+                    return origin + base + (base.endsWith('/') ? '' : '/') + 'auth.html';
+                })()
             },
             cache: {
                 cacheLocation: 'sessionStorage', // use sessionStorage for security
