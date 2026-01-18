@@ -973,6 +973,10 @@
                     const col = mapping.project[k];
                     if (col && !/^Link/.test(col)) {
                         let v = fields[k].value;
+                        // Skip empty values (e.g. blank date fields)
+                        if (v === '' || v === null || v === undefined) {
+                            return;
+                        }
                         // Convert the status field to a boolean if possible. If
                         // the user selected "Yes" or "No", translate this
                         // into true/false. Otherwise leave the value as-is.
@@ -983,14 +987,24 @@
                                     v = true;
                                 } else if (lower === 'no' || lower === 'false') {
                                     v = false;
-                                } else if (lower === '') {
-                                    v = undefined;
+                                } else {
+                                    // Unexpected status values are not set
+                                    return;
                                 }
                             }
+                        } else if (/date/i.test(k) || /date/i.test(col)) {
+                            // Date fields: send as date string only if valid. If value
+                            // does not match YYYY-MM-DD, let it pass as-is; Graph
+                            // accepts date-only strings.
+                            // Do nothing here: v remains as provided (input type="date" produces YYYY-MM-DD).
+                        } else if (typeof v === 'string' && /^-?[0-9][0-9,]*(\.[0-9]+)?$/.test(v.trim())) {
+                            // Numeric fields: strip commas and convert to number
+                            const numVal = Number(v.replace(/,/g, ''));
+                            if (!isNaN(numVal)) {
+                                v = numVal;
+                            }
                         }
-                        if (v !== undefined) {
-                            spFields[col] = v;
-                        }
+                        spFields[col] = v;
                     }
                 });
                 try {
@@ -1295,7 +1309,30 @@
                 Object.keys(fields).forEach(k => {
                     const col = mapping.task[k];
                     if (col && !/^Link/.test(col)) {
-                        spFields[col] = fields[k].value;
+                        let v = fields[k].value;
+                        // Skip empty strings
+                        if (v === '' || v === null || v === undefined) return;
+                        // Convert date strings as-is (input type date yields YYYY-MM-DD)
+                        // Convert status if present (although task fields typically don't include status)
+                        if (k === 'status') {
+                            if (typeof v === 'string') {
+                                const lower = v.toLowerCase();
+                                if (lower === 'yes' || lower === 'true') {
+                                    v = true;
+                                } else if (lower === 'no' || lower === 'false') {
+                                    v = false;
+                                } else {
+                                    return;
+                                }
+                            }
+                        } else if (typeof v === 'string' && /^-?[0-9][0-9,]*(\.[0-9]+)?$/.test(v.trim())) {
+                            // Numeric conversion: remove commas and convert to number
+                            const numVal = Number(v.replace(/,/g, ''));
+                            if (!isNaN(numVal)) {
+                                v = numVal;
+                            }
+                        }
+                        spFields[col] = v;
                     }
                 });
                 // Duplicate project info into task fields (for address, owner, etc.).
