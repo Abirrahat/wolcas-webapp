@@ -1,1489 +1,1144 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WOLCAS</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WOLCAS</title>
+    <!--
+      Content Security Policy
+      Allow inline scripts (unsafe-inline) for our application logic; restrict connections
+      to Microsoft domains for authentication and Graph; allow images from our own site,
+      data URIs and SharePoint. These directives follow best practices and ensure the
+      application only loads what is required.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline';
+        connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com;
+        img-src 'self' data: https://upload.wikimedia.org https://architektica-my.sharepoint.com;
+        style-src 'self' 'unsafe-inline';
+    ">
+    <link rel="icon" href="./favicon.ico" />
+    <!-- MSAL library loaded locally -->
+    <script src="msal-browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --secondary: #64748b;
+            --accent: #f97316;
+            --background: #f8fafc;
+            --text: #0f172a;
+            --card: #ffffff;
+            --border: #e5e7eb;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+        }
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background-color: var(--card);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
+        .header-inner {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            gap: 12px;
+        }
+        .title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: 24px;
+        }
+        nav a {
+            text-decoration: none;
+            color: var(--primary);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+        nav a.active,
+        nav a:hover {
+            background-color: var(--primary);
+            color: #ffffff;
+        }
+        .account {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: var(--secondary);
+        }
+        .account button {
+            background: var(--primary);
+            border: none;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .view {
+            display: none;
+        }
+        .view.active {
+            display: block;
+        }
+        .card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+        h1 {
+            margin-top: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+        th,
+        td {
+            padding: 8px;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+        th {
+            background-color: var(--background);
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+        .btn.primary {
+            background-color: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+        }
+        .btn.secondary {
+            background-color: #ffffff;
+            color: var(--primary);
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ffffff;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 2000;
+        }
+        .overlay.show {
+            display: flex;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+        .modal .modal-content {
+            background-color: var(--card);
+            padding: 24px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        .modal input,
+        .modal select,
+        .modal textarea {
+            width: 100%;
+            margin-top: 8px;
+            margin-bottom: 16px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+        .photo-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .photo-preview img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
 
-  <!-- CSP: allow local scripts + Graph/AAD calls (no external CDNs) -->
-  <meta http-equiv="Content-Security-Policy"
-        content="
-          default-src 'self';
-          script-src 'self' 'unsafe-inline';
-          style-src 'self' 'unsafe-inline';
-          img-src 'self' data: blob: https:;
-          connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com;
-          frame-src 'self' https://login.microsoftonline.com;
-        " />
-
-  <style>
-    :root { --primary:#1E3A8A; --secondary:#475569; --accent:#F97316; --bg:#F8FAFC; --text:#0F172A; --card:#ffffff; --border:#e5e7eb; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial;
-      color:var(--text); background:#fff; padding-bottom:72px; overflow-x:hidden; }
-    header.sticky { position:sticky; top:0; z-index:1000; background:var(--card); border-bottom:1px solid var(--border); }
-    .header-inner { display:flex; align-items:center; gap:12px; padding:10px 16px; }
-    .app-title { font-weight:800; color:var(--primary); letter-spacing:0.3px; }
-    .auth-left { display:flex; align-items:center; gap:10px; }
-    .auth-email { font-weight:700; color:var(--secondary); max-width:40vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .container { width:min(100%, 1100px); margin-inline:auto; padding:16px; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.04);
-      padding:16px; width:100%; overflow-wrap:anywhere; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:16px; align-items:start; }
-    .btn { display:inline-flex; align-items:center; gap:6px; padding:10px 14px; border-radius:10px; border:1px solid var(--border);
-      cursor:pointer; text-decoration:none; font-weight:700; background:#fff; color:var(--primary); }
-    .btn.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
-    .btn.small { padding:6px 10px; font-size:0.9rem; }
-    .btn.link { background:transparent; border-color:transparent; }
-    .badge { display:inline-block; padding:6px 10px; border-radius:999px; font-size:0.9rem; border:1px solid var(--border); background:#fff; font-weight:700; }
-    .badge.active { color:#065f46; background:#ecfdf5; border-color:#a7f3d0; }
-    .badge.completed { color:#1f2937; background:#e5e7eb; border-color:#d1d5db; }
-    .muted { color:#6b7280; }
-    .input-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .input-row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
-    label { font-weight:700; font-size:0.9rem; color:var(--secondary); }
-    input[type=text], input[type=date], input[type=number], textarea, select {
-      width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:#fff; font-size:1rem;
-    }
-    textarea { min-height:72px; }
-
-    /* Bottom nav */
-    .bottom-nav { position:fixed; bottom:0; left:0; right:0; height:64px; border-top:1px solid var(--border);
-      background:#fff; display:flex; justify-content:space-around; align-items:center; z-index:1000; }
-    .bottom-nav a { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-      color:var(--secondary); text-decoration:none; font-weight:800; }
-    .bottom-nav a.active { color:var(--primary); }
-    #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#111827; color:#fff;
-      padding:10px 14px; border-radius:10px; display:none; z-index:1100; }
-
-    /* Subtabs */
-    .subtabs { position:sticky; top:52px; background:#fff; border-bottom:1px solid var(--border); padding:8px; display:flex; gap:8px; z-index:900; }
-    .subtabs button { padding:8px 12px; border-radius:999px; border:1px solid var(--border); background:#fff; cursor:pointer; font-weight:800; }
-    .subtabs button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
-    .scroll-panel { max-height:52vh; overflow:auto; padding:12px 0; }
-
-    /* Modal */
-    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.2); display:none; align-items:center; justify-content:center; z-index:1050; }
-    .modal { width:min(840px, 92vw); }
-    .modal .card { border-radius:16px; }
-    .modal-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-
-    /* Tables */
-    table { width:100%; border-collapse:collapse; }
-    th, td { border:1px solid var(--border); padding:8px; text-align:left; vertical-align:top; }
-    th { background:#f3f4f6; position:sticky; top:0; z-index:1; }
-    .actions { display:flex; gap:8px; flex-wrap:wrap; }
-
-    /* Auth gate */
-    #authGate { min-height: calc(100vh - 64px); display:flex; align-items:center; justify-content:center; padding:24px; }
-    #appShell { display:none; }
-
-    /* Logo size requirement */
-    .brand-logo { height:56px; width:auto; border-radius:8px; border:1px solid var(--border); object-fit:cover; }
-  </style>
+        /* Responsive styles */
+        @media (max-width: 700px) {
+            /* Stack header elements on small screens */
+            .header-inner {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .title {
+                flex: 1 1 100%;
+            }
+            /* Wrap navigation links */
+            nav {
+                flex-wrap: wrap;
+                margin-left: 0;
+            }
+            nav a {
+                margin: 2px 4px;
+            }
+            /* Move account section to bottom of header */
+            .account {
+                width: 100%;
+                justify-content: flex-end;
+                margin-left: 0;
+                order: 2;
+            }
+            main {
+                padding: 8px;
+            }
+            /* Make tables horizontally scrollable */
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            /* Adjust modal width on mobile */
+            .modal .modal-content {
+                max-width: 90%;
+                width: 90%;
+            }
+            /* Sign-in card responsive width */
+            #signinOverlay .card {
+                width: 90% !important;
+            }
+        }
+    </style>
 </head>
-
 <body>
-<header class="sticky">
-  <div class="header-inner">
-    <!-- Sign in/out on LEFT; email left of Sign in/out -->
-    <div class="auth-left">
-      <span id="authEmail" class="auth-email"></span>
-      <button class="btn small primary" id="btnSignIn" hidden>Sign in</button>
-      <button class="btn small" id="btnSignOut" hidden>Sign out</button>
-    </div>
-
-    <div style="display:flex; align-items:center; gap:12px; margin-left:auto;">
-      <div class="app-title">WOLCAS</div>
-      <img id="companyLogo" class="brand-logo" alt="logo" />
-    </div>
-  </div>
-</header>
-
-<!-- Auth Gate (only thing visible before login) -->
-<main id="authGate">
-  <div class="card" style="max-width:560px; width:100%;">
-    <h2 style="margin:0 0 10px 0;">WOLCAS</h2>
-    <p class="muted" style="margin:0 0 14px 0;">Sign in with your company account to continue.</p>
-    <button class="btn primary" id="btnGateSignIn">Sign in</button>
-    <div class="muted" style="margin-top:12px; font-size:0.9rem;">
-      If you see access errors, ask your admin to grant required Microsoft Graph permissions.
-    </div>
-  </div>
-</main>
-
-<!-- App Shell (hidden until authenticated) -->
-<main id="appShell">
-  <section id="projects" class="container" hidden>
-    <div class="card">
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-        <div>
-          <h2 style="margin:0;">Projects</h2>
-          <div class="muted" id="roleBanner"></div>
+    <header>
+        <div class="header-inner">
+            <div class="title">WOLCAS</div>
+            <nav id="main-nav">
+                <a href="#home" id="nav-home" class="nav-link">Home</a>
+                <a href="#projects" id="nav-projects" class="nav-link">Projects</a>
+                <a href="#tasks" id="nav-tasks" class="nav-link">Tasks</a>
+                <a href="#settings" id="nav-settings" class="nav-link">Settings</a>
+            </nav>
+            <div class="account">
+                <span id="userEmail"></span>
+                <button id="authButton" class="btn primary">Sign In</button>
+            </div>
         </div>
-        <button class="btn primary" id="btnAddProject">Add Project</button>
-      </div>
-
-      <div style="margin-top:12px;" class="input-row">
-        <div>
-          <label>Search</label>
-          <input id="projSearch" type="text" placeholder="Search by address or description" />
+    </header>
+    <!-- Sign-in overlay displayed before authentication -->
+    <div id="signinOverlay" class="overlay">
+        <div class="card" style="text-align:center; padding:32px; width:300px;">
+            <h2>Welcome to WOLCAS</h2>
+            <p>Please sign in with your company account to continue.</p>
+            <button id="loginButton" class="btn primary">Sign In</button>
         </div>
-        <div>
-          <label>Status</label>
-          <select id="projStatusFilter">
-            <option value="">All</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="margin-top:12px; overflow:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Project Address</th>
-              <th>Owner</th>
-              <th>Start Date</th>
-              <th>Expected Sales</th>
-              <th>Active</th>
-              <th>Description</th>
-              <th style="min-width:170px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="projectsTbody"></tbody>
-        </table>
-      </div>
     </div>
-  </section>
-
-  <section id="projectView" class="container" hidden>
-    <div class="card" id="projectHeader"></div>
-
-    <div class="subtabs">
-      <button data-tab="tasks" class="active">Tasks</button>
-      <button data-tab="photos">Photos</button>
-      <button id="btnReports" class="btn small" style="margin-left:auto;">Reports</button>
-    </div>
-
-    <div id="projectPanels">
-      <div id="panel-tasks" class="scroll-panel">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-          <h3 style="margin:0;">Tasks</h3>
-          <button class="btn primary" id="btnAddTask">Add Task</button>
+    <!-- Modal container for editing and creating items -->
+    <div id="modal" class="modal">
+        <div class="modal-content" id="modalContent">
+            <!-- Content inserted dynamically -->
         </div>
-
-        <div style="margin-top:12px; overflow:auto;">
-          <table>
-            <thead>
-              <tr>
-                <th>Task name</th>
-                <th>Task Start</th>
-                <th>Task End</th>
+    </div>
+    <main>
+        <!-- Home/Dashboard Section -->
+        <section id="home" class="view">
+            <h1>Dashboard</h1>
+            <div class="card">
+                <p>Welcome to WOLCAS. Use the navigation above to manage projects and tasks.</p>
+            </div>
+            <div id="dashboardContent"></div>
+        </section>
+        <!-- Projects Section -->
+        <section id="projects" class="view">
+            <h1>Projects</h1>
+            <div class="card">
+                <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:8px;">
+                    <h2 style="margin:0;">Project List</h2>
+                    <button id="addProjectBtn" class="btn primary">Add Project</button>
+                </div>
+                <table id="projectsTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Address</th>
+                            <th>Owner</th>
+                            <th>Start Date</th>
+                            <th>Sales</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projectsBody">
+                        <!-- Rows inserted dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <!-- Tasks Section -->
+        <section id="tasks" class="view">
+            <h1>Tasks</h1>
+            <div id="tasksContent"></div>
+        </section>
+        <!-- Settings Section -->
+        <section id="settings" class="view">
+            <h1>Settings</h1>
+            <div class="card">
+                <h2>SharePoint List Configuration</h2>
+                <label for="projectListUrl">Project List URL</label>
+                <input id="projectListUrl" type="url" placeholder="https://{tenant}.sharepoint.com/sites/{site}/Lists/Project/AllItems.aspx" />
+                <label for="taskListUrl">Task List URL</label>
+                <input id="taskListUrl" type="url" placeholder="https://{tenant}.sharepoint.com/sites/{site}/Lists/Task/AllItems.aspx" />
+                <button id="detectListsBtn" class="btn primary">Detect Lists</button>
+            </div>
+            <div class="card" id="mappingCard" style="display:none;">
+                <h2>Field Mapping</h2>
+                <div id="mappingFields"></div>
+                <button id="autoMapBtn" class="btn secondary">Auto Map Fields</button>
+                <button id="saveMappingBtn" class="btn primary">Save Mapping</button>
+            </div>
+        </section>
+    </main>
+    <script>
+        // MSAL configuration
+        const msalConfig = {
+            auth: {
+                clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
+                authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
+                // Use a separate redirect page to process the auth response. A blank or simple page is recommended
+                // when using popup APIs【229921885133186†L178-L182】.
+                redirectUri: window.location.origin + '/auth.html'
+            },
+            cache: {
+                cacheLocation: 'sessionStorage', // use sessionStorage for security
+                storeAuthStateInCookie: false
+            }
+        };
+        const loginRequest = {
+            scopes: ['User.Read', 'Sites.ReadWrite.All', 'Files.ReadWrite.All', 'Group.Read.All']
+        };
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+        let currentAccount = null;
+        let userRole = 'viewer'; // default role
+        // SharePoint context variables
+        let siteId = null;
+        let projectListId = null;
+        let taskListId = null;
+        let mapping = {
+            project: {},
+            task: {},
+            projectRef: null
+        };
+        // Data caches
+        let projects = [];
+        let tasks = [];
+        // Initialize the app
+        window.addEventListener('DOMContentLoaded', async () => {
+            setupNavigation();
+            await handleRedirect();
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts && accounts.length > 0) {
+                currentAccount = accounts[0];
+                await onLoginSuccess();
+            } else {
+                showSignInOverlay(true);
+            }
+        });
+        // Process redirect response (should be called on each load)【229921885133186†L178-L182】
+        async function handleRedirect() {
+            try {
+                await msalInstance.initialize();
+                const response = await msalInstance.handleRedirectPromise();
+                if (response && response.account) {
+                    currentAccount = response.account;
+                }
+            } catch (error) {
+                console.error('MSAL redirect error', error);
+            }
+        }
+        // Show or hide the sign-in overlay
+        function showSignInOverlay(show) {
+            const overlay = document.getElementById('signinOverlay');
+            overlay.classList.toggle('show', show);
+        }
+        // Setup navigation links
+        function setupNavigation() {
+            const links = document.querySelectorAll('.nav-link');
+            links.forEach(link => {
+                link.addEventListener('click', ev => {
+                    ev.preventDefault();
+                    const hash = link.getAttribute('href').substring(1);
+                    navigateTo(hash);
+                });
+            });
+        }
+        // Navigate to a view by id
+        function navigateTo(id) {
+            document.querySelectorAll('.view').forEach(view => {
+                view.classList.remove('active');
+            });
+            const view = document.getElementById(id);
+            if (view) view.classList.add('active');
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+            });
+            // When navigating to tasks page ensure a project is selected
+            if (id === 'tasks' && !selectedProject) {
+                document.getElementById('tasksContent').innerHTML = '<p>Please select a project from the Projects page first.</p>';
+            }
+        }
+        // Sign in/out button handler
+        document.getElementById('authButton').addEventListener('click', async () => {
+            if (currentAccount) {
+                // Sign out
+                try {
+                    await msalInstance.logoutPopup({ account: currentAccount });
+                    currentAccount = null;
+                    userRole = 'viewer';
+                    showSignInOverlay(true);
+                    document.getElementById('userEmail').textContent = '';
+                    document.getElementById('authButton').textContent = 'Sign In';
+                    projects = [];
+                    tasks = [];
+                    refreshProjectsTable();
+                    navigateTo('home');
+                } catch (error) {
+                    console.error('Logout failed', error);
+                }
+            } else {
+                // Sign in
+                login();
+            }
+        });
+        document.getElementById('loginButton').addEventListener('click', login);
+        async function login() {
+            try {
+                const response = await msalInstance.loginPopup({ ...loginRequest, redirectUri: msalConfig.auth.redirectUri });
+                if (response.account) {
+                    currentAccount = response.account;
+                    await onLoginSuccess();
+                }
+            } catch (error) {
+                console.error('Login failed', error);
+            }
+        }
+        // Called after successful login
+        async function onLoginSuccess() {
+            showSignInOverlay(false);
+            document.getElementById('userEmail').textContent = currentAccount.username;
+            document.getElementById('authButton').textContent = 'Sign Out';
+            // Determine user role via Graph groups
+            await determineUserRole();
+            // If lists already configured load projects
+            if (siteId && projectListId && taskListId) {
+                await loadProjects();
+            }
+            navigateTo('home');
+        }
+        // Acquire token silently or via popup
+        async function getAccessToken(scopes) {
+            const request = { scopes: scopes || loginRequest.scopes, account: currentAccount };
+            try {
+                const response = await msalInstance.acquireTokenSilent(request);
+                return response.accessToken;
+            } catch (err) {
+                // fallback to popup
+                const response = await msalInstance.acquireTokenPopup(request);
+                return response.accessToken;
+            }
+        }
+        // Generic Graph request helper
+        async function graphRequest(url, method = 'GET', body = null) {
+            const token = await getAccessToken();
+            const headers = { Authorization: `Bearer ${token}` };
+            if (body) {
+                headers['Content-Type'] = 'application/json';
+            }
+            const response = await fetch(url, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`${response.status} ${response.statusText}: ${text}`);
+            }
+            return response.status === 204 ? null : await response.json();
+        }
+        // Determine user role based on group membership
+        async function determineUserRole() {
+            userRole = 'viewer';
+            try {
+                // /me/memberOf requires a signed-in user and delegated permissions【357314754702277†L94-L110】
+                const result = await graphRequest('https://graph.microsoft.com/v1.0/me/memberOf');
+                const groups = result.value || [];
+                const groupNames = groups.map(g => g.displayName?.toLowerCase() || '');
+                // Customize group names as per organization
+                if (groupNames.includes('wolcas_admins')) {
+                    userRole = 'admin';
+                } else if (groupNames.includes('wolcas_editors')) {
+                    userRole = 'editor';
+                } else {
+                    userRole = 'viewer';
+                }
+            } catch (err) {
+                console.warn('Failed to determine user groups:', err);
+            }
+        }
+        // Parse a SharePoint list URL and return site host, site path and list name
+        function parseListUrl(listUrl) {
+            try {
+                const urlObj = new URL(listUrl);
+                const host = urlObj.hostname;
+                const pathSegments = urlObj.pathname.split('/').filter(Boolean);
+                const listsIndex = pathSegments.findIndex(p => p.toLowerCase() === 'lists');
+                if (listsIndex < 0 || listsIndex + 1 >= pathSegments.length) return null;
+                const listName = pathSegments[listsIndex + 1];
+                const sitePath = '/' + pathSegments.slice(0, listsIndex).join('/');
+                return { host, sitePath, listName };
+            } catch (e) {
+                return null;
+            }
+        }
+        // Detect site and list IDs from URLs
+        async function detectLists() {
+            const projInput = document.getElementById('projectListUrl').value.trim();
+            const taskInput = document.getElementById('taskListUrl').value.trim();
+            if (!projInput || !taskInput) {
+                alert('Please enter both project and task list URLs.');
+                return;
+            }
+            const projInfo = parseListUrl(projInput);
+            const taskInfo = parseListUrl(taskInput);
+            if (!projInfo || !taskInfo) {
+                alert('Invalid SharePoint list URLs.');
+                return;
+            }
+            try {
+                // Get site ID (assume both lists on same site; use project list site)
+                const siteResp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${projInfo.host}:${projInfo.sitePath}`);
+                siteId = siteResp.id;
+                // Get project list ID
+                const projListResp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projInfo.listName}`);
+                projectListId = projListResp.id;
+                // Get task list ID
+                const taskListResp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskInfo.listName}`);
+                taskListId = taskListResp.id;
+                // Fetch columns
+                await fetchColumns();
+                alert('Lists detected. Please map the fields.');
+                document.getElementById('mappingCard').style.display = '';
+            } catch (e) {
+                console.error('Failed to detect lists:', e);
+                alert('Failed to detect lists. Ensure the URLs are correct and you have permissions.');
+            }
+        }
+        document.getElementById('detectListsBtn').addEventListener('click', () => {
+            detectLists();
+        });
+        // Fetch columns from project and task lists and build mapping UI
+        async function fetchColumns() {
+            const [proj, task] = await Promise.all([
+                graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/columns?$select=id,name,displayName`),
+                graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/columns?$select=id,name,displayName`)
+            ]);
+            const projCols = proj.value || [];
+            const taskCols = task.value || [];
+            buildMappingUI(projCols, taskCols);
+        }
+        // Build the mapping UI allowing users to map fields to SharePoint columns
+        function buildMappingUI(projCols, taskCols) {
+            const container = document.getElementById('mappingFields');
+            container.innerHTML = '';
+            const projFields = [
+                { key: 'name', label: 'Project Name' },
+                { key: 'address', label: 'Project Address' },
+                { key: 'owner', label: 'Project Owner' },
+                { key: 'startDate', label: 'Start Date' },
+                { key: 'sales', label: 'Expected Sales' },
+                { key: 'status', label: 'Active (Yes/No)' },
+                { key: 'description', label: 'Description' }
+            ];
+            const taskFields = [
+                { key: 'name', label: 'Task Name' },
+                { key: 'startDate', label: 'Start Date' },
+                { key: 'endDate', label: 'End Date' },
+                { key: 'quantity', label: 'Quantity' },
+                { key: 'unit', label: 'Unit' },
+                { key: 'unitCost', label: 'Unit Cost' },
+                { key: 'totalCost', label: 'Total Cost' },
+                { key: 'allocation', label: 'Allocation' },
+                { key: 'sprint', label: 'Sprint' },
+                { key: 'assignee', label: 'Assignee' },
+                { key: 'description', label: 'Description' },
+                { key: 'notes', label: 'Notes' }
+            ];
+            // Build mapping row helper
+            const createRow = (field, options, type) => {
+                const div = document.createElement('div');
+                div.style.marginBottom = '8px';
+                const label = document.createElement('label');
+                label.textContent = `${field.label}`;
+                label.style.display = 'block';
+                const select = document.createElement('select');
+                select.dataset.type = type;
+                select.dataset.key = field.key;
+                select.style.width = '100%';
+                select.innerHTML = `<option value="">-- Not Mapped --</option>`;
+                options.forEach(col => {
+                    const opt = document.createElement('option');
+                    opt.value = col.name;
+                    opt.textContent = col.displayName;
+                    select.appendChild(opt);
+                });
+                div.appendChild(label);
+                div.appendChild(select);
+                return div;
+            };
+            const sectionProj = document.createElement('div');
+            sectionProj.innerHTML = '<h3>Project Fields</h3>';
+            projFields.forEach(f => sectionProj.appendChild(createRow(f, projCols, 'project')));
+            const sectionTask = document.createElement('div');
+            sectionTask.innerHTML = '<h3>Task Fields</h3>';
+            taskFields.forEach(f => sectionTask.appendChild(createRow(f, taskCols, 'task')));
+            const sectionRef = document.createElement('div');
+            sectionRef.innerHTML = '<h3>Task – Project Link</h3>';
+            const refLabel = document.createElement('label');
+            refLabel.textContent = 'Task list column referencing the project (Lookup or Text)';
+            refLabel.style.display = 'block';
+            const refSelect = document.createElement('select');
+            refSelect.dataset.type = 'ref';
+            refSelect.style.width = '100%';
+            refSelect.innerHTML = `<option value="">-- Not Set --</option>`;
+            taskCols.forEach(col => {
+                const opt = document.createElement('option');
+                opt.value = col.name;
+                opt.textContent = col.displayName;
+                refSelect.appendChild(opt);
+            });
+            sectionRef.appendChild(refLabel);
+            sectionRef.appendChild(refSelect);
+            container.appendChild(sectionProj);
+            container.appendChild(sectionTask);
+            container.appendChild(sectionRef);
+        }
+        // Auto map fields based on name similarity
+        document.getElementById('autoMapBtn').addEventListener('click', () => {
+            const selects = document.querySelectorAll('#mappingFields select');
+            selects.forEach(sel => {
+                const type = sel.dataset.type;
+                const key = sel.dataset.key;
+                // skip ref for now
+                if (type === 'ref') return;
+                // find option whose value or text matches key
+                for (const opt of sel.options) {
+                    const optName = opt.textContent.toLowerCase().replace(/\s/g, '');
+                    if (optName.includes(key.toLowerCase().replace(/\s/g, ''))) {
+                        opt.selected = true;
+                        break;
+                    }
+                }
+            });
+        });
+        // Save mapping from UI to mapping object
+        document.getElementById('saveMappingBtn').addEventListener('click', () => {
+            const selects = document.querySelectorAll('#mappingFields select');
+            selects.forEach(sel => {
+                const type = sel.dataset.type;
+                const key = sel.dataset.key;
+                if (type === 'project') {
+                    mapping.project[key] = sel.value || null;
+                } else if (type === 'task') {
+                    mapping.task[key] = sel.value || null;
+                } else if (type === 'ref') {
+                    mapping.projectRef = sel.value || null;
+                }
+            });
+            alert('Mapping saved. You can now load projects.');
+            loadProjects();
+        });
+        // Load projects from SharePoint list
+        async function loadProjects() {
+            if (!siteId || !projectListId) return;
+            try {
+                const data = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items?$expand=fields`);
+                projects = (data.value || []).map(item => {
+                    const fields = item.fields;
+                    return {
+                        id: item.id,
+                        raw: item,
+                        name: fields[mapping.project.name] || fields.Title || '',
+                        address: fields[mapping.project.address] || '',
+                        owner: fields[mapping.project.owner] || '',
+                        startDate: fields[mapping.project.startDate] || '',
+                        sales: fields[mapping.project.sales] || '',
+                        status: fields[mapping.project.status] || '',
+                        description: fields[mapping.project.description] || ''
+                    };
+                });
+                refreshProjectsTable();
+            } catch (err) {
+                console.error('Failed to load projects', err);
+                alert('Failed to load projects: ' + err.message);
+            }
+        }
+        // Refresh the projects table UI
+        function refreshProjectsTable() {
+            const tbody = document.getElementById('projectsBody');
+            tbody.innerHTML = '';
+            projects.forEach(project => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${project.name || ''}</td>
+                    <td>${project.address || ''}</td>
+                    <td>${project.owner || ''}</td>
+                    <td>${project.startDate || ''}</td>
+                    <td>${project.sales || ''}</td>
+                    <td>${project.status || ''}</td>
+                    <td>
+                        <button class="btn secondary" data-id="${project.id}" data-action="edit">Edit</button>
+                        ${userRole === 'admin' ? `<button class="btn secondary" data-id="${project.id}" data-action="delete">Delete</button>` : ''}
+                        <button class="btn secondary" data-id="${project.id}" data-action="viewTasks">Tasks</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        // Handle clicks on project actions
+        document.getElementById('projectsBody').addEventListener('click', ev => {
+            const target = ev.target;
+            if (target.tagName !== 'BUTTON') return;
+            const id = target.dataset.id;
+            const action = target.dataset.action;
+            const project = projects.find(p => p.id === id);
+            if (!project) return;
+            if (action === 'edit') {
+                openProjectModal(project);
+            } else if (action === 'delete') {
+                if (confirm('Delete this project?')) {
+                    deleteProject(project.id);
+                }
+            } else if (action === 'viewTasks') {
+                selectedProject = project;
+                navigateTo('tasks');
+                loadTasksForProject(project);
+            }
+        });
+        // Add Project button
+        document.getElementById('addProjectBtn').addEventListener('click', () => {
+            openProjectModal();
+        });
+        // Open modal to add/edit a project
+        function openProjectModal(project) {
+            const isEdit = !!project;
+            const modal = document.getElementById('modal');
+            const modalContent = document.getElementById('modalContent');
+            modalContent.innerHTML = '';
+            const title = document.createElement('h3');
+            title.textContent = isEdit ? 'Edit Project' : 'Add Project';
+            modalContent.appendChild(title);
+            // Build form fields based on mapping
+            const form = document.createElement('div');
+            form.innerHTML = '';
+            const createInput = (labelText, value) => {
+                const label = document.createElement('label');
+                label.textContent = labelText;
+                const input = document.createElement('input');
+                input.value = value || '';
+                input.style.width = '100%';
+                return { label, input };
+            };
+            const fields = {};
+            ['name','address','owner','startDate','sales','status','description'].forEach(key => {
+                const label = mapping.project[key] ? key.charAt(0).toUpperCase() + key.slice(1) : key;
+                const { label: lbl, input } = createInput(label.replace(/([A-Z])/g, ' $1'), project ? project[key] : '');
+                fields[key] = input;
+                form.appendChild(lbl);
+                form.appendChild(input);
+            });
+            modalContent.appendChild(form);
+            // Buttons
+            const btnBar = document.createElement('div');
+            btnBar.style.display = 'flex';
+            btnBar.style.justifyContent = 'flex-end';
+            btnBar.style.gap = '8px';
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn primary';
+            saveBtn.textContent = 'Save';
+            saveBtn.onclick = async () => {
+                // Build fields object for SharePoint
+                const spFields = {};
+                Object.keys(fields).forEach(k => {
+                    const col = mapping.project[k];
+                    if (col) {
+                        spFields[col] = fields[k].value;
+                    }
+                });
+                try {
+                    if (isEdit) {
+                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items/${project.id}/fields`, 'PATCH', spFields);
+                    } else {
+                        // When creating a list item, supply fields property【485116279280963†L70-L104】
+                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items`, 'POST', { fields: spFields });
+                    }
+                    await loadProjects();
+                    closeModal();
+                } catch (err) {
+                    alert('Failed to save project: ' + err.message);
+                }
+            };
+            btnBar.appendChild(saveBtn);
+            if (isEdit && userRole === 'admin') {
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn secondary';
+                delBtn.textContent = 'Delete';
+                delBtn.onclick = async () => {
+                    if (confirm('Are you sure you want to delete this project?')) {
+                        await deleteProject(project.id);
+                        closeModal();
+                    }
+                };
+                btnBar.appendChild(delBtn);
+            }
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn secondary';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = () => closeModal();
+            btnBar.appendChild(cancelBtn);
+            modalContent.appendChild(btnBar);
+            modal.style.display = 'flex';
+        }
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+        // Delete a project
+        async function deleteProject(projectId) {
+            try {
+                await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items/${projectId}`, 'DELETE');
+                projects = projects.filter(p => p.id !== projectId);
+                refreshProjectsTable();
+            } catch (err) {
+                alert('Failed to delete project: ' + err.message);
+            }
+        }
+        // Task logic
+        let selectedProject = null;
+        async function loadTasksForProject(project) {
+            if (!taskListId || !mapping.projectRef) {
+                document.getElementById('tasksContent').innerHTML = '<p>Please configure task list and project reference mapping in Settings.</p>';
+                return;
+            }
+            try {
+                // Filter tasks where fields[mapping.projectRef] equals the project identifier (e.g. project name or ID)
+                // Note: Filtering on Graph via $filter is only supported on certain columns; if not supported, we load all tasks and filter client side.
+                const filter = encodeURIComponent(`fields/${mapping.projectRef} eq '${project.name.replace(/'/g, "\'" )}'`);
+                let items;
+                try {
+                    const resp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items?$expand=fields&$filter=${filter}`);
+                    items = resp.value || [];
+                } catch (e) {
+                    // fallback: load all tasks
+                    const resp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items?$expand=fields`);
+                    items = resp.value || [];
+                }
+                tasks = items.filter(item => {
+                    const value = item.fields[mapping.projectRef];
+                    return value && value.toString().toLowerCase() === project.name.toLowerCase();
+                }).map(item => {
+                    const fields = item.fields;
+                    return {
+                        id: item.id,
+                        name: fields[mapping.task.name] || '',
+                        startDate: fields[mapping.task.startDate] || '',
+                        endDate: fields[mapping.task.endDate] || '',
+                        quantity: fields[mapping.task.quantity] || '',
+                        unit: fields[mapping.task.unit] || '',
+                        unitCost: fields[mapping.task.unitCost] || '',
+                        totalCost: fields[mapping.task.totalCost] || '',
+                        allocation: fields[mapping.task.allocation] || '',
+                        sprint: fields[mapping.task.sprint] || '',
+                        assignee: fields[mapping.task.assignee] || '',
+                        description: fields[mapping.task.description] || '',
+                        notes: fields[mapping.task.notes] || ''
+                    };
+                });
+                renderTasksUI(project);
+            } catch (err) {
+                document.getElementById('tasksContent').innerHTML = '<p>Failed to load tasks: ' + err.message + '</p>';
+            }
+        }
+        function renderTasksUI(project) {
+            const container = document.getElementById('tasksContent');
+            container.innerHTML = '';
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.justifyContent = 'space-between';
+            header.style.alignItems = 'center';
+            const h2 = document.createElement('h2');
+            h2.textContent = 'Tasks for ' + project.name;
+            header.appendChild(h2);
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn primary';
+            addBtn.textContent = 'Add Task';
+            addBtn.onclick = () => openTaskModal(project);
+            if (userRole !== 'viewer') header.appendChild(addBtn);
+            container.appendChild(header);
+            // Table of tasks
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            thead.innerHTML = `<tr>
+                <th>Name</th>
+                <th>Start</th>
+                <th>End</th>
                 <th>Quantity</th>
                 <th>Unit Cost</th>
                 <th>Total Cost</th>
                 <th>Allocation</th>
                 <th>Sprint</th>
                 <th>Assignee</th>
-                <th>Description</th>
-                <th>Notes</th>
-                <th>Photos</th>
-                <th style="min-width:170px;">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="tasksTbody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div id="panel-photos" class="scroll-panel" hidden>
-        <div id="photosGrid" class="grid"></div>
-      </div>
-    </div>
-  </section>
-
-  <section id="dashboard" class="container" hidden>
-    <div class="card">
-      <h2 style="margin-top:0;">Dashboard</h2>
-      <div class="grid" style="margin-top:12px;">
-        <div class="card"><h3>Total Projects</h3><div id="mTotalProjects" class="badge"></div></div>
-        <div class="card"><h3>Active Projects</h3><div id="mActiveProjects" class="badge active"></div></div>
-        <div class="card"><h3>Completed Projects</h3><div id="mCompletedProjects" class="badge completed"></div></div>
-        <div class="card"><h3>Total Costs (tasks)</h3><div id="mTotalCosts" class="badge"></div></div>
-        <div class="card"><h3>Total Sales (expected)</h3><div id="mTotalSales" class="badge"></div></div>
-      </div>
-      <div class="card" style="margin-top:12px;">
-        <h3>Recent Activity</h3>
-        <ul id="activityList" style="padding-left:18px; margin:0;"></ul>
-      </div>
-    </div>
-  </section>
-
-  <section id="settings" class="container" hidden>
-    <div class="card">
-      <h2 style="margin-top:0;">Settings</h2>
-
-      <div class="input-row">
-        <div>
-          <label>Company logo URL (optional)</label>
-          <input id="setLogoUrl" type="text" placeholder="https://..." />
-        </div>
-        <div>
-          <label>Role mode</label>
-          <select id="setRoleMode">
-            <option value="groups">Use Entra ID Groups (recommended)</option>
-            <option value="manual">Manual Role (testing only)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="input-row" style="margin-top:12px;">
-        <div>
-          <label>Project list link</label>
-          <input id="setProjectLink" type="text" placeholder=".../Lists/Project/AllItems.aspx" />
-        </div>
-        <div>
-          <label>Task list link</label>
-          <input id="setTaskLink" type="text" placeholder=".../Lists/Task/AllItems.aspx" />
-        </div>
-      </div>
-
-      <div class="input-row" style="margin-top:12px;">
-        <div>
-          <label>Admin group name</label>
-          <input id="setAdminGroup" type="text" placeholder="WOLCAS Admins" />
-        </div>
-        <div>
-          <label>Editor group name</label>
-          <input id="setEditorGroup" type="text" placeholder="WOLCAS Editors" />
-        </div>
-      </div>
-
-      <div class="input-row" style="margin-top:12px;">
-        <div>
-          <label>Viewer group name</label>
-          <input id="setViewerGroup" type="text" placeholder="WOLCAS Viewers" />
-        </div>
-        <div>
-          <label>Manual role (only when Role mode = Manual)</label>
-          <select id="setManualRole">
-            <option value="viewer">viewer</option>
-            <option value="editor">editor</option>
-            <option value="admin">admin</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:12px;">
-        <h3 style="margin-top:0;">Field Mapping</h3>
-        <div class="muted">Paste list links above, then click Detect lists & columns → Auto-map → Save.</div>
-
-        <div class="actions" style="margin-top:12px;">
-          <button class="btn primary" id="btnDetect">Detect lists & columns</button>
-          <button class="btn" id="btnAutoMap">Auto-map</button>
-          <button class="btn" id="btnSaveSettings">Save</button>
-        </div>
-
-        <div id="mappingUI" style="margin-top:12px;"></div>
-      </div>
-    </div>
-  </section>
-
-  <nav class="bottom-nav" aria-label="Bottom navigation">
-    <a href="#projects"/span><span>Projects</span></a>
-    #dashboard<span>📊</span><span>Dashboard</span></a>
-    <a href="#span>⚙️</span><span>Settings</span></a>
-  </nav>
-
-  <div id="toast"></div>
-  <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal">
-      <div class="card" id="modalCard"></div>
-    </div>
-  </div>
-</main>
-
-<!-- Local MSAL (no CDN) -->
-./msal-browser.min.js</script>
-
-<script>
-/* =========================================================
-   WOLCAS - Secure SharePoint-connected SPA (No client secret)
-   ========================================================= */
-
-/* ---------- App Registration (from your doc) ---------- */
-const APP = {
-  clientId: "827656f8-3a21-4d69-b6e5-c35e2ec2fb71",
-  tenantId: "97d84781-b85c-4034-a0d0-588e7b442e45",
-  // GitHub Pages hosting from your doc:
-  redirectUriMain: "https://abirrahat.github.io/wolcas-webapp/",
-  redirectUriAuth: "https://abirrahat.github.io/wolcas-webapp/auth"
-};
-
-/* ---------- Graph scopes (delegated) ---------- */
-const GRAPH_SCOPES = [
-  "User.Read",
-  "Group.Read.All",
-  "Sites.ReadWrite.All",
-  "Files.ReadWrite.All"
-];
-
-const msalConfig = {
-  auth: {
-    clientId: APP.clientId,
-    authority: `https://login.microsoftonline.com/${APP.tenantId}`,
-    redirectUri: APP.redirectUriMain,
-    navigateToLoginRequestUrl: false
-  },
-  cache: {
-    cacheLocation: "localStorage",
-    storeAuthStateInCookie: false
-  }
-};
-
-const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-let CURRENT = {
-  account: null,
-  role: "viewer",  // admin | editor | viewer
-  site: { project: null, task: null },
-  lists: { project: null, task: null },
-  columns: { project: [], task: [] },
-  mapping: null,
-  selectedProject: null,
-  activity: []
-};
-
-const LS_SETTINGS = "wolcas_settings_v2";
-
-/* ---------- Helpers ---------- */
-function toast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.style.display = "block";
-  setTimeout(() => t.style.display = "none", 2200);
-}
-
-function safeText(s) { return (s ?? "").toString(); }
-
-function money(n) {
-  const x = Number(String(n ?? "").replace(/[^\d.-]/g,""));
-  if (Number.isNaN(x)) return safeText(n);
-  return x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function boolFromField(v) {
-  if (typeof v === "boolean") return v;
-  const s = String(v ?? "").toLowerCase();
-  return (s === "true" || s === "1" || s === "yes");
-}
-
-function showAuthGate(isAuthed) {
-  document.getElementById("authGate").style.display = isAuthed ? "none" : "flex";
-  document.getElementById("appShell").style.display = isAuthed ? "block" : "none";
-  document.getElementById("btnSignIn").hidden = isAuthed;
-  document.getElementById("btnSignOut").hidden = !isAuthed;
-  document.getElementById("authEmail").textContent = isAuthed ? (CURRENT.account?.username ?? "") : "";
-}
-
-function setRoleBanner() {
-  document.getElementById("roleBanner").textContent = `Role: ${CURRENT.role}`;
-}
-
-/* ---------- Settings storage ---------- */
-function loadSettings() {
-  try {
-    const raw = localStorage.getItem(LS_SETTINGS);
-    if (!raw) return {
-      companyLogoUrl: "",
-      projectLink: "",
-      taskLink: "",
-      roleMode: "groups",
-      adminGroup: "WOLCAS Admins",
-      editorGroup: "WOLCAS Editors",
-      viewerGroup: "WOLCAS Viewers",
-      manualRole: "viewer",
-      mapping: null
-    };
-    return JSON.parse(raw);
-  } catch {
-    return {
-      companyLogoUrl: "",
-      projectLink: "",
-      taskLink: "",
-      roleMode: "groups",
-      adminGroup: "WOLCAS Admins",
-      editorGroup: "WOLCAS Editors",
-      viewerGroup: "WOLCAS Viewers",
-      manualRole: "viewer",
-      mapping: null
-    };
-  }
-}
-
-function saveSettings(s) {
-  localStorage.setItem(LS_SETTINGS, JSON.stringify(s));
-}
-
-/* ---------- Auth ---------- */
-async function pickAccount() {
-  const accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) return accounts[0];
-  return null;
-}
-
-async function signInPopup() {
-  const loginRequest = {
-    scopes: GRAPH_SCOPES,
-    redirectUri: APP.redirectUriAuth  // dedicated auth page closes popup
-  };
-  return msalInstance.loginPopup(loginRequest);
-}
-
-async function signOut() {
-  if (!CURRENT.account) return;
-  await msalInstance.logoutPopup({ account: CURRENT.account });
-}
-
-async function getToken(scopes = GRAPH_SCOPES) {
-  if (!CURRENT.account) throw new Error("Not signed in");
-  try {
-    const res = await msalInstance.acquireTokenSilent({ account: CURRENT.account, scopes });
-    return res.accessToken;
-  } catch {
-    const res = await msalInstance.acquireTokenPopup({ account: CURRENT.account, scopes, redirectUri: APP.redirectUriAuth });
-    return res.accessToken;
-  }
-}
-
-/* ---------- Graph wrapper ---------- */
-async function graphGET(url) {
-  const token = await getToken();
-  const res = await fetch(`https://graph.microsoft.com/v1.0${url}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!res.ok) throw new Error(`Graph GET failed ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
-async function graphPOST(url, body) {
-  const token = await getToken();
-  const res = await fetch(`https://graph.microsoft.com/v1.0${url}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) throw new Error(`Graph POST failed ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
-async function graphPATCH(url, body) {
-  const token = await getToken();
-  const res = await fetch(`https://graph.microsoft.com/v1.0${url}`, {
-    method: "PATCH",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) throw new Error(`Graph PATCH failed ${res.status}: ${await res.text()}`);
-  if (res.status === 204) return null;
-  return res.json();
-}
-
-async function graphPUTBinary(url, blob, contentType) {
-  const token = await getToken();
-  const res = await fetch(`https://graph.microsoft.com/v1.0${url}`, {
-    method: "PUT",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType || "application/octet-stream" },
-    body: blob
-  });
-  if (!res.ok) throw new Error(`Graph PUT failed ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
-/* ---------- Role (Groups) ---------- */
-async function resolveRoleFromGroups(settings) {
-  if (settings.roleMode === "manual") return settings.manualRole;
-
-  // Pull group display names (transitive)
-  const data = await graphGET(`/me/transitiveMemberOf?$select=displayName`);
-  const names = (data.value || []).map(x => (x.displayName || "").toLowerCase());
-
-  const admin = (settings.adminGroup || "").toLowerCase();
-  const editor = (settings.editorGroup || "").toLowerCase();
-  const viewer = (settings.viewerGroup || "").toLowerCase();
-
-  if (admin && names.includes(admin)) return "admin";
-  if (editor && names.includes(editor)) return "editor";
-  if (viewer && names.includes(viewer)) return "viewer";
-
-  // Default safest
-  return "viewer";
-}
-
-/* ---------- Parse SharePoint list link → hostname, sitePath, listTitle ---------- */
-function parseListLink(link) {
-  const u = new URL(link);
-  const host = u.hostname;             // architektica-my.sharepoint.com
-  const path = u.pathname;             // /personal/abir_architektica_com/Lists/Task/AllItems.aspx
-  const idx = path.toLowerCase().indexOf("/lists/");
-  if (idx < 0) throw new Error("Invalid list link (missing /Lists/)");
-  const sitePath = path.substring(0, idx); // /personal/abir_architektica_com
-  const rest = path.substring(idx + "/Lists/".length); // Task/AllItems.aspx
-  const parts = rest.split("/").filter(Boolean);
-  const listTitle = parts[0]; // Task
-  return { host, sitePath, listTitle };
-}
-
-async function resolveSiteAndList(listLink) {
-  const { host, sitePath, listTitle } = parseListLink(listLink);
-
-  // Site by path
-  const site = await graphGET(`/sites/${host}:${sitePath}`);
-  const siteId = site.id;
-
-  // List by displayName
-  const lists = await graphGET(`/sites/${siteId}/lists?$filter=displayName eq '${encodeURIComponent(listTitle).replace(/%20/g," ")}'`);
-  const list = (lists.value || [])[0];
-  if (!list) throw new Error(`List not found: ${listTitle}`);
-  const listId = list.id;
-
-  // Columns
-  const cols = await graphGET(`/sites/${siteId}/lists/${listId}/columns?$select=name,displayName,hidden,readOnly,required`);
-  return { siteId, listId, listTitle, columns: cols.value || [] };
-}
-
-/* ---------- Mapping UI ---------- */
-function renderMappingUI(mapping, projectCols, taskCols) {
-  const root = document.getElementById("mappingUI");
-  root.innerHTML = "";
-
-  function mkSelect(options, value) {
-    const s = document.createElement("select");
-    const opt0 = document.createElement("option"); opt0.value = ""; opt0.textContent = "— Select —";
-    s.appendChild(opt0);
-    options.forEach(o => {
-      const opt = document.createElement("option");
-      opt.value = o.name;
-      opt.textContent = `${o.displayName} (${o.name})`;
-      if (o.name === value) opt.selected = true;
-      s.appendChild(opt);
-    });
-    return s;
-  }
-
-  const projectFields = [
-    ["Project Address", "projectAddress"],
-    ["Project Owner", "projectOwner"],
-    ["Project Start Date", "projectStartDate"],
-    ["Expected Sales", "expectedSales"],
-    ["Active", "active"],
-    ["Project Description", "projectDescription"]
-  ];
-
-  const taskFields = [
-    ["Task name", "taskName"],
-    ["Task Start Date", "taskStartDate"],
-    ["Task End Date", "taskEndDate"],
-    ["Quantity", "quantity"],
-    ["Quantity Unit", "quantityUnit"],
-    ["Cost / Unit Cost", "unitCost"],
-    ["Total Cost", "totalCost"],
-    ["Allocation", "allocation"],
-    ["Sprint", "sprint"],
-    ["Assignee", "assignee"],
-    ["Task Description", "taskDescription"],
-    ["Notes", "notes"],
-    ["Photos", "photos"],
-    ["Lookup field for Project relation", "taskProjectLookup"]
-  ];
-
-  const card = document.createElement("div");
-  card.className = "card";
-  card.innerHTML = `<h4 style="margin-top:0;">Project fields</h4>`;
-  projectFields.forEach(([labelText, key]) => {
-    const row = document.createElement("div");
-    row.style.cssText = "display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px; align-items:center;";
-    const lab = document.createElement("div"); lab.innerHTML = `<strong>${labelText}</strong>`;
-    const sel = mkSelect(projectCols, mapping?.project?.[key] || "");
-    sel.onchange = () => { mapping.project[key] = sel.value; };
-    row.appendChild(lab); row.appendChild(sel);
-    card.appendChild(row);
-  });
-
-  const card2 = document.createElement("div");
-  card2.className = "card";
-  card2.style.marginTop = "12px";
-  card2.innerHTML = `<h4 style="margin-top:0;">Task fields</h4>`;
-  taskFields.forEach(([labelText, key]) => {
-    const row = document.createElement("div");
-    row.style.cssText = "display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px; align-items:center;";
-    const lab = document.createElement("div"); lab.innerHTML = `<strong>${labelText}</strong>`;
-    const sel = mkSelect(taskCols, mapping?.task?.[key] || "");
-    sel.onchange = () => { mapping.task[key] = sel.value; };
-    row.appendChild(lab); row.appendChild(sel);
-    card2.appendChild(row);
-  });
-
-  root.appendChild(card);
-  root.appendChild(card2);
-}
-
-function autoMapByName(cols, keywords) {
-  const lower = cols.map(c => ({...c, _dn:(c.displayName||"").toLowerCase(), _n:(c.name||"").toLowerCase()}));
-  for (const k of keywords) {
-    const kk = k.toLowerCase();
-    const found = lower.find(c => c._dn === kk) || lower.find(c => c._n === kk) ||
-                  lower.find(c => c._dn.includes(kk)) || lower.find(c => c._n.includes(kk));
-    if (found) return found.name;
-  }
-  return "";
-}
-
-/* ---------- App data ---------- */
-async function loadProjectsTop8() {
-  const map = CURRENT.mapping;
-  if (!CURRENT.site.project || !CURRENT.lists.project || !map) return [];
-
-  // expand fields
-  const data = await graphGET(`/sites/${CURRENT.site.project}/lists/${CURRENT.lists.project}/items?$expand=fields&$top=8&$orderby=createdDateTime desc`);
-  const items = data.value || [];
-  return items.map(it => ({
-    id: it.id,
-    fields: it.fields || {}
-  }));
-}
-
-async function loadTasksForProject(projectItemId) {
-  const map = CURRENT.mapping;
-  if (!CURRENT.site.task || !CURRENT.lists.task || !map) return [];
-
-  const lookupCol = map.task.taskProjectLookup;
-  if (!lookupCol) return [];
-
-  // Filter by lookup id; Graph supports fields/LookupId patterns, but varies. We'll fetch top 200 and filter client-side (safe default).
-  const data = await graphGET(`/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items?$expand=fields&$top=200`);
-  const items = data.value || [];
-  return items
-    .map(it => ({ id: it.id, fields: it.fields || {} }))
-    .filter(x => {
-      const v = x.fields[`${lookupCol}LookupId`] ?? x.fields[lookupCol];
-      return String(v ?? "") === String(projectItemId);
-    });
-}
-
-/* ---------- UI routing ---------- */
-function setActiveNav(hash) {
-  document.querySelectorAll(".bottom-nav a").forEach(a => a.classList.toggle("active", a.getAttribute("href") === hash));
-}
-function showView(id) {
-  document.querySelectorAll("#appShell section").forEach(s => s.hidden = (s.id !== id));
-}
-function route() {
-  const h = location.hash || "#projects";
-  setActiveNav(h);
-  if (h === "#projects") { showView("projects"); refreshProjects(); }
-  else if (h === "#dashboard") { showView("dashboard"); refreshDashboard(); }
-  else if (h === "#settings") { showView("settings"); fillSettingsUI(); }
-  else if (h.startsWith("#project:")) { showView("projectView"); openProject(h.split(":")[1]); }
-  else { location.hash = "#projects"; }
-}
-window.addEventListener("hashchange", route);
-
-/* ---------- UI: Settings ---------- */
-function fillSettingsUI() {
-  const s = loadSettings();
-  document.getElementById("setLogoUrl").value = s.companyLogoUrl || "";
-  document.getElementById("setProjectLink").value = s.projectLink || "";
-  document.getElementById("setTaskLink").value = s.taskLink || "";
-  document.getElementById("setRoleMode").value = s.roleMode || "groups";
-  document.getElementById("setAdminGroup").value = s.adminGroup || "";
-  document.getElementById("setEditorGroup").value = s.editorGroup || "";
-  document.getElementById("setViewerGroup").value = s.viewerGroup || "";
-  document.getElementById("setManualRole").value = s.manualRole || "viewer";
-
-  if (s.companyLogoUrl) document.getElementById("companyLogo").src = s.companyLogoUrl;
-  if (s.mapping) {
-    CURRENT.mapping = s.mapping;
-    renderMappingUI(CURRENT.mapping, CURRENT.columns.project, CURRENT.columns.task);
-  }
-}
-
-async function detectListsAndColumns() {
-  const s = loadSettings();
-  if (!s.projectLink || !s.taskLink) {
-    toast("Paste Project and Task list links first.");
-    return;
-  }
-  toast("Detecting lists...");
-  const pr = await resolveSiteAndList(s.projectLink);
-  const ta = await resolveSiteAndList(s.taskLink);
-
-  CURRENT.site.project = pr.siteId;
-  CURRENT.lists.project = pr.listId;
-  CURRENT.columns.project = pr.columns;
-
-  CURRENT.site.task = ta.siteId;
-  CURRENT.lists.task = ta.listId;
-  CURRENT.columns.task = ta.columns;
-
-  toast("Detected lists & columns.");
-  if (!CURRENT.mapping) {
-    CURRENT.mapping = { project:{}, task:{} };
-  }
-  renderMappingUI(CURRENT.mapping, CURRENT.columns.project, CURRENT.columns.task);
-}
-
-function autoMap() {
-  if (!CURRENT.columns.project.length || !CURRENT.columns.task.length) {
-    toast("Run Detect lists & columns first.");
-    return;
-  }
-  if (!CURRENT.mapping) CURRENT.mapping = { project:{}, task:{} };
-
-  // Project auto-map
-  CURRENT.mapping.project.projectAddress = autoMapByName(CURRENT.columns.project, ["Project Address", "Address", "Title"]);
-  CURRENT.mapping.project.projectOwner = autoMapByName(CURRENT.columns.project, ["Project Owner", "Owner"]);
-  CURRENT.mapping.project.projectStartDate = autoMapByName(CURRENT.columns.project, ["Project Start Date", "Start Date"]);
-  CURRENT.mapping.project.expectedSales = autoMapByName(CURRENT.columns.project, ["Expected Sales", "Sales"]);
-  CURRENT.mapping.project.active = autoMapByName(CURRENT.columns.project, ["Active", "IsActive"]);
-  CURRENT.mapping.project.projectDescription = autoMapByName(CURRENT.columns.project, ["Project Description", "Description"]);
-
-  // Task auto-map
-  CURRENT.mapping.task.taskName = autoMapByName(CURRENT.columns.task, ["Task name", "Title", "Task"]);
-  CURRENT.mapping.task.taskStartDate = autoMapByName(CURRENT.columns.task, ["Task Start Date", "Start Date"]);
-  CURRENT.mapping.task.taskEndDate = autoMapByName(CURRENT.columns.task, ["Task End Date", "End Date"]);
-  CURRENT.mapping.task.quantity = autoMapByName(CURRENT.columns.task, ["Quantity"]);
-  CURRENT.mapping.task.quantityUnit = autoMapByName(CURRENT.columns.task, ["Quantity Unit", "Unit"]);
-  CURRENT.mapping.task.unitCost = autoMapByName(CURRENT.columns.task, ["Unit Cost", "Cost", "Cost Total Cost"]);
-  CURRENT.mapping.task.totalCost = autoMapByName(CURRENT.columns.task, ["Total Cost"]);
-  CURRENT.mapping.task.allocation = autoMapByName(CURRENT.columns.task, ["Allocation"]);
-  CURRENT.mapping.task.sprint = autoMapByName(CURRENT.columns.task, ["Sprint"]);
-  CURRENT.mapping.task.assignee = autoMapByName(CURRENT.columns.task, ["Assignee"]);
-  CURRENT.mapping.task.taskDescription = autoMapByName(CURRENT.columns.task, ["Task Description", "Description"]);
-  CURRENT.mapping.task.notes = autoMapByName(CURRENT.columns.task, ["Notes"]);
-  CURRENT.mapping.task.photos = autoMapByName(CURRENT.columns.task, ["Photos"]);
-
-  // Lookup: best-effort guess
-  CURRENT.mapping.task.taskProjectLookup = autoMapByName(CURRENT.columns.task, ["Project", "Project Lookup", "ProjectId"]);
-
-  renderMappingUI(CURRENT.mapping, CURRENT.columns.project, CURRENT.columns.task);
-  toast("Auto-mapped.");
-}
-
-function saveAllSettings() {
-  const s = loadSettings();
-  s.companyLogoUrl = document.getElementById("setLogoUrl").value.trim();
-  s.projectLink = document.getElementById("setProjectLink").value.trim();
-  s.taskLink = document.getElementById("setTaskLink").value.trim();
-  s.roleMode = document.getElementById("setRoleMode").value;
-  s.adminGroup = document.getElementById("setAdminGroup").value.trim();
-  s.editorGroup = document.getElementById("setEditorGroup").value.trim();
-  s.viewerGroup = document.getElementById("setViewerGroup").value.trim();
-  s.manualRole = document.getElementById("setManualRole").value;
-  s.mapping = CURRENT.mapping;
-
-  saveSettings(s);
-  if (s.companyLogoUrl) document.getElementById("companyLogo").src = s.companyLogoUrl;
-  toast("Settings saved.");
-}
-
-/* ---------- UI: Projects ---------- */
-async function refreshProjects() {
-  const s = loadSettings();
-  // Enforce: can't use without configuration
-  if (!s.projectLink || !s.taskLink || !s.mapping) {
-    document.getElementById("projectsTbody").innerHTML =
-      `<tr><td colspan="7" class="muted">Go to Settings → paste list links → Detect → Auto-map → Save.</td></tr>`;
-    return;
-  }
-
-  // Buttons by role
-  document.getElementById("btnAddProject").style.display = (CURRENT.role === "viewer") ? "none" : "inline-flex";
-  setRoleBanner();
-
-  const q = safeText(document.getElementById("projSearch").value).toLowerCase();
-  const sf = document.getElementById("projStatusFilter").value;
-
-  const items = await loadProjectsTop8();
-  const map = CURRENT.mapping.project;
-
-  const rows = [];
-  for (const it of items) {
-    const f = it.fields;
-    const addr = safeText(f[map.projectAddress] ?? "");
-    const owner = safeText(f[map.projectOwner] ?? "");
-    const start = safeText(f[map.projectStartDate] ?? "");
-    const sales = safeText(f[map.expectedSales] ?? "");
-    const active = boolFromField(f[map.active]);
-
-    const desc = safeText(f[map.projectDescription] ?? "");
-
-    const status = active ? "active" : "completed"; // simple mapping
-    const hay = `${addr} ${desc}`.toLowerCase();
-
-    if (q && !hay.includes(q)) continue;
-    if (sf && sf !== status) continue;
-
-    const canEdit = (CURRENT.role !== "viewer");
-    const canDelete = (CURRENT.role === "admin");
-
-    rows.push(`
-      <tr>
-        <td>${addr}</td>
-        <td>${owner}</td>
-        <td>${start}</td>
-        <td>${sales}</td>
-        <td>${active ? `<span class="badge active">active</span>` : `<span class="badge completed">completed</span>`}</td>
-        <td>${desc}</td>
-        <td>
-          <div class="actions">
-            #project:${it.id}Open</a>
-            ${canEdit ? `<button class="btn small" data-act="edit" data-id="${it.id}">Edit</button>` : ``}
-            ${canDelete ? `<button class="btn small" data-act="delete" data-id="${it.id}">Delete</button>` : ``}
-          </div>
-        </td>
-      </tr>
-    `);
-  }
-
-  document.getElementById("projectsTbody").innerHTML =
-    rows.length ? rows.join("") : `<tr><td colspan="7" class="muted">No projects found.</td></tr>`;
-
-  // Wire actions
-  document.querySelectorAll('button[data-act="edit"]').forEach(btn => btn.onclick = () => openProjectEditor(btn.dataset.id));
-  document.querySelectorAll('button[data-act="delete"]').forEach(btn => btn.onclick = () => deleteProject(btn.dataset.id));
-}
-
-async function openProjectEditor(projectItemId) {
-  if (CURRENT.role === "viewer") return;
-
-  const items = await loadProjectsTop8();
-  const it = items.find(x => x.id === projectItemId);
-  if (!it) return;
-
-  const map = CURRENT.mapping.project;
-  const f = it.fields;
-
-  openModal(`
-    <div class="modal-header">
-      <h3 style="margin:0;">Project editor</h3>
-      <button class="btn small link" id="btnCloseModal">✖</button>
-    </div>
-
-    <div class="input-row" style="margin-top:10px;">
-      <div style="grid-column:1/-1;">
-        <label>Title</label>
-        <input id="pe_title" type="text" value="${escapeAttr(f[map.projectAddress] ?? "")}" />
-      </div>
-    </div>
-
-    <div class="input-row" style="margin-top:10px;">
-      <div>
-        <label>Owner</label>
-        <input id="pe_owner" type="text" value="${escapeAttr(f[map.projectOwner] ?? "")}" />
-      </div>
-      <div>
-        <label>Start Date</label>
-        <input id="pe_start" type="date" value="${escapeAttr(f[map.projectStartDate] ?? "")}" />
-      </div>
-    </div>
-
-    <div class="input-row" style="margin-top:10px;">
-      <div>
-        <label>Expected Sales</label>
-        <input id="pe_sales" type="text" value="${escapeAttr(f[map.expectedSales] ?? "")}" />
-      </div>
-      <div>
-        <label>Active</label>
-        <select id="pe_active">
-          <option value="true" ${boolFromField(f[map.active]) ? "selected":""}>true</option>
-          <option value="false" ${!boolFromField(f[map.active]) ? "selected":""}>false</option>
-        </select>
-      </div>
-    </div>
-
-    <div style="margin-top:10px;">
-      <label>Description</label>
-      <textarea id="pe_desc">${escapeHtml(f[map.projectDescription] ?? "")}</textarea>
-    </div>
-
-    <div class="actions" style="margin-top:12px; justify-content:flex-end;">
-      <button class="btn primary" id="btnSaveProject">Save</button>
-      ${CURRENT.role === "admin" ? `<button class="btn" id="btnDeleteProject">Delete</button>` : ``}
-    </div>
-  `);
-
-  document.getElementById("btnCloseModal").onclick = closeModal;
-
-  document.getElementById("btnSaveProject").onclick = async () => {
-    const payload = {};
-    payload[map.projectAddress] = document.getElementById("pe_title").value.trim();
-    payload[map.projectOwner] = document.getElementById("pe_owner").value.trim();
-    payload[map.projectStartDate] = document.getElementById("pe_start").value;
-    payload[map.expectedSales] = document.getElementById("pe_sales").value.trim();
-    payload[map.active] = document.getElementById("pe_active").value === "true";
-    payload[map.projectDescription] = document.getElementById("pe_desc").value.trim();
-
-    await graphPATCH(`/sites/${CURRENT.site.project}/lists/${CURRENT.lists.project}/items/${projectItemId}/fields`, payload);
-    addActivity(`Edited project: ${payload[map.projectAddress]}`);
-    closeModal();
-    toast("Project updated");
-    refreshProjects();
-  };
-
-  const delBtn = document.getElementById("btnDeleteProject");
-  if (delBtn) delBtn.onclick = async () => {
-    await deleteProject(projectItemId);
-    closeModal();
-  };
-}
-
-async function deleteProject(projectItemId) {
-  if (CURRENT.role !== "admin") return;
-  // Delete list item:
-  const token = await getToken();
-  const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${CURRENT.site.project}/lists/${CURRENT.lists.project}/items/${projectItemId}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!res.ok) throw new Error(`Delete failed: ${await res.text()}`);
-  addActivity(`Deleted project item: ${projectItemId}`);
-  toast("Project deleted");
-  refreshProjects();
-}
-
-/* ---------- UI: Project view ---------- */
-async function openProject(projectItemId) {
-  const items = await loadProjectsTop8();
-  const it = items.find(x => x.id === projectItemId);
-  if (!it) {
-    document.getElementById("projectHeader").innerHTML = `<div class="muted">Project not found.</div>`;
-    return;
-  }
-  CURRENT.selectedProject = it;
-
-  const mp = CURRENT.mapping.project;
-  const f = it.fields;
-
-  const addr = safeText(f[mp.projectAddress] ?? "");
-  const owner = safeText(f[mp.projectOwner] ?? "");
-  const start = safeText(f[mp.projectStartDate] ?? "");
-  const sales = safeText(f[mp.expectedSales] ?? "");
-  const active = boolFromField(f[mp.active]);
-  const desc = safeText(f[mp.projectDescription] ?? "");
-
-  document.getElementById("projectHeader").innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
-      <div>
-        <h2 style="margin:0;">${escapeHtml(addr || "Untitled")}</h2>
-        <div class="muted">Owner: ${escapeHtml(owner)}</div>
-        <div style="margin-top:8px; display:flex; gap:10px; flex-wrap:wrap;">
-          ${active ? `<span class="badge active">active</span>` : `<span class="badge completed">completed</span>`}
-          <span class="badge">Start: ${escapeHtml(start)}</span>
-          <span class="badge">Expected Sales: ${escapeHtml(sales)}</span>
-        </div>
-        <div class="muted" style="margin-top:8px;">${escapeHtml(desc)}</div>
-      </div>
-      <div class="actions">
-        ${CURRENT.role !== "viewer" ? `<button class="btn" id="btnEditProjectHere">Edit Project</button>` : ``}
-      </div>
-    </div>
-  `;
-
-  const btnEdit = document.getElementById("btnEditProjectHere");
-  if (btnEdit) btnEdit.onclick = () => openProjectEditor(projectItemId);
-
-  // Tabs
-  document.querySelectorAll('.subtabs button[data-tab]').forEach(b => {
-    b.onclick = () => {
-      document.querySelectorAll('.subtabs button').forEach(x => x.classList.toggle('active', x === b));
-      document.querySelectorAll('#projectPanels > div').forEach(div => div.hidden = (div.id !== `panel-${b.dataset.tab}`));
-    };
-  });
-
-  // Role-based buttons
-  document.getElementById("btnAddTask").style.display = (CURRENT.role === "viewer") ? "none" : "inline-flex";
-
-  await refreshTasks(projectItemId);
-  await refreshPhotos(projectItemId);
-}
-
-async function refreshTasks(projectItemId) {
-  const tasks = await loadTasksForProject(projectItemId);
-  const mt = CURRENT.mapping.task;
-
-  // total costs for dashboard
-  const rows = tasks.map(t => {
-    const f = t.fields;
-    const canEdit = (CURRENT.role !== "viewer");
-    const canDelete = (CURRENT.role === "admin");
-
-    // Per-field RBAC: Allocation only admin
-    const allocation = safeText(f[mt.allocation] ?? "");
-    const allocationDisplay = allocation ? `$${money(allocation)}` : "";
-
-    const photoVal = safeText(f[mt.photos] ?? "");
-    const photoLinks = photoVal ? `<a class="btn small" href="${tryParseFirstUrl(photoss="muted">—</span>`;
-
-    return `
-      <tr>
-        <td>${escapeHtml(f[mt.taskName] ?? "")}</td>
-        <td>${escapeHtml(f[mt.taskStartDate] ?? "")}</td>
-        <td>${escapeHtml(f[mt.taskEndDate] ?? "")}</td>
-        <td>${escapeHtml(f[mt.quantity] ?? "")}</td>
-        <td>${escapeHtml(f[mt.unitCost] ?? "")}</td>
-        <td>${escapeHtml(f[mt.totalCost] ?? "")}</td>
-        <td>${escapeHtml(allocationDisplay)}</td>
-        <td>${escapeHtml(f[mt.sprint] ?? "")}</td>
-        <td>${escapeHtml(f[mt.assignee] ?? "")}</td>
-        <td>${escapeHtml(f[mt.taskDescription] ?? "")}</td>
-        <td>${escapeHtml(f[mt.notes] ?? "")}</td>
-        <td>${photoLinks}</td>
-        <td>
-          <div class="actions">
-            ${canEdit ? `<button class="btn small" data-act="editTask" data-id="${t.id}">Edit</button>` : ``}
-            ${canDelete ? `<button class="btn small" data-act="delTask" data-id="${t.id}">Delete</button>` : ``}
-          </div>
-        </td>
-      </tr>
-    `;
-  });
-
-  document.getElementById("tasksTbody").innerHTML =
-    rows.length ? rows.join("") : `<tr><td colspan="13" class="muted">No tasks yet.</td></tr>`;
-
-  document.querySelectorAll('button[data-act="editTask"]').forEach(btn => btn.onclick = () => openTaskEditor(btn.dataset.id));
-  document.querySelectorAll('button[data-act="delTask"]').forEach(btn => btn.onclick = () => deleteTask(btn.dataset.id));
-
-  document.getElementById("btnAddTask").onclick = () => openTaskEditor(null); // new
-
-  // Keep tasks for dashboard calc
-  CURRENT._lastTasks = tasks;
-}
-
-async function deleteTask(taskItemId) {
-  if (CURRENT.role !== "admin") return;
-  const token = await getToken();
-  const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items/${taskItemId}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!res.ok) throw new Error(`Delete failed: ${await res.text()}`);
-  addActivity(`Deleted task item: ${taskItemId}`);
-  toast("Task deleted");
-  await refreshTasks(CURRENT.selectedProject.id);
-  await refreshDashboard();
-}
-
-async function openTaskEditor(taskItemId) {
-  if (CURRENT.role === "viewer") return;
-
-  const mt = CURRENT.mapping.task;
-  const mp = CURRENT.mapping.project;
-
-  let existing = null;
-  if (taskItemId) {
-    const data = await graphGET(`/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items/${taskItemId}?$expand=fields`);
-    existing = { id: data.id, fields: data.fields || {} };
-  }
-
-  const f = existing?.fields || {};
-  const isEdit = !!existing;
-
-  // Allocation RBAC: only admin can edit
-  const allocationDisabled = (CURRENT.role !== "admin") ? "disabled" : "";
-
-  openModal(`
-    <div class="modal-header">
-      <h3 style="margin:0;">Task editor panel</h3>
-      <button class="btn small link" id="btnCloseModal">✖</button>
-    </div>
-
-    <div class="input-row" style="margin-top:10px;">
-      <div><label>Title</label><input id="te_title" type="text" value="${escapeAttr(f[mt.taskName] ?? "")}" /></div>
-      <div><label>Address</label><input id="te_address" type="text" value="${escapeAttr(CURRENT.selectedProject.fields[mp.projectAddress] ?? "")}" disabled /></div>
-    </div>
-
-    <div class="input-row" style="margin-top:10px;">
-      <div><label>Start Date</label><input id="te_start" type="date" value="${escapeAttr(f[mt.taskStartDate] ?? "")}" /></div>
-      <div><label>End Date</label><input id="te_end" type="date" value="${escapeAttr(f[mt.taskEndDate] ?? "")}" /></div>
-    </div>
-
-    <div class="input-row3" style="margin-top:10px;">
-      <div><label>Quantity</label><input id="te_qty" type="number" step="any" value="${escapeAttr(f[mt.quantity] ?? "")}" /></div>
-      <div><label>Unit Cost</label><input id="te_unit" type="number" step="any" value="${escapeAttr(f[mt.unitCost] ?? "")}" /></div>
-      <div><label>Total Cost</label><input id="te_total" type="number" step="any" value="${escapeAttr(f[mt.totalCost] ?? "")}" /></div>
-    </div>
-
-    <div class="input-row3" style="margin-top:10px;">
-      <div><label>Allocation</label><input id="te_allocation" type="number" step="any" ${allocationDisabled} value="${escapeAttr(f[mt.allocation] ?? "")}" /></div>
-      <div><label>Sprint</label><input id="te_sprint" type="text" value="${escapeAttr(f[mt.sprint] ?? "")}" /></div>
-      <div><label>Assignee</label><input id="te_assignee" type="text" value="${escapeAttr(f[mt.assignee] ?? "")}" /></div>
-    </div>
-
-    <div class="input-row" style="margin-top:10px;">
-      <div><label>Description</label><textarea id="te_desc">${escapeHtml(f[mt.taskDescription] ?? "")}</textarea></div>
-      <div><label>Notes</label><textarea id="te_notes">${escapeHtml(f[mt.notes] ?? "")}</textarea></div>
-    </div>
-
-    <div style="margin-top:10px;">
-      <label>Photos</label>
-      <input id="te_photos" type="file" multiple accept="image/*" />
-      <div class="muted" style="margin-top:6px;">Uploads go to Documents/TaskPhotos and links are stored in the task "Photos" field.</div>
-    </div>
-
-    <div class="actions" style="margin-top:12px; justify-content:flex-end;">
-      <button class="btn primary" id="btnSaveTask">${isEdit ? "Save" : "Save"}</button>
-      ${(CURRENT.role === "admin" && isEdit) ? `<button class="btn" id="btnDeleteTask">Delete</button>` : ``}
-    </div>
-  `);
-
-  document.getElementById("btnCloseModal").onclick = closeModal;
-
-  document.getElementById("btnSaveTask").onclick = async () => {
-    const payload = {};
-    payload[mt.taskName] = document.getElementById("te_title").value.trim();
-    payload[mt.taskStartDate] = document.getElementById("te_start").value;
-    payload[mt.taskEndDate] = document.getElementById("te_end").value;
-    payload[mt.quantity] = document.getElementById("te_qty").value;
-    payload[mt.unitCost] = document.getElementById("te_unit").value;
-    payload[mt.totalCost] = document.getElementById("te_total").value;
-    if (CURRENT.role === "admin") payload[mt.allocation] = document.getElementById("te_allocation").value;
-    payload[mt.sprint] = document.getElementById("te_sprint").value.trim();
-    payload[mt.assignee] = document.getElementById("te_assignee").value.trim();
-    payload[mt.taskDescription] = document.getElementById("te_desc").value.trim();
-    payload[mt.notes] = document.getElementById("te_notes").value.trim();
-
-    // Duplicate project fields into task on each add/update (as required)
-    const pf = CURRENT.selectedProject.fields;
-    payload[mp.projectAddress] = pf[mp.projectAddress] ?? "";
-    payload[mp.projectOwner] = pf[mp.projectOwner] ?? "";
-    payload[mp.projectStartDate] = pf[mp.projectStartDate] ?? "";
-    payload[mp.expectedSales] = pf[mp.expectedSales] ?? "";
-    payload[mp.active] = pf[mp.active] ?? true;
-    payload[mp.projectDescription] = pf[mp.projectDescription] ?? "";
-
-    // Relationship: lookup to project
-    if (mt.taskProjectLookup) {
-      // Many lookup fields use "LookupId" suffix
-      payload[`${mt.taskProjectLookup}LookupId`] = Number(CURRENT.selectedProject.id);
-    }
-
-    // Create or update task item
-    let savedId = taskItemId;
-    if (!isEdit) {
-      const created = await graphPOST(`/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items`, { fields: payload });
-      savedId = created.id;
-      addActivity(`Task added: ${payload[mt.taskName]}`);
-    } else {
-      await graphPATCH(`/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items/${taskItemId}/fields`, payload);
-      addActivity(`Task updated: ${payload[mt.taskName]}`);
-    }
-
-    // Photo upload
-    const files = document.getElementById("te_photos").files;
-    if (files && files.length) {
-      const uploadedUrls = await uploadTaskPhotos(savedId, files);
-      if (uploadedUrls.length && mt.photos) {
-        // store JSON array for robustness
-        const cur = safeText(f[mt.photos] ?? "");
-        let arr = [];
-        try { arr = cur ? JSON.parse(cur) : []; } catch { arr = cur ? [cur] : []; }
-        const merged = [...arr, ...uploadedUrls];
-        await graphPATCH(`/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items/${savedId}/fields`, {
-          [mt.photos]: JSON.stringify(merged)
-        });
-      }
-    }
-
-    toast("Task saved");
-    closeModal();
-    await refreshTasks(CURRENT.selectedProject.id);
-    await refreshDashboard();
-  };
-
-  const delBtn = document.getElementById("btnDeleteTask");
-  if (delBtn) delBtn.onclick = async () => { await deleteTask(taskItemId); closeModal(); };
-}
-
-/* ---------- Photos upload to Documents/TaskPhotos ---------- */
-async function ensureFolder(siteId, path) {
-  // Create folder if missing
-  // PUT /drive/root:/path:/content doesn't create folders reliably; use children create
-  const parts = path.split("/").filter(Boolean);
-  let curPath = "";
-  for (const p of parts) {
-    const parentPath = curPath ? curPath : "";
-    const name = p;
-    const test = await tryGetDriveItem(siteId, `${parentPath}/${name}`.replace(/^\/+/,""));
-    if (!test) {
-      const parent = parentPath ? `/sites/${siteId}/drive/root:/${parentPath}:/children` : `/sites/${siteId}/drive/root/children`;
-      await graphPOST(parent, { name, folder: {}, "@microsoft.graph.conflictBehavior": "replace" });
-    }
-    curPath = `${parentPath}/${name}`.replace(/^\/+/,"");
-  }
-}
-
-async function tryGetDriveItem(siteId, path) {
-  try {
-    return await graphGET(`/sites/${siteId}/drive/root:/${encodeURIComponent(path).replace(/%2F/g,"/")}`);
-  } catch {
-    return null;
-  }
-}
-
-async function uploadTaskPhotos(taskItemId, fileList) {
-  const siteId = CURRENT.site.task; // same site as task list
-  const folderBase = `TaskPhotos/${taskItemId}`;
-  await ensureFolder(siteId, folderBase);
-
-  const urls = [];
-  for (const file of fileList) {
-    const dest = `/sites/${siteId}/drive/root:/${folderBase}/${encodeURIComponent(file.name).replace(/%2F/g,"/")}:/content`;
-    const uploaded = await graphPUTBinary(dest, file, file.type);
-    if (uploaded && uploaded.webUrl) urls.push(uploaded.webUrl);
-  }
-  return urls;
-}
-
-/* ---------- Photos grid ---------- */
-async function refreshPhotos(projectItemId) {
-  // Show tasks + photo links
-  const tasks = await loadTasksForProject(projectItemId);
-  const mt = CURRENT.mapping.task;
-
-  const grid = document.getElementById("photosGrid");
-  grid.innerHTML = "";
-
-  if (!tasks.length) {
-    grid.innerHTML = `<div class="muted">No tasks yet.</div>`;
-    return;
-  }
-
-  tasks.forEach(t => {
-    const f = t.fields;
-    const card = document.createElement("div");
-    card.className = "card";
-    const name = escapeHtml(f[mt.taskName] ?? "(Untitled)");
-
-    let photoVal = safeText(f[mt.photos] ?? "");
-    let urls = [];
-    try { urls = photoVal ? JSON.parse(photoVal) : []; } catch { urls = photoVal ? [photoVal] : []; }
-
-    card.innerHTML = `<h3 style="margin-top:0;">${name}</h3>`;
-    const wrap = document.createElement("div");
-    wrap.style.cssText = "display:flex; gap:8px; flex-wrap:wrap;";
-
-    if (!urls.length) {
-      wrap.innerHTML = `<span class="muted">No photos</span>`;
-    } else {
-      urls.forEach(u => {
-        const a = document.createElement("a");
-        a.className = "btn small";
-        a.href = u;
-        a.target = "_blank";
-        a.rel = "noopener";
-        a.textContent = "Open Photo";
-        wrap.appendChild(a);
-      });
-    }
-
-    card.appendChild(wrap);
-    grid.appendChild(card);
-  });
-}
-
-/* ---------- Dashboard ---------- */
-async function refreshDashboard() {
-  const projects = await loadProjectsTop8();
-  const mp = CURRENT.mapping.project;
-  const mt = CURRENT.mapping.task;
-
-  let active = 0, completed = 0;
-  let totalSales = 0;
-  for (const p of projects) {
-    const isActive = boolFromField(p.fields[mp.active]);
-    if (isActive) active++; else completed++;
-    const sales = Number(String(p.fields[mp.expectedSales] ?? "").replace(/[^\d.-]/g,""));
-    if (!Number.isNaN(sales)) totalSales += sales;
-  }
-
-  // Costs from last loaded tasks (for selected project) + best-effort from tasks list if mapped
-  let totalCosts = 0;
-  if (CURRENT._lastTasks && CURRENT._lastTasks.length) {
-    for (const t of CURRENT._lastTasks) {
-      const v = Number(String(t.fields[mt.totalCost] ?? "").replace(/[^\d.-]/g,""));
-      if (!Number.isNaN(v)) totalCosts += v;
-    }
-  }
-
-  document.getElementById("mTotalProjects").textContent = projects.length;
-  document.getElementById("mActiveProjects").textContent = active;
-  document.getElementById("mCompletedProjects").textContent = completed;
-  document.getElementById("mTotalCosts").textContent = money(totalCosts);
-  document.getElementById("mTotalSales").textContent = money(totalSales);
-
-  // Activity
-  const ul = document.getElementById("activityList");
-  ul.innerHTML = (CURRENT.activity.slice(0,10).map(x => `<li>${escapeHtml(x)}</li>`).join("")) || `<li class="muted">No activity yet</li>`;
-}
-
-function addActivity(text) {
-  CURRENT.activity.unshift(`${new Date().toLocaleString()}: ${text}`);
-}
-
-/* ---------- Modal helpers ---------- */
-function openModal(innerHtml) {
-  const b = document.getElementById("modalBackdrop");
-  document.getElementById("modalCard").innerHTML = innerHtml;
-  b.style.display = "flex";
-}
-function closeModal() {
-  document.getElementById("modalBackdrop").style.display = "none";
-  document.getElementById("modalCard").innerHTML = "";
-}
-
-/* ---------- Safe HTML helpers ---------- */
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;").replaceAll("'","&#39;");
-}
-function escapeAttr(s) { return escapeHtml(s).replaceAll("\n"," "); }
-
-function tryParseFirstUrl(v) {
-  try {
-    const arr = JSON.parse(v);
-    if (Array.isArray(arr) && arr[0]) return arr[0];
-  } catch {}
-  const m = String(v ?? "").match(/https?:\/\/[^\s"]+/);
-  return m ? m[0] : "#";
-}
-
-/* ---------- Wiring ---------- */
-document.getElementById("btnGateSignIn").onclick = async () => {
-  try {
-    await signInPopup();
-    await startApp();
-  } catch (e) { console.error(e); toast("Sign in failed"); }
-};
-document.getElementById("btnSignIn").onclick = async () => { try { await signInPopup(); await startApp(); } catch(e){ console.error(e); toast("Sign in failed"); } };
-document.getElementById("btnSignOut").onclick = async () => { try { await signOut(); CURRENT.account=null; showAuthGate(false); } catch(e){ console.error(e); toast("Sign out failed"); } };
-
-document.getElementById("projSearch").oninput = () => refreshProjects();
-document.getElementById("projStatusFilter").onchange = () => refreshProjects();
-
-document.getElementById("btnDetect").onclick = async () => { try { await detectListsAndColumns(); } catch(e){ console.error(e); toast(e.message || "Detect failed"); } };
-document.getElementById("btnAutoMap").onclick = () => autoMap();
-document.getElementById("btnSaveSettings").onclick = () => saveAllSettings();
-
-document.getElementById("btnAddProject").onclick = () => openProjectCreator();
-
-/* ---------- Project creator ---------- */
-function openProjectCreator() {
-  if (CURRENT.role === "viewer") return;
-
-  const mp = CURRENT.mapping.project;
-  openModal(`
-    <div class="modal-header">
-      <h3 style="margin:0;">Project editor panel</h3>
-      <button class="btn small link" id="btnCloseModal">✖</button>
-    </div>
-
-    <div class="input-row" style="margin-top:10px;">
-      <div style="grid-column:1/-1;"><label>Title</label><input id="pc_title" type="text" /></div>
-    </div>
-
-    <div class="input-row" style="margin-top:10px;">
-      <div><label>Owner</label><input id="pc_owner" type="text" /></div>
-      <div><label>Start Date</label><input id="pc_start" type="date" /></div>
-    </div>
-
-    <div class="input-row" style="margin-top:10px;">
-      <div><label>Expected Sales</label><input id="pc_sales" type="text" /></div>
-      <div>
-        <label>Active</label>
-        <select id="pc_active">
-          <option value="true" selected>true</option>
-          <option value="false">false</option>
-        </select>
-      </div>
-    </div>
-
-    <div style="margin-top:10px;">
-      <label>Description</label>
-      <textarea id="pc_desc"></textarea>
-    </div>
-
-    <div class="actions" style="margin-top:12px; justify-content:flex-end;">
-      <button class="btn primary" id="btnCreateProject">Save</button>
-    </div>
-  `);
-
-  document.getElementById("btnCloseModal").onclick = closeModal;
-  document.getElementById("btnCreateProject").onclick = async () => {
-    const payload = {};
-    payload[mp.projectAddress] = document.getElementById("pc_title").value.trim();
-    payload[mp.projectOwner] = document.getElementById("pc_owner").value.trim();
-    payload[mp.projectStartDate] = document.getElementById("pc_start").value;
-    payload[mp.expectedSales] = document.getElementById("pc_sales").value.trim();
-    payload[mp.active] = document.getElementById("pc_active").value === "true";
-    payload[mp.projectDescription] = document.getElementById("pc_desc").value.trim();
-
-    const created = await graphPOST(`/sites/${CURRENT.site.project}/lists/${CURRENT.lists.project}/items`, { fields: payload });
-    addActivity(`Created project: ${payload[mp.projectAddress]}`);
-    closeModal();
-    toast("Project saved");
-    location.hash = `#project:${created.id}`;
-  };
-}
-
-/* ---------- Start app ---------- */
-async function startApp() {
-  // Account
-  CURRENT.account = await pickAccount();
-  if (!CURRENT.account) { showAuthGate(false); return; }
-
-  // Role
-  const s = loadSettings();
-  CURRENT.role = await resolveRoleFromGroups(s);
-  setRoleBanner();
-
-  // Logo
-  if (s.companyLogoUrl) document.getElementById("companyLogo").src = s.companyLogoUrl;
-
-  // Load settings/mapping
-  CURRENT.mapping = s.mapping || null;
-
-  // Force detect if we can
-  if (s.projectLink && s.taskLink) {
-    try { await detectListsAndColumns(); } catch (e) { console.warn(e); }
-  }
-
-  showAuthGate(true);
-  addActivity("Signed in");
-  route();
-  await refreshDashboard();
-}
-
-/* ---------- Boot ---------- */
-(async function boot() {
-  try {
-    CURRENT.account = await pickAccount();
-    if (!CURRENT.account) {
-      showAuthGate(false);
-      document.getElementById("btnGateSignIn").focus();
-      return;
-    }
-    await startApp();
-  } catch (e) {
-    console.error(e);
-    showAuthGate(false);
-  }
-})();
-</script>
+                <th>Actions</th>
+            </tr>`;
+            table.appendChild(thead);
+            const tbody = document.createElement('tbody');
+            tasks.forEach(task => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${task.name}</td>
+                    <td>${task.startDate}</td>
+                    <td>${task.endDate}</td>
+                    <td>${task.quantity}</td>
+                    <td>${task.unitCost}</td>
+                    <td>${task.totalCost}</td>
+                    <td>${task.allocation}</td>
+                    <td>${task.sprint}</td>
+                    <td>${task.assignee}</td>
+                    <td>
+                        <button class="btn secondary" data-id="${task.id}" data-action="edit">Edit</button>
+                        ${userRole === 'admin' ? `<button class="btn secondary" data-id="${task.id}" data-action="delete">Delete</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+            container.appendChild(table);
+            // Handle clicks for edit/delete
+            tbody.addEventListener('click', ev => {
+                const btn = ev.target;
+                if (btn.tagName !== 'BUTTON') return;
+                const id = btn.dataset.id;
+                const action = btn.dataset.action;
+                const task = tasks.find(t => t.id === id);
+                if (!task) return;
+                if (action === 'edit') {
+                    openTaskModal(project, task);
+                } else if (action === 'delete') {
+                    if (confirm('Delete this task?')) {
+                        deleteTask(task.id);
+                    }
+                }
+            });
+        }
+        // Open modal to add/edit a task
+        function openTaskModal(project, task) {
+            const isEdit = !!task;
+            const modal = document.getElementById('modal');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = '';
+            const title = document.createElement('h3');
+            title.textContent = isEdit ? 'Edit Task' : 'Add Task';
+            content.appendChild(title);
+            const fields = {};
+            const addField = (label, value) => {
+                const lbl = document.createElement('label');
+                lbl.textContent = label;
+                const inp = document.createElement('input');
+                inp.value = value || '';
+                inp.style.width = '100%';
+                content.appendChild(lbl);
+                content.appendChild(inp);
+                return inp;
+            };
+            fields.name = addField('Task Name', task ? task.name : '');
+            fields.startDate = addField('Start Date', task ? task.startDate : '');
+            fields.endDate = addField('End Date', task ? task.endDate : '');
+            fields.quantity = addField('Quantity', task ? task.quantity : '');
+            fields.unit = addField('Unit', task ? task.unit : '');
+            fields.unitCost = addField('Unit Cost', task ? task.unitCost : '');
+            fields.totalCost = addField('Total Cost', task ? task.totalCost : '');
+            fields.allocation = addField('Allocation', task ? task.allocation : '');
+            fields.sprint = addField('Sprint', task ? task.sprint : '');
+            fields.assignee = addField('Assignee', task ? task.assignee : '');
+            fields.description = addField('Description', task ? task.description : '');
+            fields.notes = addField('Notes', task ? task.notes : '');
+            // Photo upload
+            const photoLabel = document.createElement('label');
+            photoLabel.textContent = 'Upload Photos';
+            const photoInput = document.createElement('input');
+            photoInput.type = 'file';
+            photoInput.multiple = true;
+            content.appendChild(photoLabel);
+            content.appendChild(photoInput);
+            const preview = document.createElement('div');
+            preview.className = 'photo-preview';
+            content.appendChild(preview);
+            photoInput.addEventListener('change', () => {
+                preview.innerHTML = '';
+                Array.from(photoInput.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        preview.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+            // Buttons
+            const btnBar = document.createElement('div');
+            btnBar.style.display = 'flex';
+            btnBar.style.justifyContent = 'flex-end';
+            btnBar.style.gap = '8px';
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn primary';
+            saveBtn.textContent = 'Save';
+            saveBtn.onclick = async () => {
+                // Build SharePoint fields
+                const spFields = {};
+                Object.keys(fields).forEach(k => {
+                    const col = mapping.task[k];
+                    if (col) {
+                        spFields[col] = fields[k].value;
+                    }
+                });
+                // Duplicate project info into task fields (for address, owner, etc.)
+                Object.keys(mapping.project).forEach(k => {
+                    const col = mapping.project[k];
+                    const taskCol = mapping.task[k];
+                    if (col && taskCol && project[k]) {
+                        spFields[taskCol] = spFields[taskCol] || project[k];
+                    }
+                });
+                // Set project reference field
+                if (mapping.projectRef) {
+                    spFields[mapping.projectRef] = project.name;
+                }
+                try {
+                    if (isEdit) {
+                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items/${task.id}/fields`, 'PATCH', spFields);
+                    } else {
+                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items`, 'POST', { fields: spFields });
+                    }
+                    // Handle photo uploads
+                    if (photoInput.files && photoInput.files.length > 0) {
+                        await uploadTaskPhotos(task ? task.id : null, photoInput.files);
+                    }
+                    await loadTasksForProject(project);
+                    closeModal();
+                } catch (err) {
+                    alert('Failed to save task: ' + err.message);
+                }
+            };
+            btnBar.appendChild(saveBtn);
+            if (isEdit && userRole === 'admin') {
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn secondary';
+                delBtn.textContent = 'Delete';
+                delBtn.onclick = async () => {
+                    if (confirm('Delete this task?')) {
+                        await deleteTask(task.id);
+                        closeModal();
+                    }
+                };
+                btnBar.appendChild(delBtn);
+            }
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn secondary';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = () => closeModal();
+            btnBar.appendChild(cancelBtn);
+            content.appendChild(btnBar);
+            modal.style.display = 'flex';
+        }
+        // Delete a task
+        async function deleteTask(taskId) {
+            try {
+                await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items/${taskId}`, 'DELETE');
+                tasks = tasks.filter(t => t.id !== taskId);
+                renderTasksUI(selectedProject);
+            } catch (err) {
+                alert('Failed to delete task: ' + err.message);
+            }
+        }
+        // Upload files to SharePoint library under TaskPhotos folder
+        async function uploadTaskPhotos(taskId, files) {
+            if (!files || files.length === 0) return;
+            // Ensure folder exists
+            const folderName = 'TaskPhotos';
+            try {
+                await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/` + folderName);
+            } catch (err) {
+                // Folder does not exist, create it
+                await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root/children`, 'POST', { name: folderName, folder: {}, '@microsoft.graph.conflictBehavior': 'replace' });
+            }
+            // Upload each file; optionally prefix with project name and timestamp to avoid collisions
+            for (const file of files) {
+                const uniqueName = `${Date.now()}_${file.name}`;
+                const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/` + folderName + '/' + encodeURIComponent(uniqueName) + ':/content';
+                await uploadFile(url, file);
+            }
+        }
+        async function uploadFile(url, file) {
+            const token = await getAccessToken();
+            await fetch(url, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': file.type },
+                body: file
+            });
+        }
+    </script>
 </body>
 </html>
