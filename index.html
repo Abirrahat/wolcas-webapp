@@ -1148,7 +1148,7 @@
                 }
             };
             btnBar.appendChild(saveBtn);
-            if (isEdit && userRole === 'admin') {
+            if (isEdit && userRole !== 'viewer') {
                 const delBtn = document.createElement('button');
                 delBtn.className = 'btn secondary';
                 delBtn.textContent = 'Delete';
@@ -1579,7 +1579,7 @@
                 }
             };
             btnBar.appendChild(saveBtn);
-            if (isEdit && userRole === 'admin') {
+            if (isEdit && userRole !== 'viewer') {
                 const delBtn = document.createElement('button');
                 delBtn.className = 'btn secondary';
                 delBtn.textContent = 'Delete';
