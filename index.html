@@ -518,6 +518,25 @@
             }
             return response.status === 204 ? null : await response.json();
         }
+
+        /**
+         * Format a date value for display or form input. When the value is an
+         * ISO date string (e.g. "2024-12-31T00:00:00Z"), this function
+         * extracts the first 10 characters (yyyy-mm-dd) so that it can be
+         * consumed by HTML date inputs. If the value is already in yyyy-mm-dd
+         * form or not a string, it is returned unchanged.
+         * @param {string|any} value
+         * @returns {string}
+         */
+        function formatDate(value) {
+            if (!value) return '';
+            const s = value.toString();
+            // Look for a pattern like YYYY-MM-DD at the start
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+                return s.substring(0, 10);
+            }
+            return s;
+        }
         // Determine user role based on group membership
         async function determineUserRole() {
             userRole = 'viewer';
@@ -547,7 +566,10 @@
                 const listsIndex = pathSegments.findIndex(p => p.toLowerCase() === 'lists');
                 if (listsIndex < 0 || listsIndex + 1 >= pathSegments.length) return null;
                 const listName = pathSegments[listsIndex + 1];
-                const sitePath = '/' + pathSegments.slice(0, listsIndex).join('/');
+                // Build the site path by joining the segments before "Lists". Encode
+                // each segment individually to preserve spaces and special chars. This
+                // prevents invalid host errors caused by unescaped paths.
+                const sitePath = '/' + pathSegments.slice(0, listsIndex).map(encodeURIComponent).join('/');
                 return { host, sitePath, listName };
             } catch (e) {
                 return null;
@@ -583,7 +605,12 @@
                 document.getElementById('mappingCard').style.display = '';
             } catch (e) {
                 console.error('Failed to detect lists:', e);
-                alert('Failed to detect lists. Ensure the URLs are correct and you have permissions.');
+                let msg = 'Failed to detect lists. Please ensure the SharePoint list URLs are correct and you have permissions.';
+                // If the error message contains "Invalid hostname", give a more specific hint
+                if (e.message && e.message.toLowerCase().includes('invalid hostname')) {
+                    msg += '\nThe host portion of the URL might not match your organization\'s tenant. Verify that the URL uses the correct domain (e.g., "contoso.sharepoint.com" instead of "contoso-my.sharepoint.com" if applicable).';
+                }
+                alert(msg);
             }
         }
         document.getElementById('detectListsBtn').addEventListener('click', () => {
@@ -723,7 +750,7 @@
                         name: fields[mapping.project.name] || fields.Title || '',
                         address: fields[mapping.project.address] || '',
                         owner: fields[mapping.project.owner] || '',
-                        startDate: fields[mapping.project.startDate] || '',
+                        startDate: formatDate(fields[mapping.project.startDate] || ''),
                         sales: fields[mapping.project.sales] || '',
                         status: fields[mapping.project.status] || '',
                         description: fields[mapping.project.description] || ''
@@ -783,6 +810,11 @@
         });
         // Open modal to add/edit a project
         function openProjectModal(project) {
+            // Guard against attempts to open the modal before lists/mapping are configured.
+            if (!siteId || !projectListId) {
+                alert('Please configure the SharePoint Project list in Settings before adding or editing projects.');
+                return;
+            }
             const isEdit = !!project;
             const modal = document.getElementById('modal');
             const modalContent = document.getElementById('modalContent');
@@ -793,18 +825,26 @@
             // Build form fields based on mapping
             const form = document.createElement('div');
             form.innerHTML = '';
-            const createInput = (labelText, value) => {
+            const createInput = (labelText, value, typeHint = '') => {
+                // Create a label/field pair. If the label suggests a date,
+                // use a date input to surface the browser's native date picker.
                 const label = document.createElement('label');
                 label.textContent = labelText;
                 const input = document.createElement('input');
+                // Use a date input for fields containing "date" in their key
+                // (e.g. Start Date) to enable date selection via a calendar UI.
+                if (/date/i.test(typeHint) || /date/i.test(labelText)) {
+                    input.type = 'date';
+                }
                 input.value = value || '';
                 input.style.width = '100%';
                 return { label, input };
             };
             const fields = {};
             ['name','address','owner','startDate','sales','status','description'].forEach(key => {
-                const label = mapping.project[key] ? key.charAt(0).toUpperCase() + key.slice(1) : key;
-                const { label: lbl, input } = createInput(label.replace(/([A-Z])/g, ' $1'), project ? project[key] : '');
+                const labelKey = mapping.project[key] ? key.charAt(0).toUpperCase() + key.slice(1) : key;
+                const display = labelKey.replace(/([A-Z])/g, ' $1');
+                const { label: lbl, input } = createInput(display, project ? project[key] : '', key);
                 fields[key] = input;
                 form.appendChild(lbl);
                 form.appendChild(input);
@@ -902,8 +942,8 @@
                     return {
                         id: item.id,
                         name: fields[mapping.task.name] || '',
-                        startDate: fields[mapping.task.startDate] || '',
-                        endDate: fields[mapping.task.endDate] || '',
+                        startDate: formatDate(fields[mapping.task.startDate] || ''),
+                        endDate: formatDate(fields[mapping.task.endDate] || ''),
                         quantity: fields[mapping.task.quantity] || '',
                         unit: fields[mapping.task.unit] || '',
                         unitCost: fields[mapping.task.unitCost] || '',
@@ -993,6 +1033,11 @@
         }
         // Open modal to add/edit a task
         function openTaskModal(project, task) {
+            // Ensure the Task list and project reference have been configured before opening.
+            if (!taskListId || !mapping.projectRef) {
+                alert('Please configure the SharePoint Task list and mapping (including the project reference) in Settings before adding or editing tasks.');
+                return;
+            }
             const isEdit = !!task;
             const modal = document.getElementById('modal');
             const content = document.getElementById('modalContent');
@@ -1001,10 +1046,21 @@
             title.textContent = isEdit ? 'Edit Task' : 'Add Task';
             content.appendChild(title);
             const fields = {};
+            /**
+             * Helper to add an input field with an appropriate type based on the
+             * label. Date fields (Start Date, End Date) will use type="date"
+             * so that users can select dates using a calendar picker. All
+             * other fields default to a text input. Returns the created input
+             * element for later retrieval.
+             */
             const addField = (label, value) => {
                 const lbl = document.createElement('label');
                 lbl.textContent = label;
                 const inp = document.createElement('input');
+                // Use date input if the label contains "date"
+                if (/date/i.test(label)) {
+                    inp.type = 'date';
+                }
                 inp.value = value || '';
                 inp.style.width = '100%';
                 content.appendChild(lbl);
