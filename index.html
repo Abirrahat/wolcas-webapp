@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,1546 +6,1484 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WOLCAS</title>
 
-  <!-- CSP: allow local inline scripts/styles + MS identity + Graph. (Meta CSP can't set frame-ancestors; warning is expected.) -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none';
-    img-src 'self' data: https:; style-src 'self' 'unsafe-inline';
-    script-src 'self' 'unsafe-inline';
-    connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com;
-    frame-src https://login.microsoftonline.com;" />
+  <!-- CSP: allow local scripts + Graph/AAD calls (no external CDNs) -->
+  <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'self';
+          script-src 'self' 'unsafe-inline';
+          style-src 'self' 'unsafe-inline';
+          img-src 'self' data: blob: https:;
+          connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com;
+          frame-src 'self' https://login.microsoftonline.com;
+        " />
 
   <style>
-    :root{--primary:#1E3A8A;--secondary:#475569;--accent:#F97316;--bg:#F8FAFC;--text:#0F172A;--card:#ffffff;--border:#e5e7eb;}
-    *{box-sizing:border-box;}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial;color:var(--text);background:var(--bg);padding-bottom:72px;overflow-x:hidden;}
-    header.sticky{position:sticky;top:0;z-index:1000;background:var(--card);border-bottom:1px solid var(--border);}
-    .header-inner{display:flex;align-items:center;gap:12px;padding:10px 16px;}
-    .auth-left{display:flex;align-items:center;gap:10px;min-width:260px;}
-    .auth-left .email{color:var(--secondary);font-weight:700;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .app-title{font-weight:800;color:var(--primary);}
-    .company{margin-left:auto;display:flex;align-items:center;gap:10px;color:var(--secondary);font-size:.95rem;}
-    .company img{height:56px;width:auto;border-radius:10px;object-fit:contain;border:1px solid var(--border);background:#fff;padding:2px;}
+    :root { --primary:#1E3A8A; --secondary:#475569; --accent:#F97316; --bg:#F8FAFC; --text:#0F172A; --card:#ffffff; --border:#e5e7eb; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial;
+      color:var(--text); background:#fff; padding-bottom:72px; overflow-x:hidden; }
+    header.sticky { position:sticky; top:0; z-index:1000; background:var(--card); border-bottom:1px solid var(--border); }
+    .header-inner { display:flex; align-items:center; gap:12px; padding:10px 16px; }
+    .app-title { font-weight:800; color:var(--primary); letter-spacing:0.3px; }
+    .auth-left { display:flex; align-items:center; gap:10px; }
+    .auth-email { font-weight:700; color:var(--secondary); max-width:40vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .container { width:min(100%, 1100px); margin-inline:auto; padding:16px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.04);
+      padding:16px; width:100%; overflow-wrap:anywhere; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:16px; align-items:start; }
+    .btn { display:inline-flex; align-items:center; gap:6px; padding:10px 14px; border-radius:10px; border:1px solid var(--border);
+      cursor:pointer; text-decoration:none; font-weight:700; background:#fff; color:var(--primary); }
+    .btn.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .btn.small { padding:6px 10px; font-size:0.9rem; }
+    .btn.link { background:transparent; border-color:transparent; }
+    .badge { display:inline-block; padding:6px 10px; border-radius:999px; font-size:0.9rem; border:1px solid var(--border); background:#fff; font-weight:700; }
+    .badge.active { color:#065f46; background:#ecfdf5; border-color:#a7f3d0; }
+    .badge.completed { color:#1f2937; background:#e5e7eb; border-color:#d1d5db; }
+    .muted { color:#6b7280; }
+    .input-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .input-row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+    label { font-weight:700; font-size:0.9rem; color:var(--secondary); }
+    input[type=text], input[type=date], input[type=number], textarea, select {
+      width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:#fff; font-size:1rem;
+    }
+    textarea { min-height:72px; }
 
-    .container{width:min(100%,1100px);margin-inline:auto;padding:16px;}
-    h1,h2,h3{margin:8px 0;}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:16px;width:100%;overflow-wrap:anywhere;}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start;}
-    .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:10px;border:1px solid var(--border);cursor:pointer;text-decoration:none;font-weight:700;background:#fff;color:var(--primary);}
-    .btn.primary{background:var(--primary);color:#fff;border-color:var(--primary);} 
-    .btn.small{padding:6px 10px;font-size:.9rem;}
-    .btn.link{background:transparent;border-color:transparent;color:var(--primary);padding:6px 8px;}
-    .btn.danger{background:#fff;color:#b91c1c;border-color:#fecaca;}
-    .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-size:.9rem;border:1px solid var(--border);background:#fff;font-weight:700;}
-    .badge.active{color:#065f46;background:#ecfdf5;border-color:#a7f3d0;}
-    .badge.completed{color:#1f2937;background:#e5e7eb;border-color:#d1d5db;}
+    /* Bottom nav */
+    .bottom-nav { position:fixed; bottom:0; left:0; right:0; height:64px; border-top:1px solid var(--border);
+      background:#fff; display:flex; justify-content:space-around; align-items:center; z-index:1000; }
+    .bottom-nav a { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+      color:var(--secondary); text-decoration:none; font-weight:800; }
+    .bottom-nav a.active { color:var(--primary); }
+    #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#111827; color:#fff;
+      padding:10px 14px; border-radius:10px; display:none; z-index:1100; }
 
-    label{font-weight:700;font-size:.9rem;color:var(--secondary);}
-    input[type=text],input[type=date],input[type=number],textarea{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:#fff;font-size:1rem;}
-    textarea{min-height:72px;}
-    .input-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-    .input-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+    /* Subtabs */
+    .subtabs { position:sticky; top:52px; background:#fff; border-bottom:1px solid var(--border); padding:8px; display:flex; gap:8px; z-index:900; }
+    .subtabs button { padding:8px 12px; border-radius:999px; border:1px solid var(--border); background:#fff; cursor:pointer; font-weight:800; }
+    .subtabs button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .scroll-panel { max-height:52vh; overflow:auto; padding:12px 0; }
 
-    .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:64px;border-top:1px solid var(--border);background:#fff;display:flex;justify-content:space-around;align-items:center;z-index:1000;}
-    .bottom-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--secondary);text-decoration:none;font-weight:800;}
-    .bottom-nav a.active{color:var(--primary);} 
+    /* Modal */
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.2); display:none; align-items:center; justify-content:center; z-index:1050; }
+    .modal { width:min(840px, 92vw); }
+    .modal .card { border-radius:16px; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 
-    #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:1100;}
+    /* Tables */
+    table { width:100%; border-collapse:collapse; }
+    th, td { border:1px solid var(--border); padding:8px; text-align:left; vertical-align:top; }
+    th { background:#f3f4f6; position:sticky; top:0; z-index:1; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; }
 
-    .subtabs{position:sticky;top:62px;background:#fff;border-bottom:1px solid var(--border);padding:8px;display:flex;gap:8px;z-index:900;align-items:center;}
-    .subtabs button{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer;font-weight:800;color:var(--primary);} 
-    .subtabs button.active{background:var(--primary);color:#fff;border-color:var(--primary);} 
-    .scroll-panel{max-height:55vh;overflow:auto;padding:12px 0;}
+    /* Auth gate */
+    #authGate { min-height: calc(100vh - 64px); display:flex; align-items:center; justify-content:center; padding:24px; }
+    #appShell { display:none; }
 
-    /* modal */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.2);display:none;align-items:center;justify-content:center;z-index:1050;}
-    .modal{width:min(900px,92vw);} 
-    .modal .card{border-radius:16px;} 
-    .modal-header{display:flex;justify-content:space-between;align-items:center;gap:8px;}
-
-    /* tables */
-    table{width:100%;border-collapse:collapse;}
-    th,td{border:1px solid var(--border);padding:8px;text-align:left;vertical-align:top;}
-    th{background:#f3f4f6;position:sticky;top:0;z-index:1;}
-    .muted{color:#6b7280;}
-    .nowrap{white-space:nowrap;}
-
-    /* auth gate */
-    #authGate{min-height:70vh;display:flex;align-items:center;justify-content:center;}
-    #authGate .card{max-width:520px;}
-    .white-bg{background:#fff !important;}
-    .hidden{display:none !important;}
+    /* Logo size requirement */
+    .brand-logo { height:56px; width:auto; border-radius:8px; border:1px solid var(--border); object-fit:cover; }
   </style>
 </head>
 
 <body>
-  <header class="sticky">
-    <div class="header-inner">
-      <div class="auth-left">
-        <div id="userEmail" class="email"></div>
-        <button id="btnSignIn" class="btn small primary">Sign in</button>
-        <button id="btnSignOut" class="btn small" hidden>Sign out</button>
-      </div>
+<header class="sticky">
+  <div class="header-inner">
+    <!-- Sign in/out on LEFT; email left of Sign in/out -->
+    <div class="auth-left">
+      <span id="authEmail" class="auth-email"></span>
+      <button class="btn small primary" id="btnSignIn" hidden>Sign in</button>
+      <button class="btn small" id="btnSignOut" hidden>Sign out</button>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:12px; margin-left:auto;">
       <div class="app-title">WOLCAS</div>
-      <div class="company">
-        <img id="companyLogo" alt="logo" />
-        <span id="companyName">Company</span>
+      <img id="companyLogo" class="brand-logo" alt="logo" />
+    </div>
+  </div>
+</header>
+
+<!-- Auth Gate (only thing visible before login) -->
+<main id="authGate">
+  <div class="card" style="max-width:560px; width:100%;">
+    <h2 style="margin:0 0 10px 0;">WOLCAS</h2>
+    <p class="muted" style="margin:0 0 14px 0;">Sign in with your company account to continue.</p>
+    <button class="btn primary" id="btnGateSignIn">Sign in</button>
+    <div class="muted" style="margin-top:12px; font-size:0.9rem;">
+      If you see access errors, ask your admin to grant required Microsoft Graph permissions.
+    </div>
+  </div>
+</main>
+
+<!-- App Shell (hidden until authenticated) -->
+<main id="appShell">
+  <section id="projects" class="container" hidden>
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div>
+          <h2 style="margin:0;">Projects</h2>
+          <div class="muted" id="roleBanner"></div>
+        </div>
+        <button class="btn primary" id="btnAddProject">Add Project</button>
+      </div>
+
+      <div style="margin-top:12px;" class="input-row">
+        <div>
+          <label>Search</label>
+          <input id="projSearch" type="text" placeholder="Search by address or description" />
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="projStatusFilter">
+            <option value="">All</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:12px; overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Project Address</th>
+              <th>Owner</th>
+              <th>Start Date</th>
+              <th>Expected Sales</th>
+              <th>Active</th>
+              <th>Description</th>
+              <th style="min-width:170px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="projectsTbody"></tbody>
+        </table>
       </div>
     </div>
-  </header>
+  </section>
 
-  <main id="views">
-    <!-- AUTH GATE (only visible before sign-in) -->
-    <section id="authGate" class="container" hidden>
-      <div class="card">
-        <h2 style="margin-top:0">Sign in to WOLCAS</h2>
-        <p class="muted">This app is restricted to your organization. Please sign in with your work account.</p>
-        <button class="btn primary" id="btnGateSignIn">Sign in</button>
-        <div id="authError" class="muted" style="margin-top:10px"></div>
+  <section id="projectView" class="container" hidden>
+    <div class="card" id="projectHeader"></div>
+
+    <div class="subtabs">
+      <button data-tab="tasks" class="active">Tasks</button>
+      <button data-tab="photos">Photos</button>
+      <button id="btnReports" class="btn small" style="margin-left:auto;">Reports</button>
+    </div>
+
+    <div id="projectPanels">
+      <div id="panel-tasks" class="scroll-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+          <h3 style="margin:0;">Tasks</h3>
+          <button class="btn primary" id="btnAddTask">Add Task</button>
+        </div>
+
+        <div style="margin-top:12px; overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Task name</th>
+                <th>Task Start</th>
+                <th>Task End</th>
+                <th>Quantity</th>
+                <th>Unit Cost</th>
+                <th>Total Cost</th>
+                <th>Allocation</th>
+                <th>Sprint</th>
+                <th>Assignee</th>
+                <th>Description</th>
+                <th>Notes</th>
+                <th>Photos</th>
+                <th style="min-width:170px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tasksTbody"></tbody>
+          </table>
+        </div>
       </div>
-    </section>
 
-    <!-- HOME -->
-    <section id="home" class="container" hidden>
-      <div class="card">
-        <h1>Welcome to WOLCAS</h1>
-        <p class="muted">Create and track work orders, tasks, allocations, photos, and reports.</p>
-        <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
-          <button class="btn primary" id="btnNewProject">Add Project</button>
-          <a class="btn" href="#projects">Projects</a>
+      <div id="panel-photos" class="scroll-panel" hidden>
+        <div id="photosGrid" class="grid"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="dashboard" class="container" hidden>
+    <div class="card">
+      <h2 style="margin-top:0;">Dashboard</h2>
+      <div class="grid" style="margin-top:12px;">
+        <div class="card"><h3>Total Projects</h3><div id="mTotalProjects" class="badge"></div></div>
+        <div class="card"><h3>Active Projects</h3><div id="mActiveProjects" class="badge active"></div></div>
+        <div class="card"><h3>Completed Projects</h3><div id="mCompletedProjects" class="badge completed"></div></div>
+        <div class="card"><h3>Total Costs (tasks)</h3><div id="mTotalCosts" class="badge"></div></div>
+        <div class="card"><h3>Total Sales (expected)</h3><div id="mTotalSales" class="badge"></div></div>
+      </div>
+      <div class="card" style="margin-top:12px;">
+        <h3>Recent Activity</h3>
+        <ul id="activityList" style="padding-left:18px; margin:0;"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="settings" class="container" hidden>
+    <div class="card">
+      <h2 style="margin-top:0;">Settings</h2>
+
+      <div class="input-row">
+        <div>
+          <label>Company logo URL (optional)</label>
+          <input id="setLogoUrl" type="text" placeholder="https://..." />
+        </div>
+        <div>
+          <label>Role mode</label>
+          <select id="setRoleMode">
+            <option value="groups">Use Entra ID Groups (recommended)</option>
+            <option value="manual">Manual Role (testing only)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="input-row" style="margin-top:12px;">
+        <div>
+          <label>Project list link</label>
+          <input id="setProjectLink" type="text" placeholder=".../Lists/Project/AllItems.aspx" />
+        </div>
+        <div>
+          <label>Task list link</label>
+          <input id="setTaskLink" type="text" placeholder=".../Lists/Task/AllItems.aspx" />
+        </div>
+      </div>
+
+      <div class="input-row" style="margin-top:12px;">
+        <div>
+          <label>Admin group name</label>
+          <input id="setAdminGroup" type="text" placeholder="WOLCAS Admins" />
+        </div>
+        <div>
+          <label>Editor group name</label>
+          <input id="setEditorGroup" type="text" placeholder="WOLCAS Editors" />
+        </div>
+      </div>
+
+      <div class="input-row" style="margin-top:12px;">
+        <div>
+          <label>Viewer group name</label>
+          <input id="setViewerGroup" type="text" placeholder="WOLCAS Viewers" />
+        </div>
+        <div>
+          <label>Manual role (only when Role mode = Manual)</label>
+          <select id="setManualRole">
+            <option value="viewer">viewer</option>
+            <option value="editor">editor</option>
+            <option value="admin">admin</option>
+          </select>
         </div>
       </div>
 
       <div class="card" style="margin-top:12px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-          <h2 style="margin:0">Recent projects</h2>
-          <span class="badge" id="roleBadge"></span>
+        <h3 style="margin-top:0;">Field Mapping</h3>
+        <div class="muted">Paste list links above, then click Detect lists & columns → Auto-map → Save.</div>
+
+        <div class="actions" style="margin-top:12px;">
+          <button class="btn primary" id="btnDetect">Detect lists & columns</button>
+          <button class="btn" id="btnAutoMap">Auto-map</button>
+          <button class="btn" id="btnSaveSettings">Save</button>
         </div>
-        <div id="homeRecent" class="grid" style="margin-top:10px"></div>
+
+        <div id="mappingUI" style="margin-top:12px;"></div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- PROJECTS -->
-    <section id="projects" class="container" hidden>
-      <div class="card">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-          <h2 style="margin:0">Projects</h2>
-          <button class="btn primary" id="btnAddProjectTop">Add Project</button>
-        </div>
-        <div style="margin-top:12px;" class="input-row">
-          <div>
-            <label>Search</label>
-            <input id="projSearch" type="text" placeholder="Search by address or description" />
-          </div>
-          <div>
-            <label>Status</label>
-            <select id="projStatus" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border)">
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-        </div>
-        <div id="projectsGrid" class="grid" style="margin-top:12px;"></div>
-      </div>
-    </section>
-
-    <!-- PROJECT VIEW -->
-    <section id="projectView" class="container" hidden>
-      <div class="card" id="projectHeader"></div>
-      <div class="subtabs">
-        <button data-tab="tasks" class="active">Tasks</button>
-        <button data-tab="photos">Photos</button>
-        <button data-tab="reports">Reports</button>
-        <span style="margin-left:auto" class="muted" id="projectSyncHint"></span>
-      </div>
-      <div id="projectPanels">
-        <div id="panel-tasks" class="scroll-panel">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-            <h3 style="margin:0">Tasks</h3>
-            <button class="btn primary" id="btnAddTask">Add Task</button>
-          </div>
-          <div id="tasksTableWrap" style="margin-top:10px"></div>
-        </div>
-        <div id="panel-photos" class="scroll-panel" hidden>
-          <div id="photosGrid" class="grid"></div>
-        </div>
-        <div id="panel-reports" class="scroll-panel" hidden>
-          <div class="card">
-            <h3 style="margin-top:0">Reports</h3>
-            <p class="muted">This panel can be expanded for custom PDF/CSV exports. For now it summarizes totals for the selected project.</p>
-            <div id="reportSummary"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- DASHBOARD -->
-    <section id="dashboard" class="container" hidden>
-      <div class="card">
-        <h2 style="margin-top:0">Dashboard</h2>
-        <div class="grid" style="margin-top:12px;">
-          <div class="card"><h3>Total Projects</h3><div id="mTotalProjects" class="badge"></div></div>
-          <div class="card"><h3>Active Projects</h3><div id="mActiveProjects" class="badge active"></div></div>
-          <div class="card"><h3>Completed Projects</h3><div id="mCompletedProjects" class="badge completed"></div></div>
-          <div class="card"><h3>Total Costs (tasks)</h3><div id="mTotalCosts" class="badge"></div></div>
-          <div class="card"><h3>Total Sales (expected)</h3><div id="mTotalSales" class="badge"></div></div>
-        </div>
-        <div class="card" style="margin-top:12px;"><h3>Recent Activity</h3><ul id="activityList" style="padding-left:18px"></ul></div>
-      </div>
-    </section>
-
-    <!-- SETTINGS -->
-    <section id="settings" class="container" hidden>
-      <div class="card">
-        <h2 style="margin-top:0">Settings</h2>
-        <div class="input-row">
-          <div>
-            <label>Company name</label>
-            <input id="set-name" type="text" placeholder="Architektica" />
-          </div>
-          <div>
-            <label>Logo URL (or leave blank)</label>
-            <input id="set-logo" type="text" placeholder="https://..." />
-          </div>
-        </div>
-
-        <hr style="border:none;border-top:1px solid var(--border);margin:14px 0" />
-
-        <div class="input-row" style="grid-template-columns:1fr;">
-          <div>
-            <label>Project list link (SharePoint)</label>
-            <input id="set-projectListUrl" type="text" placeholder="https://.../Lists/Project/AllItems.aspx" />
-          </div>
-          <div>
-            <label>Task list link (SharePoint)</label>
-            <input id="set-taskListUrl" type="text" placeholder="https://.../Lists/Task/AllItems.aspx" />
-          </div>
-        </div>
-
-        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="btn" id="btnDetect">Detect lists & columns</button>
-          <button class="btn primary" id="btnSaveSettings">Save</button>
-          <span class="muted" id="detectStatus"></span>
-        </div>
-
-        <div id="mappingUI" style="margin-top:14px" hidden>
-          <div class="card" style="background:#f8fafc">
-            <h3 style="margin-top:0">Field mapping</h3>
-            <p class="muted">Auto-filled when possible. Adjust if your SharePoint column names differ.</p>
-
-            <h4>Project fields</h4>
-            <div class="grid" id="mapProject"></div>
-
-            <h4 style="margin-top:14px">Task fields</h4>
-            <div class="grid" id="mapTask"></div>
-
-            <h4 style="margin-top:14px">RBAC (optional)</h4>
-            <div class="input-row">
-              <div>
-                <label>Admin group ID (Entra ID)</label>
-                <input id="set-adminGroup" type="text" placeholder="GUID (optional)" />
-              </div>
-              <div>
-                <label>Editor group ID (Entra ID)</label>
-                <input id="set-editorGroup" type="text" placeholder="GUID (optional)" />
-              </div>
-            </div>
-            <div class="input-row" style="margin-top:10px">
-              <div>
-                <label>Viewer group ID (Entra ID)</label>
-                <input id="set-viewerGroup" type="text" placeholder="GUID (optional)" />
-              </div>
-              <div>
-                <label>Default role (if no group match)</label>
-                <select id="set-defaultRole" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border)">
-                  <option value="viewer">viewer</option>
-                  <option value="editor">editor</option>
-                  <option value="admin">admin</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <nav class="bottom-nav" aria-label="Bottom navigation" id="bottomNav">
-    <a href="#home"><span>🏠</span><span>Home</span></a>
-    <a href="#projects"><span>🗂️</span><span>Projects</span></a>
-    <a href="#dashboard"><span>📊</span><span>Dashboard</span></a>
-    <a href="#settings"><span>⚙️</span><span>Settings</span></a>
+  <nav class="bottom-nav" aria-label="Bottom navigation">
+    <a href="#projects"/span><span>Projects</span></a>
+    #dashboard<span>📊</span><span>Dashboard</span></a>
+    <a href="#span>⚙️</span><span>Settings</span></a>
   </nav>
 
   <div id="toast"></div>
-  <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="card" id="modalCard"></div></div></div>
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <div class="card" id="modalCard"></div>
+    </div>
+  </div>
+</main>
 
-  <script src="./msal-browser.min.js"></script>
-  <script>
-  /************ CONFIG (Entra ID + Graph) ************/
-  // NOTE: SPAs must NOT use client secrets in the browser.
-  const AAD = {
-    clientId: "827656f8-3a21-4d69-b6e5-c35e2ec2fb71",
-    tenantId: "97d84781-b85c-4034-a0d0-588e7b442e45",
+<!-- Local MSAL (no CDN) -->
+./msal-browser.min.js</script>
+
+<script>
+/* =========================================================
+   WOLCAS - Secure SharePoint-connected SPA (No client secret)
+   ========================================================= */
+
+/* ---------- App Registration (from your doc) ---------- */
+const APP = {
+  clientId: "827656f8-3a21-4d69-b6e5-c35e2ec2fb71",
+  tenantId: "97d84781-b85c-4034-a0d0-588e7b442e45",
+  // GitHub Pages hosting from your doc:
+  redirectUriMain: "https://abirrahat.github.io/wolcas-webapp/",
+  redirectUriAuth: "https://abirrahat.github.io/wolcas-webapp/auth"
+};
+
+/* ---------- Graph scopes (delegated) ---------- */
+const GRAPH_SCOPES = [
+  "User.Read",
+  "Group.Read.All",
+  "Sites.ReadWrite.All",
+  "Files.ReadWrite.All"
+];
+
+const msalConfig = {
+  auth: {
+    clientId: APP.clientId,
+    authority: `https://login.microsoftonline.com/${APP.tenantId}`,
+    redirectUri: APP.redirectUriMain,
+    navigateToLoginRequestUrl: false
+  },
+  cache: {
+    cacheLocation: "localStorage",
+    storeAuthStateInCookie: false
+  }
+};
+
+const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+let CURRENT = {
+  account: null,
+  role: "viewer",  // admin | editor | viewer
+  site: { project: null, task: null },
+  lists: { project: null, task: null },
+  columns: { project: [], task: [] },
+  mapping: null,
+  selectedProject: null,
+  activity: []
+};
+
+const LS_SETTINGS = "wolcas_settings_v2";
+
+/* ---------- Helpers ---------- */
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 2200);
+}
+
+function safeText(s) { return (s ?? "").toString(); }
+
+function money(n) {
+  const x = Number(String(n ?? "").replace(/[^\d.-]/g,""));
+  if (Number.isNaN(x)) return safeText(n);
+  return x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function boolFromField(v) {
+  if (typeof v === "boolean") return v;
+  const s = String(v ?? "").toLowerCase();
+  return (s === "true" || s === "1" || s === "yes");
+}
+
+function showAuthGate(isAuthed) {
+  document.getElementById("authGate").style.display = isAuthed ? "none" : "flex";
+  document.getElementById("appShell").style.display = isAuthed ? "block" : "none";
+  document.getElementById("btnSignIn").hidden = isAuthed;
+  document.getElementById("btnSignOut").hidden = !isAuthed;
+  document.getElementById("authEmail").textContent = isAuthed ? (CURRENT.account?.username ?? "") : "";
+}
+
+function setRoleBanner() {
+  document.getElementById("roleBanner").textContent = `Role: ${CURRENT.role}`;
+}
+
+/* ---------- Settings storage ---------- */
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(LS_SETTINGS);
+    if (!raw) return {
+      companyLogoUrl: "",
+      projectLink: "",
+      taskLink: "",
+      roleMode: "groups",
+      adminGroup: "WOLCAS Admins",
+      editorGroup: "WOLCAS Editors",
+      viewerGroup: "WOLCAS Viewers",
+      manualRole: "viewer",
+      mapping: null
+    };
+    return JSON.parse(raw);
+  } catch {
+    return {
+      companyLogoUrl: "",
+      projectLink: "",
+      taskLink: "",
+      roleMode: "groups",
+      adminGroup: "WOLCAS Admins",
+      editorGroup: "WOLCAS Editors",
+      viewerGroup: "WOLCAS Viewers",
+      manualRole: "viewer",
+      mapping: null
+    };
+  }
+}
+
+function saveSettings(s) {
+  localStorage.setItem(LS_SETTINGS, JSON.stringify(s));
+}
+
+/* ---------- Auth ---------- */
+async function pickAccount() {
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) return accounts[0];
+  return null;
+}
+
+async function signInPopup() {
+  const loginRequest = {
+    scopes: GRAPH_SCOPES,
+    redirectUri: APP.redirectUriAuth  // dedicated auth page closes popup
   };
+  return msalInstance.loginPopup(loginRequest);
+}
 
-  // Compute base path for GitHub Pages and build redirect URIs.
-  const BASE_PATH = (() => {
-    const p = location.pathname;
-    // if ends with /auth or /auth/, base is up to that
-    if (p.includes('/auth')) return p.split('/auth')[0] + '/';
-    return p.endsWith('/') ? p : p.substring(0, p.lastIndexOf('/') + 1);
-  })();
-  const REDIRECT_MAIN = location.origin + BASE_PATH;
-  const REDIRECT_AUTH = location.origin + BASE_PATH + 'auth';
+async function signOut() {
+  if (!CURRENT.account) return;
+  await msalInstance.logoutPopup({ account: CURRENT.account });
+}
 
-  const SCOPES = [
-    'User.Read',
-    'Group.Read.All',
-    'Sites.ReadWrite.All',
-    'Files.ReadWrite.All'
+async function getToken(scopes = GRAPH_SCOPES) {
+  if (!CURRENT.account) throw new Error("Not signed in");
+  try {
+    const res = await msalInstance.acquireTokenSilent({ account: CURRENT.account, scopes });
+    return res.accessToken;
+  } catch {
+    const res = await msalInstance.acquireTokenPopup({ account: CURRENT.account, scopes, redirectUri: APP.redirectUriAuth });
+    return res.accessToken;
+  }
+}
+
+/* ---------- Graph wrapper ---------- */
+async function graphGET(url) {
+  const token = await getToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0${url}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error(`Graph GET failed ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+async function graphPOST(url, body) {
+  const token = await getToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0${url}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(`Graph POST failed ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+async function graphPATCH(url, body) {
+  const token = await getToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0${url}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(`Graph PATCH failed ${res.status}: ${await res.text()}`);
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+async function graphPUTBinary(url, blob, contentType) {
+  const token = await getToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0${url}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType || "application/octet-stream" },
+    body: blob
+  });
+  if (!res.ok) throw new Error(`Graph PUT failed ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+/* ---------- Role (Groups) ---------- */
+async function resolveRoleFromGroups(settings) {
+  if (settings.roleMode === "manual") return settings.manualRole;
+
+  // Pull group display names (transitive)
+  const data = await graphGET(`/me/transitiveMemberOf?$select=displayName`);
+  const names = (data.value || []).map(x => (x.displayName || "").toLowerCase());
+
+  const admin = (settings.adminGroup || "").toLowerCase();
+  const editor = (settings.editorGroup || "").toLowerCase();
+  const viewer = (settings.viewerGroup || "").toLowerCase();
+
+  if (admin && names.includes(admin)) return "admin";
+  if (editor && names.includes(editor)) return "editor";
+  if (viewer && names.includes(viewer)) return "viewer";
+
+  // Default safest
+  return "viewer";
+}
+
+/* ---------- Parse SharePoint list link → hostname, sitePath, listTitle ---------- */
+function parseListLink(link) {
+  const u = new URL(link);
+  const host = u.hostname;             // architektica-my.sharepoint.com
+  const path = u.pathname;             // /personal/abir_architektica_com/Lists/Task/AllItems.aspx
+  const idx = path.toLowerCase().indexOf("/lists/");
+  if (idx < 0) throw new Error("Invalid list link (missing /Lists/)");
+  const sitePath = path.substring(0, idx); // /personal/abir_architektica_com
+  const rest = path.substring(idx + "/Lists/".length); // Task/AllItems.aspx
+  const parts = rest.split("/").filter(Boolean);
+  const listTitle = parts[0]; // Task
+  return { host, sitePath, listTitle };
+}
+
+async function resolveSiteAndList(listLink) {
+  const { host, sitePath, listTitle } = parseListLink(listLink);
+
+  // Site by path
+  const site = await graphGET(`/sites/${host}:${sitePath}`);
+  const siteId = site.id;
+
+  // List by displayName
+  const lists = await graphGET(`/sites/${siteId}/lists?$filter=displayName eq '${encodeURIComponent(listTitle).replace(/%20/g," ")}'`);
+  const list = (lists.value || [])[0];
+  if (!list) throw new Error(`List not found: ${listTitle}`);
+  const listId = list.id;
+
+  // Columns
+  const cols = await graphGET(`/sites/${siteId}/lists/${listId}/columns?$select=name,displayName,hidden,readOnly,required`);
+  return { siteId, listId, listTitle, columns: cols.value || [] };
+}
+
+/* ---------- Mapping UI ---------- */
+function renderMappingUI(mapping, projectCols, taskCols) {
+  const root = document.getElementById("mappingUI");
+  root.innerHTML = "";
+
+  function mkSelect(options, value) {
+    const s = document.createElement("select");
+    const opt0 = document.createElement("option"); opt0.value = ""; opt0.textContent = "— Select —";
+    s.appendChild(opt0);
+    options.forEach(o => {
+      const opt = document.createElement("option");
+      opt.value = o.name;
+      opt.textContent = `${o.displayName} (${o.name})`;
+      if (o.name === value) opt.selected = true;
+      s.appendChild(opt);
+    });
+    return s;
+  }
+
+  const projectFields = [
+    ["Project Address", "projectAddress"],
+    ["Project Owner", "projectOwner"],
+    ["Project Start Date", "projectStartDate"],
+    ["Expected Sales", "expectedSales"],
+    ["Active", "active"],
+    ["Project Description", "projectDescription"]
   ];
 
-  const msalConfig = {
-    auth: {
-      clientId: AAD.clientId,
-      authority: `https://login.microsoftonline.com/${AAD.tenantId}`,
-      redirectUri: REDIRECT_MAIN,
-      navigateToLoginRequestUrl: false
-    },
-    cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
-  };
-
-  const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-  /************ UI HELPERS ************/
-  const $ = (id) => document.getElementById(id);
-  const escapeHtml = (s='') => (s+'').replace(/[&<>"']/g, (c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  const fmtMoney = (v) => {
-    const n = parseFloat((v ?? '').toString().replace(/[^0-9.\-]/g,''));
-    if (Number.isNaN(n)) return (v ?? '').toString();
-    return n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-  };
-  const toast = (msg) => { const t=$('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2000); };
-
-  function showView(id){
-    document.querySelectorAll('main > section').forEach(s => s.hidden = (s.id !== id));
-  }
-  function setActiveNav(hash){
-    document.querySelectorAll('.bottom-nav a').forEach(a=>a.classList.toggle('active', a.getAttribute('href')===hash));
-  }
-
-  /************ SETTINGS STORE (config only; no data caching) ************/
-  const SETTINGS_KEY = 'wolcas_settings_v1';
-  function loadSettings(){
-    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch { return {}; }
-  }
-  function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s||{})); }
-
-  /************ AUTH + RBAC ************/
-  let activeAccount = null;
-  let ROLE = 'viewer';
-
-  async function ensureInitialized(){
-    // In msal-browser, initialize is optional in many versions but safe.
-    if (msalInstance.initialize) await msalInstance.initialize();
-  }
-
-  function setSignedOutUI(errMsg=''){
-    document.body.classList.add('white-bg');
-    $('bottomNav').classList.add('hidden');
-    $('btnSignOut').hidden = true;
-    $('btnSignIn').hidden = false;
-    $('userEmail').textContent = '';
-    $('authError').textContent = errMsg || '';
-    showView('authGate');
-    $('authGate').hidden = false;
-  }
-
-  function setSignedInUI(){
-    document.body.classList.remove('white-bg');
-    $('bottomNav').classList.remove('hidden');
-    $('btnSignOut').hidden = false;
-    $('btnSignIn').hidden = true;
-    $('authGate').hidden = true;
-  }
-
-  async function signIn(){
-    try{
-      await ensureInitialized();
-      const res = await msalInstance.loginPopup({
-        scopes: SCOPES,
-        redirectUri: REDIRECT_AUTH
-      });
-      activeAccount = res.account;
-      msalInstance.setActiveAccount(activeAccount);
-      await postLoginBootstrap();
-    }catch(e){
-      console.error(e);
-      setSignedOutUI('Sign-in failed. ' + (e.message || ''));
-    }
-  }
-
-  async function signOut(){
-    try{
-      const acc = msalInstance.getActiveAccount();
-      await msalInstance.logoutPopup({ account: acc, postLogoutRedirectUri: REDIRECT_MAIN });
-    }finally{
-      activeAccount = null;
-      ROLE = 'viewer';
-      setSignedOutUI('');
-    }
-  }
-
-  async function getToken(){
-    const account = msalInstance.getActiveAccount();
-    if(!account) throw new Error('Not signed in');
-    try{
-      const res = await msalInstance.acquireTokenSilent({ account, scopes: SCOPES });
-      return res.accessToken;
-    }catch(e){
-      // fallback to popup
-      const res = await msalInstance.acquireTokenPopup({ account, scopes: SCOPES, redirectUri: REDIRECT_AUTH });
-      return res.accessToken;
-    }
-  }
-
-  async function graph(path, init={}){
-    const token = await getToken();
-    const res = await fetch('https://graph.microsoft.com/v1.0' + path, {
-      ...init,
-      headers: {
-        'Authorization': 'Bearer ' + token,
-        'Accept': 'application/json',
-        ...(init.body ? {'Content-Type':'application/json'} : {}),
-        ...(init.headers||{})
-      }
-    });
-    if(!res.ok){
-      let msg = res.status + ' ' + res.statusText;
-      try{ const j = await res.json(); msg = (j.error && j.error.message) ? j.error.message : msg; }catch{}
-      throw new Error(msg);
-    }
-    if(res.status === 204) return null;
-    return await res.json();
-  }
-
-  async function computeRole(){
-    const s = loadSettings();
-    const defaultRole = s.defaultRole || 'viewer';
-
-    // 1) App roles claim (recommended if configured)
-    const claims = msalInstance.getActiveAccount()?.idTokenClaims || {};
-    if (Array.isArray(claims.roles) && claims.roles.length){
-      const r = (claims.roles[0]+'').toLowerCase();
-      if(['admin','editor','viewer'].includes(r)) return r;
-    }
-
-    // 2) Group-based RBAC (optional; requires Group.Read.All consent)
-    const adminG = (s.adminGroup||'').trim();
-    const editorG = (s.editorGroup||'').trim();
-    const viewerG = (s.viewerGroup||'').trim();
-    if(adminG || editorG || viewerG){
-      try{
-        const g = await graph('/me/transitiveMemberOf?$select=id');
-        const ids = new Set((g.value||[]).map(x=>x.id));
-        if(adminG && ids.has(adminG)) return 'admin';
-        if(editorG && ids.has(editorG)) return 'editor';
-        if(viewerG && ids.has(viewerG)) return 'viewer';
-      }catch(e){
-        console.warn('RBAC group check failed:', e);
-      }
-    }
-    return defaultRole;
-  }
-
-  /************ SHAREPOINT LINK PARSING + DETECTION ************/
-  function parseListUrl(url){
-    const u = new URL(url);
-    const parts = u.pathname.split('/').filter(Boolean);
-    const listsIdx = parts.findIndex(p => p.toLowerCase() === 'lists');
-    if (listsIdx < 0 || listsIdx+1 >= parts.length) throw new Error('Invalid SharePoint list URL');
-    const listName = parts[listsIdx+1];
-    const sitePath = '/' + parts.slice(0, listsIdx).join('/');
-    return { host: u.host, sitePath, listName };
-  }
-
-  async function resolveSiteId(host, sitePath){
-    // Graph: /sites/{hostname}:/path:
-    const site = await graph(`/sites/${host}:` + sitePath + `:`);
-    return site.id;
-  }
-
-  async function resolveList(siteId, listName){
-    const lists = await graph(`/sites/${encodeURIComponent(siteId)}/lists?$select=id,displayName`);
-    const hit = (lists.value||[]).find(l => (l.displayName||'').toLowerCase() === listName.toLowerCase());
-    if(!hit) throw new Error(`List not found: ${listName}`);
-    return hit;
-  }
-
-  async function getListColumns(siteId, listId){
-    const cols = await graph(`/sites/${encodeURIComponent(siteId)}/lists/${listId}/columns?$select=id,name,displayName,readOnly,hidden,required`);
-    return (cols.value||[]).filter(c => !c.hidden);
-  }
-
-  const EXPECTED = {
-    project: [
-      {key:'projectAddress', label:'Project Address', hints:['project address','address','site address']},
-      {key:'owner', label:'Owner', hints:['owner','owner name','client']},
-      {key:'startDate', label:'Start Date', hints:['start','start date']},
-      {key:'expectedSales', label:'Expected Sales', hints:['expected sales','sales','revenue']},
-      {key:'active', label:'Active', hints:['active','status','is active']}
-    ],
-    task: [
-      {key:'taskName', label:'Task name', hints:['task name','name','title']},
-      {key:'address', label:'Address', hints:['address','project address','site address']},
-      {key:'startDate', label:'Start Date', hints:['start','start date','date']},
-      {key:'endDate', label:'End Date', hints:['end','end date']},
-      {key:'quantity', label:'Quantity', hints:['quantity','qty']},
-      {key:'unit', label:'Unit', hints:['unit']},
-      {key:'unitCost', label:'Unit Cost', hints:['unit cost','rate']},
-      {key:'totalCost', label:'Total Cost', hints:['total cost','cost']},
-      {key:'allocation', label:'Allocation', hints:['allocation']},
-      {key:'sprint', label:'Sprint', hints:['sprint']},
-      {key:'assignee', label:'Assignee', hints:['assignee','assigned to']},
-      {key:'description', label:'Description', hints:['description']},
-      {key:'notes', label:'Notes', hints:['notes','note']},
-      {key:'projectLookup', label:'Lookup field for Project → Task relation', hints:['project','project lookup','lookup']}
-    ]
-  };
-
-  function normalize(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
-  function guessColumn(expected, columns){
-    const colNorm = columns.map(c => ({...c, n: normalize(c.displayName||c.name)}));
-    for(const h of expected.hints){
-      const hn = normalize(h);
-      const hit = colNorm.find(c => c.n === hn) || colNorm.find(c => c.n.includes(hn));
-      if(hit) return hit.name;
-    }
-    return '';
-  }
-
-  function renderMappingUI(columnsProject, columnsTask, currentMap){
-    $('mappingUI').hidden = false;
-    const mp = $('mapProject');
-    const mt = $('mapTask');
-    mp.innerHTML = ''; mt.innerHTML = '';
-
-    function makeSelect(id, cols, value){
-      const sel = document.createElement('select');
-      sel.id = id;
-      sel.style.cssText='width:100%;padding:10px;border-radius:10px;border:1px solid var(--border)';
-      const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='— Select —'; sel.appendChild(opt0);
-      cols.forEach(c=>{
-        const o = document.createElement('option');
-        o.value = c.name;
-        o.textContent = c.displayName + ' (' + c.name + ')';
-        if(value && value === c.name) o.selected=true;
-        sel.appendChild(o);
-      });
-      return sel;
-    }
-
-    EXPECTED.project.forEach(f=>{
-      const wrap = document.createElement('div');
-      wrap.className='card';
-      wrap.innerHTML = `<label>${escapeHtml(f.label)}</label><div style="margin-top:6px" id="slot_${f.key}"></div>`;
-      mp.appendChild(wrap);
-      const val = currentMap?.project?.[f.key] || guessColumn(f, columnsProject);
-      wrap.querySelector('#slot_'+f.key).appendChild(makeSelect('map_project_'+f.key, columnsProject, val));
-    });
-
-    EXPECTED.task.forEach(f=>{
-      const wrap = document.createElement('div');
-      wrap.className='card';
-      wrap.innerHTML = `<label>${escapeHtml(f.label)}</label><div style="margin-top:6px" id="slot_${f.key}"></div>`;
-      mt.appendChild(wrap);
-      const val = currentMap?.task?.[f.key] || guessColumn(f, columnsTask);
-      wrap.querySelector('#slot_'+f.key).appendChild(makeSelect('map_task_'+f.key, columnsTask, val));
-    });
-  }
-
-  /************ DATA SERVICE (SharePoint Lists via Graph) ************/
-  const state = {
-    projects: [],
-    tasksByProjectId: new Map(),
-    activity: []
-  };
-
-  function addActivity(text){
-    state.activity.unshift({ text, ts: Date.now() });
-    if(state.activity.length > 25) state.activity.length = 25;
-  }
-
-  function currentCompany(){
-    const s = loadSettings();
-    return {
-      name: s.companyName || 'Company',
-      logo: s.companyLogo || ''
-    };
-  }
-
-  function applyCompany(){
-    const c = currentCompany();
-    $('companyName').textContent = c.name;
-    $('companyLogo').src = c.logo || '';
-  }
-
-  async function detectAndSaveMappings(){
-    const s = loadSettings();
-    const pUrl = $('set-projectListUrl').value.trim();
-    const tUrl = $('set-taskListUrl').value.trim();
-    if(!pUrl || !tUrl) throw new Error('Please paste both Project and Task list links.');
-
-    const p = parseListUrl(pUrl);
-    const t = parseListUrl(tUrl);
-    if(p.host !== t.host || p.sitePath !== t.sitePath) {
-      // allowed but uncommon; we handle separate sites.
-      console.warn('Project and Task lists are on different sites; this is supported but not recommended.');
-    }
-
-    $('detectStatus').textContent = 'Detecting…';
-
-    const projectSiteId = await resolveSiteId(p.host, p.sitePath);
-    const taskSiteId = await resolveSiteId(t.host, t.sitePath);
-    const projectList = await resolveList(projectSiteId, p.listName);
-    const taskList = await resolveList(taskSiteId, t.listName);
-    const projectCols = await getListColumns(projectSiteId, projectList.id);
-    const taskCols = await getListColumns(taskSiteId, taskList.id);
-
-    const map = {
-      projectSite: { host:p.host, sitePath:p.sitePath, siteId:projectSiteId, listId:projectList.id, listName:p.listName },
-      taskSite: { host:t.host, sitePath:t.sitePath, siteId:taskSiteId, listId:taskList.id, listName:t.listName },
-      project: {},
-      task: {}
-    };
-
-    // prefill guesses
-    EXPECTED.project.forEach(f => map.project[f.key] = guessColumn(f, projectCols));
-    EXPECTED.task.forEach(f => map.task[f.key] = guessColumn(f, taskCols));
-
-    // Render mapping UI to allow edits
-    renderMappingUI(projectCols, taskCols, map);
-
-    // Persist site/list info now
-    s.projectListUrl = pUrl; s.taskListUrl = tUrl;
-    s.map = map;
-    saveSettings(s);
-
-    $('detectStatus').textContent = `Detected: Project list “${projectList.displayName}”, Task list “${taskList.displayName}”.`;
-    toast('Detected lists and columns');
-  }
-
-  function readMappingFromUI(){
-    const s = loadSettings();
-    const map = s.map || { project:{}, task:{} };
-    EXPECTED.project.forEach(f => map.project[f.key] = document.getElementById('map_project_'+f.key)?.value || '');
-    EXPECTED.task.forEach(f => map.task[f.key] = document.getElementById('map_task_'+f.key)?.value || '');
-    s.map = map;
-    s.adminGroup = $('set-adminGroup').value.trim();
-    s.editorGroup = $('set-editorGroup').value.trim();
-    s.viewerGroup = $('set-viewerGroup').value.trim();
-    s.defaultRole = $('set-defaultRole').value;
-    saveSettings(s);
-    return map;
-  }
-
-  function requireConfigured(){
-    const s = loadSettings();
-    if(!s.map || !s.map.projectSite || !s.map.taskSite) throw new Error('Go to Settings → paste list links → Detect lists & columns → Save.');
-    return s.map;
-  }
-
-  async function listProjectsTop8(){
-    const map = requireConfigured();
-    const siteId = map.projectSite.siteId;
-    const listId = map.projectSite.listId;
-    // expand fields; createdDateTime ordering can be flaky across tenants; we do client-side fallback.
-    const res = await graph(`/sites/${encodeURIComponent(siteId)}/lists/${listId}/items?$expand=fields&$top=50`);
-    const items = (res.value||[]).map(it => {
-      const f = it.fields || {};
-      return { itemId: it.id, created: it.createdDateTime, fields: f };
-    });
-    items.sort((a,b)=> (b.created||'').localeCompare(a.created||''));
-    return items.slice(0,8).map(it => projectFromFields(it.itemId, it.fields));
-  }
-
-  function projectFromFields(itemId, f){
-    const map = requireConfigured();
-    const m = map.project;
-    const addr = m.projectAddress ? (f[m.projectAddress] ?? '') : (f.Title ?? '');
-    const owner = m.owner ? (f[m.owner] ?? '') : '';
-    const start = m.startDate ? (f[m.startDate] ?? '') : '';
-    const sales = m.expectedSales ? (f[m.expectedSales] ?? '') : '';
-    const active = m.active ? (f[m.active] ?? true) : true;
-    return {
-      id: itemId,
-      address: addr,
-      owner_name: owner,
-      start_date: start,
-      sales: sales,
-      status: active ? 'active' : 'completed'
-    };
-  }
-
-  function taskFromFields(itemId, f, map){
-    const m = map.task;
-    const get = (k, fallback='') => (m[k] ? (f[m[k]] ?? fallback) : fallback);
-    return {
-      id: itemId,
-      name: get('taskName', f.Title ?? ''),
-      address: get('address',''),
-      startDate: get('startDate',''),
-      endDate: get('endDate',''),
-      quantity: get('quantity',''),
-      unit: get('unit',''),
-      unitCost: get('unitCost',''),
-      totalCost: get('totalCost',''),
-      allocation: get('allocation',''),
-      sprint: get('sprint',''),
-      assignee: get('assignee',''),
-      description: get('description',''),
-      notes: get('notes',''),
-      // lookup id field is stored separately
-      _raw: f
-    };
-  }
-
-  async function listTasksForProject(projectItemId){
-    const map = requireConfigured();
-    const siteId = map.taskSite.siteId;
-    const listId = map.taskSite.listId;
-
-    // Fetch more to filter client-side; for large lists, consider server-side filter using $filter on fields.
-    const res = await graph(`/sites/${encodeURIComponent(siteId)}/lists/${listId}/items?$expand=fields&$top=200`);
-    const items = (res.value||[]);
-
-    const lookupBase = map.task.projectLookup;
-    const lookupKey = lookupBase ? `${lookupBase}LookupId` : '';
-
-    const filtered = items.filter(it => {
-      const f = it.fields || {};
-      if(!lookupKey) return true; // if no lookup configured, show all tasks
-      return String(f[lookupKey] ?? '') === String(projectItemId);
-    });
-
-    // Client sort by created
-    filtered.sort((a,b)=> (b.createdDateTime||'').localeCompare(a.createdDateTime||''));
-    return filtered.map(it => taskFromFields(it.id, it.fields||{}, map));
-  }
-
-  async function upsertProject(project){
-    if(ROLE === 'viewer') throw new Error('Viewer cannot edit');
-    const map = requireConfigured();
-    const siteId = map.projectSite.siteId;
-    const listId = map.projectSite.listId;
-    const m = map.project;
-
-    const fields = {};
-    if(m.projectAddress) fields[m.projectAddress] = project.address || '';
-    else fields['Title'] = project.address || project.title || '';
-    if(m.owner) fields[m.owner] = project.owner_name || '';
-    if(m.startDate) fields[m.startDate] = project.start_date || '';
-    if(m.expectedSales) fields[m.expectedSales] = project.sales || '';
-    if(m.active) fields[m.active] = project.status !== 'completed';
-
-    if(project.id){
-      await graph(`/sites/${encodeURIComponent(siteId)}/lists/${listId}/items/${project.id}/fields`, {
-        method:'PATCH',
-        body: JSON.stringify(fields)
-      });
-      addActivity(`Edited project: ${project.address}`);
-      return project.id;
-    }else{
-      const created = await graph(`/sites/${encodeURIComponent(siteId)}/lists/${listId}/items`, {
-        method:'POST',
-        body: JSON.stringify({ fields })
-      });
-      addActivity(`Created project: ${project.address}`);
-      return created.id;
-    }
-  }
-
-  async function deleteProject(projectId){
-    if(ROLE !== 'admin') throw new Error('Admin only');
-    const map = requireConfigured();
-    const siteId = map.projectSite.siteId;
-    const listId = map.projectSite.listId;
-    await graph(`/sites/${encodeURIComponent(siteId)}/lists/${listId}/items/${projectId}`, { method:'DELETE' });
-    addActivity(`Deleted project: ${projectId}`);
-  }
-
-  async function upsertTask(projectId, task){
-    if(ROLE === 'viewer') throw new Error('Viewer cannot edit');
-    const map = requireConfigured();
-    const siteId = map.taskSite.siteId;
-    const listId = map.taskSite.listId;
-    const m = map.task;
-
-    const fields = {};
-    // Note: SharePoint 'Title' is often required. Use taskName if mapped, else Title.
-    if(m.taskName && m.taskName.toLowerCase() !== 'title') fields[m.taskName] = task.name || '';
-    fields['Title'] = task.name || '';
-
-    const setIf = (k, v) => { if(m[k]) fields[m[k]] = v; };
-    setIf('address', task.address || '');
-    setIf('startDate', task.startDate || '');
-    setIf('endDate', task.endDate || '');
-    setIf('quantity', task.quantity ?? '');
-    setIf('unit', task.unit ?? '');
-    setIf('unitCost', task.unitCost ?? '');
-    setIf('totalCost', task.totalCost ?? '');
-    // Allocation is per-field RBAC: only admin can change
-    if(ROLE === 'admin') setIf('allocation', task.allocation ?? '');
-    setIf('sprint', task.sprint ?? '');
-    setIf('assignee', task.assignee ?? '');
-    setIf('description', task.description ?? '');
-    setIf('notes', task.notes ?? '');
-
-    // Lookup relation
-    if(m.projectLookup){
-      fields[`${m.projectLookup}LookupId`] = Number(projectId);
-    }
-
-    if(task.id){
-      await graph(`/sites/${encodeURIComponent(siteId)}/lists/${listId}/items/${task.id}/fields`, {
-        method:'PATCH',
-        body: JSON.stringify(fields)
-      });
-      addActivity(`Updated task: ${task.name}`);
-      return task.id;
-    }else{
-      const created = await graph(`/sites/${encodeURIComponent(siteId)}/lists/${listId}/items`, {
-        method:'POST',
-        body: JSON.stringify({ fields })
-      });
-      addActivity(`Added task: ${task.name}`);
-      return created.id;
-    }
-  }
-
-  async function deleteTask(taskId){
-    if(ROLE !== 'admin') throw new Error('Admin only');
-    const map = requireConfigured();
-    const siteId = map.taskSite.siteId;
-    const listId = map.taskSite.listId;
-    await graph(`/sites/${encodeURIComponent(siteId)}/lists/${listId}/items/${taskId}`, { method:'DELETE' });
-    addActivity(`Deleted task: ${taskId}`);
-  }
-
-  async function ensureTaskPhotosFolder(taskId){
-    // Uses the document library drive of the project site.
-    const map = requireConfigured();
-    const siteId = map.projectSite.siteId;
-    // Ensure /TaskPhotos exists, then /TaskPhotos/{taskId}
-    async function ensurePath(path){
-      try{
-        await graph(`/sites/${encodeURIComponent(siteId)}/drive/root:/${encodeURIComponent(path)}:`);
-      }catch(e){
-        // create folder
-        const parent = path.includes('/') ? path.split('/').slice(0,-1).join('/') : '';
-        const name = path.split('/').slice(-1)[0];
-        const endpoint = parent ? `/sites/${encodeURIComponent(siteId)}/drive/root:/${encodeURIComponent(parent)}:/children` : `/sites/${encodeURIComponent(siteId)}/drive/root/children`;
-        await graph(endpoint, {
-          method:'POST',
-          body: JSON.stringify({ name, folder: {}, '@microsoft.graph.conflictBehavior':'rename' })
-        });
-      }
-    }
-    await ensurePath('TaskPhotos');
-    await ensurePath('TaskPhotos/' + taskId);
-    return `TaskPhotos/${taskId}`;
-  }
-
-  async function uploadPhotos(taskId, files){
-    if(!files || !files.length) return [];
-    const map = requireConfigured();
-    const siteId = map.projectSite.siteId;
-    const folder = await ensureTaskPhotosFolder(taskId);
-    const uploaded = [];
-    for(const file of files){
-      const path = `${folder}/${file.name}`;
-      const token = await getToken();
-      const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${encodeURIComponent(siteId)}/drive/root:/${encodeURIComponent(path)}:/content`, {
-        method:'PUT',
-        headers: { 'Authorization':'Bearer '+token, 'Content-Type': file.type || 'application/octet-stream' },
-        body: file
-      });
-      if(!res.ok){
-        let msg = res.status + ' ' + res.statusText;
-        try{ const j = await res.json(); msg = j.error?.message || msg; }catch{}
-        throw new Error(msg);
-      }
-      const j = await res.json();
-      uploaded.push(j);
-    }
-    addActivity(`Uploaded photos for task ${taskId}`);
-    return uploaded;
-  }
-
-  async function listPhotos(taskId){
-    const map = requireConfigured();
-    const siteId = map.projectSite.siteId;
-    try{
-      const folderItem = await graph(`/sites/${encodeURIComponent(siteId)}/drive/root:/TaskPhotos/${encodeURIComponent(taskId)}:`);
-      const children = await graph(`/sites/${encodeURIComponent(siteId)}/drive/items/${folderItem.id}/children?$select=id,name,webUrl,@microsoft.graph.downloadUrl`);
-      return (children.value||[]);
-    }catch(e){
-      return [];
-    }
-  }
-
-  /************ RENDERING ************/
-  let currentProjectId = null;
-
-  function applyRBAC(){
-    $('roleBadge').textContent = `ROLE: ${ROLE}`;
-    // hide add/edit for viewer
-    const canEdit = ROLE !== 'viewer';
-    $('btnNewProject').disabled = !canEdit;
-    $('btnAddProjectTop').disabled = !canEdit;
-    $('btnAddTask').disabled = !canEdit;
-    $('btnNewProject').style.opacity = canEdit ? '1' : '.5';
-    $('btnAddProjectTop').style.opacity = canEdit ? '1' : '.5';
-    $('btnAddTask').style.opacity = canEdit ? '1' : '.5';
-  }
-
-  function renderProjectCard(p){
-    const el = document.createElement('div');
-    el.className='card';
-    el.innerHTML = `
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-        <div>
-          <h3 style="margin:0">${escapeHtml(p.address || 'Untitled')}</h3>
-          <div class="muted">Owner: ${escapeHtml(p.owner_name || '')}</div>
-        </div>
-        <span class="badge ${p.status==='completed'?'completed':'active'}">${escapeHtml(p.status)}</span>
-      </div>
-      <div style="margin-top:8px; display:flex; gap:12px; flex-wrap:wrap;" class="muted">
-        <div><strong>Start:</strong> ${escapeHtml(p.start_date || '')}</div>
-        <div><strong>Expected Sales:</strong> ${escapeHtml(p.sales || '')}</div>
-      </div>
-      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn small" href="#project:${p.id}">Open</a>
-        <button class="btn small" data-action="edit">Edit</button>
-        <button class="btn small danger" data-action="delete">Delete</button>
-      </div>
-    `;
-
-    // RBAC buttons
-    el.querySelector('[data-action="edit"]').style.display = (ROLE!=='viewer') ? 'inline-flex' : 'none';
-    el.querySelector('[data-action="delete"]').style.display = (ROLE==='admin') ? 'inline-flex' : 'none';
-
-    el.querySelector('[data-action="edit"]').onclick = () => openProjectModal(p);
-    el.querySelector('[data-action="delete"]').onclick = async () => {
-      const ok = await confirmDialog('Delete Project', `Delete project “${escapeHtml(p.address||'Untitled')}”?`, 'Delete');
-      if(!ok) return;
-      try{ await deleteProject(p.id); toast('Project deleted'); await refreshProjects(); }
-      catch(e){ toast('Error: '+e.message); }
-    };
-
-    return el;
-  }
-
-  function renderTasksTable(project, tasks){
-    const canEdit = ROLE !== 'viewer';
-    const isAdmin = ROLE === 'admin';
-
-    const rows = (tasks||[]).map(t => {
-      const allocCell = isAdmin ? `<input data-field="allocation" type="number" step="any" value="${escapeHtml(t.allocation??'')}" style="width:120px" />` : `<span>${escapeHtml(t.allocation??'')}</span>`;
-      return `
-        <tr data-id="${t.id}">
-          <td>${escapeHtml(t.name||'')}</td>
-          <td class="nowrap">${escapeHtml(t.startDate||'')}</td>
-          <td class="nowrap">${escapeHtml(t.endDate||'')}</td>
-          <td class="nowrap">${escapeHtml(t.quantity??'')}</td>
-          <td class="nowrap">${escapeHtml(t.unit??'')}</td>
-          <td class="nowrap">${escapeHtml(t.unitCost??'')}</td>
-          <td class="nowrap">${escapeHtml(t.totalCost??'')}</td>
-          <td class="nowrap">${allocCell}</td>
-          <td>${escapeHtml(t.sprint??'')}</td>
-          <td>${escapeHtml(t.assignee??'')}</td>
-          <td>
-            <button class="btn small" data-action="edit">Edit</button>
-            <button class="btn small danger" data-action="delete">Delete</button>
-            <button class="btn small" data-action="photos">Photos</button>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    const html = `
-      <div class="card" style="padding:0;overflow:auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Task name</th>
-              <th>Start</th>
-              <th>End</th>
-              <th>Quantity</th>
-              <th>Unit</th>
-              <th>Unit Cost</th>
-              <th>Total Cost</th>
-              <th>Allocation</th>
-              <th>Sprint</th>
-              <th>Assignee</th>
-              <th style="min-width:240px">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows || `<tr><td colspan="11" class="muted">No tasks yet</td></tr>`}
-          </tbody>
-        </table>
-      </div>
-    `;
-
-    $('tasksTableWrap').innerHTML = html;
-
-    // RBAC on action buttons
-    document.querySelectorAll('#tasksTableWrap [data-action="edit"]').forEach(btn => btn.style.display = canEdit ? 'inline-flex' : 'none');
-    document.querySelectorAll('#tasksTableWrap [data-action="delete"]').forEach(btn => btn.style.display = isAdmin ? 'inline-flex' : 'none');
-
-    document.querySelectorAll('#tasksTableWrap tr[data-id]').forEach(tr => {
-      const id = tr.getAttribute('data-id');
-      tr.querySelector('[data-action="edit"]').onclick = () => {
-        const t = (tasks||[]).find(x=>String(x.id)===String(id));
-        openTaskModal(project, t);
-      };
-      const delBtn = tr.querySelector('[data-action="delete"]');
-      if(delBtn) delBtn.onclick = async () => {
-        const t = (tasks||[]).find(x=>String(x.id)===String(id));
-        const ok = await confirmDialog('Delete Task', `Delete task “${escapeHtml(t?.name||'')}”?`, 'Delete');
-        if(!ok) return;
-        try{ await deleteTask(id); toast('Task deleted'); await refreshProject(project.id); }
-        catch(e){ toast('Error: '+e.message); }
-      };
-      tr.querySelector('[data-action="photos"]').onclick = async () => {
-        await openPhotosModal(id);
-      };
-
-      // inline allocation save (admin only)
-      const allocInput = tr.querySelector('input[data-field="allocation"]');
-      if(allocInput){
-        allocInput.addEventListener('change', async () => {
-          try{
-            const t = (tasks||[]).find(x=>String(x.id)===String(id));
-            const newVal = allocInput.value;
-            t.allocation = newVal;
-            await upsertTask(project.id, t);
-            toast('Allocation updated');
-          }catch(e){ toast('Error: '+e.message); }
-        });
-      }
-    });
-  }
-
-  function renderPhotosGrid(taskPhotosByTask){
-    const grid = $('photosGrid');
-    grid.innerHTML='';
-    const keys = Object.keys(taskPhotosByTask||{});
-    if(!keys.length){ grid.innerHTML = '<div class="muted">No photos uploaded yet</div>'; return; }
-    keys.forEach(taskId => {
-      const card = document.createElement('div');
-      card.className='card';
-      const photos = taskPhotosByTask[taskId] || [];
-      card.innerHTML = `<h3 style="margin-top:0">Task #${escapeHtml(taskId)}</h3>`;
-      const wrap = document.createElement('div');
-      wrap.style.cssText='display:flex;gap:8px;flex-wrap:wrap;';
-      if(!photos.length){ wrap.innerHTML = '<span class="muted">No photos</span>'; }
-      else{
-        photos.forEach(p=>{
-          const a = document.createElement('a');
-          a.href = p.webUrl || '#';
-          a.target = '_blank';
-          a.rel = 'noopener';
-          a.style.textDecoration='none';
-          const img = document.createElement('img');
-          img.alt = p.name;
-          img.style.cssText='max-width:120px;max-height:120px;border-radius:10px;border:1px solid var(--border);object-fit:cover;';
-          img.src = p['@microsoft.graph.downloadUrl'] || p.webUrl;
-          a.appendChild(img);
-          wrap.appendChild(a);
-        });
-      }
-      card.appendChild(wrap);
-      grid.appendChild(card);
-    });
-  }
-
-  async function refreshHome(){
-    applyCompany();
-    applyRBAC();
-    $('homeRecent').innerHTML = '<div class="muted">Loading…</div>';
-    try{
-      const projs = await listProjectsTop8();
-      state.projects = projs;
-      $('homeRecent').innerHTML='';
-      if(!projs.length) $('homeRecent').innerHTML='<div class="muted">No projects yet</div>';
-      projs.forEach(p => $('homeRecent').appendChild(renderProjectCard(p)));
-    }catch(e){
-      $('homeRecent').innerHTML = `<div class="muted">Error: ${escapeHtml(e.message)}</div>`;
-    }
-  }
-
-  async function refreshProjects(){
-    applyCompany();
-    applyRBAC();
-    $('projectsGrid').innerHTML = '<div class="muted">Loading…</div>';
-    try{
-      const projs = await listProjectsTop8();
-      state.projects = projs;
-      renderProjectsFiltered();
-    }catch(e){
-      $('projectsGrid').innerHTML = `<div class="muted">Error: ${escapeHtml(e.message)}</div>`;
-    }
-  }
-
-  function renderProjectsFiltered(){
-    const q = ($('projSearch').value||'').toLowerCase();
-    const st = $('projStatus').value || 'all';
-    const items = (state.projects||[]).filter(p => {
-      const hay = `${p.address||''} ${p.owner_name||''} ${p.sales||''}`.toLowerCase();
-      const okQ = hay.includes(q);
-      const okS = st==='all' ? true : (p.status===st);
-      return okQ && okS;
-    });
-    $('projectsGrid').innerHTML='';
-    if(!items.length){ $('projectsGrid').innerHTML='<div class="muted">No projects</div>'; return; }
-    items.forEach(p => $('projectsGrid').appendChild(renderProjectCard(p)));
-  }
-
-  async function refreshProject(projectId){
-    const project = state.projects.find(p => String(p.id)===String(projectId)) || { id: projectId, address: '' };
-    currentProjectId = projectId;
-    $('projectSyncHint').textContent = 'Syncing…';
-    try{
-      const tasks = await listTasksForProject(projectId);
-      state.tasksByProjectId.set(projectId, tasks);
-      renderProjectHeader(project, tasks);
-      renderTasksTable(project, tasks);
-      await refreshPhotosTab(projectId, tasks);
-      renderReportSummary(project, tasks);
-      $('projectSyncHint').textContent = 'Synced';
-    }catch(e){
-      $('projectHeader').innerHTML = `<div class="muted">Error: ${escapeHtml(e.message)}</div>`;
-      $('projectSyncHint').textContent = 'Error';
-    }
-  }
-
-  function renderProjectHeader(project, tasks){
-    const totalCost = (tasks||[]).reduce((a,t)=> a + (parseFloat((t.totalCost??'').toString().replace(/[^0-9.\-]/g,''))||0), 0);
-    $('projectHeader').innerHTML = `
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-        <div>
-          <h2 style="margin:0">${escapeHtml(project.address||'Project')}</h2>
-          <div class="muted">Owner: ${escapeHtml(project.owner_name||'')}</div>
-          <div style="margin-top:8px; display:flex; gap:10px; flex-wrap:wrap;">
-            <span class="badge ${project.status==='completed'?'completed':'active'}">${escapeHtml(project.status||'active')}</span>
-            <span class="badge">Tasks: ${(tasks||[]).length}</span>
-            <span class="badge">Total Cost: ${fmtMoney(totalCost)}</span>
-            <span class="badge">Expected Sales: ${escapeHtml(project.sales||'')}</span>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn small" id="btnEditProject">Edit Project</button>
-          <button class="btn small danger" id="btnDeleteProject">Delete</button>
-        </div>
-      </div>
-    `;
-    $('btnEditProject').style.display = (ROLE!=='viewer') ? 'inline-flex' : 'none';
-    $('btnDeleteProject').style.display = (ROLE==='admin') ? 'inline-flex' : 'none';
-    $('btnEditProject').onclick = () => openProjectModal(project);
-    $('btnDeleteProject').onclick = async () => {
-      const ok = await confirmDialog('Delete Project', `Delete project “${escapeHtml(project.address||'')}”?`, 'Delete');
-      if(!ok) return;
-      try{ await deleteProject(project.id); toast('Project deleted'); location.hash = '#projects'; await refreshProjects(); }
-      catch(e){ toast('Error: '+e.message); }
-    };
-  }
-
-  async function refreshPhotosTab(projectId, tasks){
-    const map = {};
-    for(const t of (tasks||[])){
-      map[t.id] = await listPhotos(t.id);
-    }
-    renderPhotosGrid(map);
-  }
-
-  function renderReportSummary(project, tasks){
-    const totalCost = (tasks||[]).reduce((a,t)=> a + (parseFloat((t.totalCost??'').toString().replace(/[^0-9.\-]/g,''))||0), 0);
-    const totalAlloc = (tasks||[]).reduce((a,t)=> a + (parseFloat((t.allocation??'').toString().replace(/[^0-9.\-]/g,''))||0), 0);
-    $('reportSummary').innerHTML = `
-      <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <span class="badge">Tasks: ${(tasks||[]).length}</span>
-        <span class="badge">Total Cost: ${fmtMoney(totalCost)}</span>
-        <span class="badge">Total Allocation: ${fmtMoney(totalAlloc)}</span>
-      </div>
-    `;
-  }
-
-  function refreshDashboard(){
-    // use currently loaded projects/tasks; dashboard is lightweight.
-    const projs = state.projects || [];
-    const total = projs.length;
-    const active = projs.filter(p=>p.status==='active').length;
-    const completed = projs.filter(p=>p.status==='completed').length;
-    const sales = projs.reduce((a,p)=> a + (parseFloat((p.sales??'').toString().replace(/[^0-9.\-]/g,''))||0), 0);
-    let costs = 0;
-    // sum any loaded task lists
-    for(const tasks of state.tasksByProjectId.values()){
-      costs += (tasks||[]).reduce((a,t)=> a + (parseFloat((t.totalCost??'').toString().replace(/[^0-9.\-]/g,''))||0), 0);
-    }
-    $('mTotalProjects').textContent = total;
-    $('mActiveProjects').textContent = active;
-    $('mCompletedProjects').textContent = completed;
-    $('mTotalSales').textContent = fmtMoney(sales);
-    $('mTotalCosts').textContent = fmtMoney(costs);
-
-    const ul = $('activityList');
-    ul.innerHTML='';
-    (state.activity||[]).slice(0,15).forEach(a=>{
-      const li = document.createElement('li');
-      const dt = new Date(a.ts);
-      li.textContent = `${a.text} — ${dt.toLocaleString()}`;
-      ul.appendChild(li);
-    });
-    if(!ul.children.length) ul.innerHTML = '<li class="muted">No recent activity</li>';
-  }
-
-  /************ MODALS ************/
-  function openModal(html){
-    $('modalCard').innerHTML = html;
-    $('modalBackdrop').style.display='flex';
-    document.getElementById('btnCloseModal')?.addEventListener('click', closeModal);
-  }
-  function closeModal(){ $('modalBackdrop').style.display='none'; $('modalCard').innerHTML=''; }
-
-  async function confirmDialog(title, message, confirmText='OK', cancelText='Cancel'){
-    return new Promise(resolve => {
-      openModal(`
-        <div class="modal-header">
-          <h3 style="margin:0">${escapeHtml(title)}</h3>
-          <button class="btn small link" id="btnCloseModal">✖</button>
-        </div>
-        <div style="margin-top:10px">${escapeHtml(message)}</div>
-        <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:8px;">
-          <button class="btn" id="btnCancel">${escapeHtml(cancelText)}</button>
-          <button class="btn primary" id="btnConfirm">${escapeHtml(confirmText)}</button>
-        </div>
-      `);
-      $('btnCancel').onclick = ()=>{ closeModal(); resolve(false); };
-      $('btnConfirm').onclick = ()=>{ closeModal(); resolve(true); };
-      $('btnCloseModal').onclick = ()=>{ closeModal(); resolve(false); };
-    });
-  }
-
-  function openProjectModal(existing){
-    if(ROLE==='viewer'){ toast('Viewer cannot edit'); return; }
-    const isEdit = !!existing?.id;
-    openModal(`
-      <div class="modal-header">
-        <h3 style="margin:0">${isEdit?'Edit Project':'Add Project'}</h3>
-        <button class="btn small link" id="btnCloseModal">✖</button>
-      </div>
-      <div class="input-row" style="margin-top:10px">
-        <div style="grid-column:1/-1">
-          <label>Project Address</label>
-          <input id="p-address" type="text" value="${escapeHtml(existing?.address||'')}" />
-        </div>
-      </div>
-      <div class="input-row" style="margin-top:10px">
-        <div>
-          <label>Owner</label>
-          <input id="p-owner" type="text" value="${escapeHtml(existing?.owner_name||'')}" />
-        </div>
-        <div>
-          <label>Start Date</label>
-          <input id="p-start" type="date" value="${escapeHtml(existing?.start_date||'')}" />
-        </div>
-      </div>
-      <div class="input-row" style="margin-top:10px">
-        <div>
-          <label>Expected Sales</label>
-          <input id="p-sales" type="number" step="any" value="${escapeHtml(existing?.sales||'')}" />
-        </div>
-        <div>
-          <label>Active</label>
-          <select id="p-active" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border)">
-            <option value="active" ${existing?.status!=='completed'?'selected':''}>Active</option>
-            <option value="completed" ${existing?.status==='completed'?'selected':''}>Completed</option>
-          </select>
-        </div>
-      </div>
-      <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:8px;">
-        <button class="btn" id="p-cancel">Cancel</button>
-        <button class="btn primary" id="p-save">Save</button>
-      </div>
-    `);
-
-    $('p-cancel').onclick = closeModal;
-    $('p-save').onclick = async () => {
-      const proj = {
-        id: existing?.id || null,
-        address: $('p-address').value.trim(),
-        owner_name: $('p-owner').value.trim(),
-        start_date: $('p-start').value,
-        sales: $('p-sales').value,
-        status: $('p-active').value
-      };
-      try{
-        const id = await upsertProject(proj);
-        closeModal();
-        toast('Project saved');
-        await refreshProjects();
-        if(location.hash.startsWith('#project:')) await refreshProject(id);
-      }catch(e){ toast('Error: '+e.message); }
-    };
-  }
-
-  function openTaskModal(project, existing){
-    if(ROLE==='viewer'){ toast('Viewer cannot edit'); return; }
-    const isEdit = !!existing?.id;
-    const address = project?.address || existing?.address || '';
-    openModal(`
-      <div class="modal-header">
-        <h3 style="margin:0">${isEdit?'Edit Task':'Add Task'}</h3>
-        <button class="btn small link" id="btnCloseModal">✖</button>
-      </div>
-
-      <div class="input-row" style="margin-top:10px">
-        <div>
-          <label>Task name</label>
-          <input id="t-name" type="text" value="${escapeHtml(existing?.name||'')}" />
-        </div>
-        <div>
-          <label>Address</label>
-          <input id="t-address" type="text" value="${escapeHtml(existing?.address||address)}" />
-        </div>
-      </div>
-
-      <div class="input-row" style="margin-top:10px">
-        <div>
-          <label>Start Date</label>
-          <input id="t-start" type="date" value="${escapeHtml(existing?.startDate||'')}" />
-        </div>
-        <div>
-          <label>End Date</label>
-          <input id="t-end" type="date" value="${escapeHtml(existing?.endDate||'')}" />
-        </div>
-      </div>
-
-      <div class="input-row3" style="margin-top:10px">
-        <div><label>Quantity</label><input id="t-qty" type="number" step="any" value="${escapeHtml(existing?.quantity??'')}" /></div>
-        <div><label>Unit</label><input id="t-unit" type="text" value="${escapeHtml(existing?.unit??'')}" /></div>
-        <div><label>Unit Cost</label><input id="t-unitCost" type="number" step="any" value="${escapeHtml(existing?.unitCost??'')}" /></div>
-      </div>
-
-      <div class="input-row3" style="margin-top:10px">
-        <div><label>Total Cost</label><input id="t-total" type="number" step="any" value="${escapeHtml(existing?.totalCost??'')}" /></div>
-        <div><label>Allocation ${ROLE==='admin'?'':'(admin only)'}</label><input id="t-allocation" type="number" step="any" value="${escapeHtml(existing?.allocation??'')}" ${ROLE==='admin'?'':'disabled'} /></div>
-        <div><label>Sprint</label><input id="t-sprint" type="text" value="${escapeHtml(existing?.sprint??'')}" /></div>
-      </div>
-
-      <div class="input-row" style="margin-top:10px">
-        <div><label>Assignee</label><input id="t-assignee" type="text" value="${escapeHtml(existing?.assignee??'')}" /></div>
-        <div><label>Photos</label><input id="t-photos" type="file" multiple accept="image/*" /></div>
-      </div>
-
-      <div class="input-row" style="margin-top:10px">
-        <div><label>Description</label><textarea id="t-desc">${escapeHtml(existing?.description??'')}</textarea></div>
-        <div><label>Notes</label><textarea id="t-notes">${escapeHtml(existing?.notes??'')}</textarea></div>
-      </div>
-
-      <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:8px;">
-        <button class="btn" id="t-cancel">Cancel</button>
-        <button class="btn primary" id="t-save">Save</button>
-      </div>
-    `);
-
-    $('t-cancel').onclick = closeModal;
-    $('t-save').onclick = async () => {
-      const task = {
-        id: existing?.id || null,
-        name: $('t-name').value.trim(),
-        address: $('t-address').value.trim(),
-        startDate: $('t-start').value,
-        endDate: $('t-end').value,
-        quantity: $('t-qty').value,
-        unit: $('t-unit').value.trim(),
-        unitCost: $('t-unitCost').value,
-        totalCost: $('t-total').value,
-        allocation: $('t-allocation').value,
-        sprint: $('t-sprint').value.trim(),
-        assignee: $('t-assignee').value.trim(),
-        description: $('t-desc').value,
-        notes: $('t-notes').value
-      };
-
-      try{
-        const taskId = await upsertTask(project.id, task);
-        const files = $('t-photos').files;
-        if(files && files.length) await uploadPhotos(taskId, files);
-        closeModal();
-        toast('Task saved');
-        await refreshProject(project.id);
-      }catch(e){ toast('Error: '+e.message); }
-    };
-  }
-
-  async function openPhotosModal(taskId){
-    const photos = await listPhotos(taskId);
-    const thumbs = photos.map(p => {
-      const src = p['@microsoft.graph.downloadUrl'] || p.webUrl;
-      return `<a href="${escapeHtml(p.webUrl||'#')}" target="_blank" rel="noopener"><img alt="${escapeHtml(p.name)}" src="${escapeHtml(src)}" style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover;margin:4px" /></a>`;
-    }).join('');
-    openModal(`
-      <div class="modal-header">
-        <h3 style="margin:0">Task Photos</h3>
-        <button class="btn small link" id="btnCloseModal">✖</button>
-      </div>
-      <div class="muted" style="margin-top:6px">Task #${escapeHtml(taskId)}</div>
-      <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;">
-        ${thumbs || '<span class="muted">No photos</span>'}
-      </div>
-      <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:8px;">
-        <button class="btn" id="btnOk">Close</button>
-      </div>
-    `);
-    $('btnOk').onclick = closeModal;
-  }
-
-  /************ ROUTER ************/
-  async function route(){
-    const h = location.hash || '#home';
-    setActiveNav(h.startsWith('#project:') ? '#projects' : h);
-
-    if(!msalInstance.getActiveAccount()){
-      setSignedOutUI('');
-      return;
-    }
-
-    setSignedInUI();
-    applyCompany();
-    applyRBAC();
-
-    if(h === '#home'){
-      showView('home');
-      await refreshHome();
-    } else if(h === '#projects'){
-      showView('projects');
-      await refreshProjects();
-    } else if(h.startsWith('#project:')){
-      showView('projectView');
-      const id = h.split(':')[1];
-      await refreshProject(id);
-    } else if(h === '#dashboard'){
-      showView('dashboard');
-      refreshDashboard();
-    } else if(h === '#settings'){
-      showView('settings');
-      initSettingsUI();
-    } else {
-      location.hash = '#home';
-    }
-  }
-
-  /************ SETTINGS UI ************/
-  function initSettingsUI(){
-    const s = loadSettings();
-    $('set-name').value = s.companyName || '';
-    $('set-logo').value = s.companyLogo || '';
-    $('set-projectListUrl').value = s.projectListUrl || '';
-    $('set-taskListUrl').value = s.taskListUrl || '';
-
-    $('set-adminGroup').value = s.adminGroup || '';
-    $('set-editorGroup').value = s.editorGroup || '';
-    $('set-viewerGroup').value = s.viewerGroup || '';
-    $('set-defaultRole').value = s.defaultRole || 'viewer';
-
-    if(s.map){
-      // If we have saved mapping, show UI placeholders; without columns we can't render selects.
-      $('mappingUI').hidden = false;
-    }
-  }
-
-  /************ BOOTSTRAP ************/
-  async function postLoginBootstrap(){
-    activeAccount = msalInstance.getActiveAccount() || msalInstance.getAllAccounts()[0] || null;
-    if(!activeAccount){ setSignedOutUI(''); return; }
-    msalInstance.setActiveAccount(activeAccount);
-    $('userEmail').textContent = activeAccount.username || '';
-    setSignedInUI();
-
-    // Compute role
-    ROLE = await computeRole();
-    applyRBAC();
-
-    // Ensure settings are loaded to show company
-    applyCompany();
-
-    // Go to requested route
-    await route();
-  }
-
-  /************ EVENTS ************/
-  window.addEventListener('hashchange', () => route());
-
-  $('btnSignIn').onclick = signIn;
-  $('btnGateSignIn').onclick = signIn;
-  $('btnSignOut').onclick = signOut;
-
-  $('btnNewProject').onclick = () => openProjectModal(null);
-  $('btnAddProjectTop').onclick = () => openProjectModal(null);
-  $('btnAddTask').onclick = () => {
-    const p = state.projects.find(x=>String(x.id)===String(currentProjectId));
-    if(!p) return toast('Project not loaded');
-    openTaskModal(p, null);
-  };
-
-  $('projSearch').oninput = renderProjectsFiltered;
-  $('projStatus').onchange = renderProjectsFiltered;
-
-  // subtabs
-  document.querySelectorAll('.subtabs button[data-tab]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.subtabs button[data-tab]').forEach(b => b.classList.toggle('active', b===btn));
-      document.querySelectorAll('#projectPanels > div').forEach(div => div.hidden = (div.id !== 'panel-'+btn.dataset.tab));
-    });
+  const taskFields = [
+    ["Task name", "taskName"],
+    ["Task Start Date", "taskStartDate"],
+    ["Task End Date", "taskEndDate"],
+    ["Quantity", "quantity"],
+    ["Quantity Unit", "quantityUnit"],
+    ["Cost / Unit Cost", "unitCost"],
+    ["Total Cost", "totalCost"],
+    ["Allocation", "allocation"],
+    ["Sprint", "sprint"],
+    ["Assignee", "assignee"],
+    ["Task Description", "taskDescription"],
+    ["Notes", "notes"],
+    ["Photos", "photos"],
+    ["Lookup field for Project relation", "taskProjectLookup"]
+  ];
+
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `<h4 style="margin-top:0;">Project fields</h4>`;
+  projectFields.forEach(([labelText, key]) => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px; align-items:center;";
+    const lab = document.createElement("div"); lab.innerHTML = `<strong>${labelText}</strong>`;
+    const sel = mkSelect(projectCols, mapping?.project?.[key] || "");
+    sel.onchange = () => { mapping.project[key] = sel.value; };
+    row.appendChild(lab); row.appendChild(sel);
+    card.appendChild(row);
   });
 
-  $('btnDetect').onclick = async () => {
-    try{ await detectAndSaveMappings(); }
-    catch(e){ $('detectStatus').textContent = 'Error: ' + e.message; }
+  const card2 = document.createElement("div");
+  card2.className = "card";
+  card2.style.marginTop = "12px";
+  card2.innerHTML = `<h4 style="margin-top:0;">Task fields</h4>`;
+  taskFields.forEach(([labelText, key]) => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px; align-items:center;";
+    const lab = document.createElement("div"); lab.innerHTML = `<strong>${labelText}</strong>`;
+    const sel = mkSelect(taskCols, mapping?.task?.[key] || "");
+    sel.onchange = () => { mapping.task[key] = sel.value; };
+    row.appendChild(lab); row.appendChild(sel);
+    card2.appendChild(row);
+  });
+
+  root.appendChild(card);
+  root.appendChild(card2);
+}
+
+function autoMapByName(cols, keywords) {
+  const lower = cols.map(c => ({...c, _dn:(c.displayName||"").toLowerCase(), _n:(c.name||"").toLowerCase()}));
+  for (const k of keywords) {
+    const kk = k.toLowerCase();
+    const found = lower.find(c => c._dn === kk) || lower.find(c => c._n === kk) ||
+                  lower.find(c => c._dn.includes(kk)) || lower.find(c => c._n.includes(kk));
+    if (found) return found.name;
+  }
+  return "";
+}
+
+/* ---------- App data ---------- */
+async function loadProjectsTop8() {
+  const map = CURRENT.mapping;
+  if (!CURRENT.site.project || !CURRENT.lists.project || !map) return [];
+
+  // expand fields
+  const data = await graphGET(`/sites/${CURRENT.site.project}/lists/${CURRENT.lists.project}/items?$expand=fields&$top=8&$orderby=createdDateTime desc`);
+  const items = data.value || [];
+  return items.map(it => ({
+    id: it.id,
+    fields: it.fields || {}
+  }));
+}
+
+async function loadTasksForProject(projectItemId) {
+  const map = CURRENT.mapping;
+  if (!CURRENT.site.task || !CURRENT.lists.task || !map) return [];
+
+  const lookupCol = map.task.taskProjectLookup;
+  if (!lookupCol) return [];
+
+  // Filter by lookup id; Graph supports fields/LookupId patterns, but varies. We'll fetch top 200 and filter client-side (safe default).
+  const data = await graphGET(`/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items?$expand=fields&$top=200`);
+  const items = data.value || [];
+  return items
+    .map(it => ({ id: it.id, fields: it.fields || {} }))
+    .filter(x => {
+      const v = x.fields[`${lookupCol}LookupId`] ?? x.fields[lookupCol];
+      return String(v ?? "") === String(projectItemId);
+    });
+}
+
+/* ---------- UI routing ---------- */
+function setActiveNav(hash) {
+  document.querySelectorAll(".bottom-nav a").forEach(a => a.classList.toggle("active", a.getAttribute("href") === hash));
+}
+function showView(id) {
+  document.querySelectorAll("#appShell section").forEach(s => s.hidden = (s.id !== id));
+}
+function route() {
+  const h = location.hash || "#projects";
+  setActiveNav(h);
+  if (h === "#projects") { showView("projects"); refreshProjects(); }
+  else if (h === "#dashboard") { showView("dashboard"); refreshDashboard(); }
+  else if (h === "#settings") { showView("settings"); fillSettingsUI(); }
+  else if (h.startsWith("#project:")) { showView("projectView"); openProject(h.split(":")[1]); }
+  else { location.hash = "#projects"; }
+}
+window.addEventListener("hashchange", route);
+
+/* ---------- UI: Settings ---------- */
+function fillSettingsUI() {
+  const s = loadSettings();
+  document.getElementById("setLogoUrl").value = s.companyLogoUrl || "";
+  document.getElementById("setProjectLink").value = s.projectLink || "";
+  document.getElementById("setTaskLink").value = s.taskLink || "";
+  document.getElementById("setRoleMode").value = s.roleMode || "groups";
+  document.getElementById("setAdminGroup").value = s.adminGroup || "";
+  document.getElementById("setEditorGroup").value = s.editorGroup || "";
+  document.getElementById("setViewerGroup").value = s.viewerGroup || "";
+  document.getElementById("setManualRole").value = s.manualRole || "viewer";
+
+  if (s.companyLogoUrl) document.getElementById("companyLogo").src = s.companyLogoUrl;
+  if (s.mapping) {
+    CURRENT.mapping = s.mapping;
+    renderMappingUI(CURRENT.mapping, CURRENT.columns.project, CURRENT.columns.task);
+  }
+}
+
+async function detectListsAndColumns() {
+  const s = loadSettings();
+  if (!s.projectLink || !s.taskLink) {
+    toast("Paste Project and Task list links first.");
+    return;
+  }
+  toast("Detecting lists...");
+  const pr = await resolveSiteAndList(s.projectLink);
+  const ta = await resolveSiteAndList(s.taskLink);
+
+  CURRENT.site.project = pr.siteId;
+  CURRENT.lists.project = pr.listId;
+  CURRENT.columns.project = pr.columns;
+
+  CURRENT.site.task = ta.siteId;
+  CURRENT.lists.task = ta.listId;
+  CURRENT.columns.task = ta.columns;
+
+  toast("Detected lists & columns.");
+  if (!CURRENT.mapping) {
+    CURRENT.mapping = { project:{}, task:{} };
+  }
+  renderMappingUI(CURRENT.mapping, CURRENT.columns.project, CURRENT.columns.task);
+}
+
+function autoMap() {
+  if (!CURRENT.columns.project.length || !CURRENT.columns.task.length) {
+    toast("Run Detect lists & columns first.");
+    return;
+  }
+  if (!CURRENT.mapping) CURRENT.mapping = { project:{}, task:{} };
+
+  // Project auto-map
+  CURRENT.mapping.project.projectAddress = autoMapByName(CURRENT.columns.project, ["Project Address", "Address", "Title"]);
+  CURRENT.mapping.project.projectOwner = autoMapByName(CURRENT.columns.project, ["Project Owner", "Owner"]);
+  CURRENT.mapping.project.projectStartDate = autoMapByName(CURRENT.columns.project, ["Project Start Date", "Start Date"]);
+  CURRENT.mapping.project.expectedSales = autoMapByName(CURRENT.columns.project, ["Expected Sales", "Sales"]);
+  CURRENT.mapping.project.active = autoMapByName(CURRENT.columns.project, ["Active", "IsActive"]);
+  CURRENT.mapping.project.projectDescription = autoMapByName(CURRENT.columns.project, ["Project Description", "Description"]);
+
+  // Task auto-map
+  CURRENT.mapping.task.taskName = autoMapByName(CURRENT.columns.task, ["Task name", "Title", "Task"]);
+  CURRENT.mapping.task.taskStartDate = autoMapByName(CURRENT.columns.task, ["Task Start Date", "Start Date"]);
+  CURRENT.mapping.task.taskEndDate = autoMapByName(CURRENT.columns.task, ["Task End Date", "End Date"]);
+  CURRENT.mapping.task.quantity = autoMapByName(CURRENT.columns.task, ["Quantity"]);
+  CURRENT.mapping.task.quantityUnit = autoMapByName(CURRENT.columns.task, ["Quantity Unit", "Unit"]);
+  CURRENT.mapping.task.unitCost = autoMapByName(CURRENT.columns.task, ["Unit Cost", "Cost", "Cost Total Cost"]);
+  CURRENT.mapping.task.totalCost = autoMapByName(CURRENT.columns.task, ["Total Cost"]);
+  CURRENT.mapping.task.allocation = autoMapByName(CURRENT.columns.task, ["Allocation"]);
+  CURRENT.mapping.task.sprint = autoMapByName(CURRENT.columns.task, ["Sprint"]);
+  CURRENT.mapping.task.assignee = autoMapByName(CURRENT.columns.task, ["Assignee"]);
+  CURRENT.mapping.task.taskDescription = autoMapByName(CURRENT.columns.task, ["Task Description", "Description"]);
+  CURRENT.mapping.task.notes = autoMapByName(CURRENT.columns.task, ["Notes"]);
+  CURRENT.mapping.task.photos = autoMapByName(CURRENT.columns.task, ["Photos"]);
+
+  // Lookup: best-effort guess
+  CURRENT.mapping.task.taskProjectLookup = autoMapByName(CURRENT.columns.task, ["Project", "Project Lookup", "ProjectId"]);
+
+  renderMappingUI(CURRENT.mapping, CURRENT.columns.project, CURRENT.columns.task);
+  toast("Auto-mapped.");
+}
+
+function saveAllSettings() {
+  const s = loadSettings();
+  s.companyLogoUrl = document.getElementById("setLogoUrl").value.trim();
+  s.projectLink = document.getElementById("setProjectLink").value.trim();
+  s.taskLink = document.getElementById("setTaskLink").value.trim();
+  s.roleMode = document.getElementById("setRoleMode").value;
+  s.adminGroup = document.getElementById("setAdminGroup").value.trim();
+  s.editorGroup = document.getElementById("setEditorGroup").value.trim();
+  s.viewerGroup = document.getElementById("setViewerGroup").value.trim();
+  s.manualRole = document.getElementById("setManualRole").value;
+  s.mapping = CURRENT.mapping;
+
+  saveSettings(s);
+  if (s.companyLogoUrl) document.getElementById("companyLogo").src = s.companyLogoUrl;
+  toast("Settings saved.");
+}
+
+/* ---------- UI: Projects ---------- */
+async function refreshProjects() {
+  const s = loadSettings();
+  // Enforce: can't use without configuration
+  if (!s.projectLink || !s.taskLink || !s.mapping) {
+    document.getElementById("projectsTbody").innerHTML =
+      `<tr><td colspan="7" class="muted">Go to Settings → paste list links → Detect → Auto-map → Save.</td></tr>`;
+    return;
+  }
+
+  // Buttons by role
+  document.getElementById("btnAddProject").style.display = (CURRENT.role === "viewer") ? "none" : "inline-flex";
+  setRoleBanner();
+
+  const q = safeText(document.getElementById("projSearch").value).toLowerCase();
+  const sf = document.getElementById("projStatusFilter").value;
+
+  const items = await loadProjectsTop8();
+  const map = CURRENT.mapping.project;
+
+  const rows = [];
+  for (const it of items) {
+    const f = it.fields;
+    const addr = safeText(f[map.projectAddress] ?? "");
+    const owner = safeText(f[map.projectOwner] ?? "");
+    const start = safeText(f[map.projectStartDate] ?? "");
+    const sales = safeText(f[map.expectedSales] ?? "");
+    const active = boolFromField(f[map.active]);
+
+    const desc = safeText(f[map.projectDescription] ?? "");
+
+    const status = active ? "active" : "completed"; // simple mapping
+    const hay = `${addr} ${desc}`.toLowerCase();
+
+    if (q && !hay.includes(q)) continue;
+    if (sf && sf !== status) continue;
+
+    const canEdit = (CURRENT.role !== "viewer");
+    const canDelete = (CURRENT.role === "admin");
+
+    rows.push(`
+      <tr>
+        <td>${addr}</td>
+        <td>${owner}</td>
+        <td>${start}</td>
+        <td>${sales}</td>
+        <td>${active ? `<span class="badge active">active</span>` : `<span class="badge completed">completed</span>`}</td>
+        <td>${desc}</td>
+        <td>
+          <div class="actions">
+            #project:${it.id}Open</a>
+            ${canEdit ? `<button class="btn small" data-act="edit" data-id="${it.id}">Edit</button>` : ``}
+            ${canDelete ? `<button class="btn small" data-act="delete" data-id="${it.id}">Delete</button>` : ``}
+          </div>
+        </td>
+      </tr>
+    `);
+  }
+
+  document.getElementById("projectsTbody").innerHTML =
+    rows.length ? rows.join("") : `<tr><td colspan="7" class="muted">No projects found.</td></tr>`;
+
+  // Wire actions
+  document.querySelectorAll('button[data-act="edit"]').forEach(btn => btn.onclick = () => openProjectEditor(btn.dataset.id));
+  document.querySelectorAll('button[data-act="delete"]').forEach(btn => btn.onclick = () => deleteProject(btn.dataset.id));
+}
+
+async function openProjectEditor(projectItemId) {
+  if (CURRENT.role === "viewer") return;
+
+  const items = await loadProjectsTop8();
+  const it = items.find(x => x.id === projectItemId);
+  if (!it) return;
+
+  const map = CURRENT.mapping.project;
+  const f = it.fields;
+
+  openModal(`
+    <div class="modal-header">
+      <h3 style="margin:0;">Project editor</h3>
+      <button class="btn small link" id="btnCloseModal">✖</button>
+    </div>
+
+    <div class="input-row" style="margin-top:10px;">
+      <div style="grid-column:1/-1;">
+        <label>Title</label>
+        <input id="pe_title" type="text" value="${escapeAttr(f[map.projectAddress] ?? "")}" />
+      </div>
+    </div>
+
+    <div class="input-row" style="margin-top:10px;">
+      <div>
+        <label>Owner</label>
+        <input id="pe_owner" type="text" value="${escapeAttr(f[map.projectOwner] ?? "")}" />
+      </div>
+      <div>
+        <label>Start Date</label>
+        <input id="pe_start" type="date" value="${escapeAttr(f[map.projectStartDate] ?? "")}" />
+      </div>
+    </div>
+
+    <div class="input-row" style="margin-top:10px;">
+      <div>
+        <label>Expected Sales</label>
+        <input id="pe_sales" type="text" value="${escapeAttr(f[map.expectedSales] ?? "")}" />
+      </div>
+      <div>
+        <label>Active</label>
+        <select id="pe_active">
+          <option value="true" ${boolFromField(f[map.active]) ? "selected":""}>true</option>
+          <option value="false" ${!boolFromField(f[map.active]) ? "selected":""}>false</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <label>Description</label>
+      <textarea id="pe_desc">${escapeHtml(f[map.projectDescription] ?? "")}</textarea>
+    </div>
+
+    <div class="actions" style="margin-top:12px; justify-content:flex-end;">
+      <button class="btn primary" id="btnSaveProject">Save</button>
+      ${CURRENT.role === "admin" ? `<button class="btn" id="btnDeleteProject">Delete</button>` : ``}
+    </div>
+  `);
+
+  document.getElementById("btnCloseModal").onclick = closeModal;
+
+  document.getElementById("btnSaveProject").onclick = async () => {
+    const payload = {};
+    payload[map.projectAddress] = document.getElementById("pe_title").value.trim();
+    payload[map.projectOwner] = document.getElementById("pe_owner").value.trim();
+    payload[map.projectStartDate] = document.getElementById("pe_start").value;
+    payload[map.expectedSales] = document.getElementById("pe_sales").value.trim();
+    payload[map.active] = document.getElementById("pe_active").value === "true";
+    payload[map.projectDescription] = document.getElementById("pe_desc").value.trim();
+
+    await graphPATCH(`/sites/${CURRENT.site.project}/lists/${CURRENT.lists.project}/items/${projectItemId}/fields`, payload);
+    addActivity(`Edited project: ${payload[map.projectAddress]}`);
+    closeModal();
+    toast("Project updated");
+    refreshProjects();
   };
 
-  $('btnSaveSettings').onclick = async () => {
-    const s = loadSettings();
-    s.companyName = $('set-name').value.trim();
-    s.companyLogo = $('set-logo').value.trim();
-    s.projectListUrl = $('set-projectListUrl').value.trim();
-    s.taskListUrl = $('set-taskListUrl').value.trim();
-    saveSettings(s);
-
-    // If mapping selects exist, save them
-    try{ readMappingFromUI(); }catch{}
-
-    applyCompany();
-    toast('Settings saved');
-    // recompute role if group IDs changed
-    try{ ROLE = await computeRole(); applyRBAC(); }catch{}
+  const delBtn = document.getElementById("btnDeleteProject");
+  if (delBtn) delBtn.onclick = async () => {
+    await deleteProject(projectItemId);
+    closeModal();
   };
+}
 
-  // Start
-  (async () => {
-    await ensureInitialized();
-    const accounts = msalInstance.getAllAccounts();
-    if(accounts && accounts.length){
-      msalInstance.setActiveAccount(accounts[0]);
-      await postLoginBootstrap();
-    } else {
-      setSignedOutUI('');
+async function deleteProject(projectItemId) {
+  if (CURRENT.role !== "admin") return;
+  // Delete list item:
+  const token = await getToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${CURRENT.site.project}/lists/${CURRENT.lists.project}/items/${projectItemId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error(`Delete failed: ${await res.text()}`);
+  addActivity(`Deleted project item: ${projectItemId}`);
+  toast("Project deleted");
+  refreshProjects();
+}
+
+/* ---------- UI: Project view ---------- */
+async function openProject(projectItemId) {
+  const items = await loadProjectsTop8();
+  const it = items.find(x => x.id === projectItemId);
+  if (!it) {
+    document.getElementById("projectHeader").innerHTML = `<div class="muted">Project not found.</div>`;
+    return;
+  }
+  CURRENT.selectedProject = it;
+
+  const mp = CURRENT.mapping.project;
+  const f = it.fields;
+
+  const addr = safeText(f[mp.projectAddress] ?? "");
+  const owner = safeText(f[mp.projectOwner] ?? "");
+  const start = safeText(f[mp.projectStartDate] ?? "");
+  const sales = safeText(f[mp.expectedSales] ?? "");
+  const active = boolFromField(f[mp.active]);
+  const desc = safeText(f[mp.projectDescription] ?? "");
+
+  document.getElementById("projectHeader").innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+      <div>
+        <h2 style="margin:0;">${escapeHtml(addr || "Untitled")}</h2>
+        <div class="muted">Owner: ${escapeHtml(owner)}</div>
+        <div style="margin-top:8px; display:flex; gap:10px; flex-wrap:wrap;">
+          ${active ? `<span class="badge active">active</span>` : `<span class="badge completed">completed</span>`}
+          <span class="badge">Start: ${escapeHtml(start)}</span>
+          <span class="badge">Expected Sales: ${escapeHtml(sales)}</span>
+        </div>
+        <div class="muted" style="margin-top:8px;">${escapeHtml(desc)}</div>
+      </div>
+      <div class="actions">
+        ${CURRENT.role !== "viewer" ? `<button class="btn" id="btnEditProjectHere">Edit Project</button>` : ``}
+      </div>
+    </div>
+  `;
+
+  const btnEdit = document.getElementById("btnEditProjectHere");
+  if (btnEdit) btnEdit.onclick = () => openProjectEditor(projectItemId);
+
+  // Tabs
+  document.querySelectorAll('.subtabs button[data-tab]').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('.subtabs button').forEach(x => x.classList.toggle('active', x === b));
+      document.querySelectorAll('#projectPanels > div').forEach(div => div.hidden = (div.id !== `panel-${b.dataset.tab}`));
+    };
+  });
+
+  // Role-based buttons
+  document.getElementById("btnAddTask").style.display = (CURRENT.role === "viewer") ? "none" : "inline-flex";
+
+  await refreshTasks(projectItemId);
+  await refreshPhotos(projectItemId);
+}
+
+async function refreshTasks(projectItemId) {
+  const tasks = await loadTasksForProject(projectItemId);
+  const mt = CURRENT.mapping.task;
+
+  // total costs for dashboard
+  const rows = tasks.map(t => {
+    const f = t.fields;
+    const canEdit = (CURRENT.role !== "viewer");
+    const canDelete = (CURRENT.role === "admin");
+
+    // Per-field RBAC: Allocation only admin
+    const allocation = safeText(f[mt.allocation] ?? "");
+    const allocationDisplay = allocation ? `$${money(allocation)}` : "";
+
+    const photoVal = safeText(f[mt.photos] ?? "");
+    const photoLinks = photoVal ? `<a class="btn small" href="${tryParseFirstUrl(photoss="muted">—</span>`;
+
+    return `
+      <tr>
+        <td>${escapeHtml(f[mt.taskName] ?? "")}</td>
+        <td>${escapeHtml(f[mt.taskStartDate] ?? "")}</td>
+        <td>${escapeHtml(f[mt.taskEndDate] ?? "")}</td>
+        <td>${escapeHtml(f[mt.quantity] ?? "")}</td>
+        <td>${escapeHtml(f[mt.unitCost] ?? "")}</td>
+        <td>${escapeHtml(f[mt.totalCost] ?? "")}</td>
+        <td>${escapeHtml(allocationDisplay)}</td>
+        <td>${escapeHtml(f[mt.sprint] ?? "")}</td>
+        <td>${escapeHtml(f[mt.assignee] ?? "")}</td>
+        <td>${escapeHtml(f[mt.taskDescription] ?? "")}</td>
+        <td>${escapeHtml(f[mt.notes] ?? "")}</td>
+        <td>${photoLinks}</td>
+        <td>
+          <div class="actions">
+            ${canEdit ? `<button class="btn small" data-act="editTask" data-id="${t.id}">Edit</button>` : ``}
+            ${canDelete ? `<button class="btn small" data-act="delTask" data-id="${t.id}">Delete</button>` : ``}
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("tasksTbody").innerHTML =
+    rows.length ? rows.join("") : `<tr><td colspan="13" class="muted">No tasks yet.</td></tr>`;
+
+  document.querySelectorAll('button[data-act="editTask"]').forEach(btn => btn.onclick = () => openTaskEditor(btn.dataset.id));
+  document.querySelectorAll('button[data-act="delTask"]').forEach(btn => btn.onclick = () => deleteTask(btn.dataset.id));
+
+  document.getElementById("btnAddTask").onclick = () => openTaskEditor(null); // new
+
+  // Keep tasks for dashboard calc
+  CURRENT._lastTasks = tasks;
+}
+
+async function deleteTask(taskItemId) {
+  if (CURRENT.role !== "admin") return;
+  const token = await getToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items/${taskItemId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error(`Delete failed: ${await res.text()}`);
+  addActivity(`Deleted task item: ${taskItemId}`);
+  toast("Task deleted");
+  await refreshTasks(CURRENT.selectedProject.id);
+  await refreshDashboard();
+}
+
+async function openTaskEditor(taskItemId) {
+  if (CURRENT.role === "viewer") return;
+
+  const mt = CURRENT.mapping.task;
+  const mp = CURRENT.mapping.project;
+
+  let existing = null;
+  if (taskItemId) {
+    const data = await graphGET(`/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items/${taskItemId}?$expand=fields`);
+    existing = { id: data.id, fields: data.fields || {} };
+  }
+
+  const f = existing?.fields || {};
+  const isEdit = !!existing;
+
+  // Allocation RBAC: only admin can edit
+  const allocationDisabled = (CURRENT.role !== "admin") ? "disabled" : "";
+
+  openModal(`
+    <div class="modal-header">
+      <h3 style="margin:0;">Task editor panel</h3>
+      <button class="btn small link" id="btnCloseModal">✖</button>
+    </div>
+
+    <div class="input-row" style="margin-top:10px;">
+      <div><label>Title</label><input id="te_title" type="text" value="${escapeAttr(f[mt.taskName] ?? "")}" /></div>
+      <div><label>Address</label><input id="te_address" type="text" value="${escapeAttr(CURRENT.selectedProject.fields[mp.projectAddress] ?? "")}" disabled /></div>
+    </div>
+
+    <div class="input-row" style="margin-top:10px;">
+      <div><label>Start Date</label><input id="te_start" type="date" value="${escapeAttr(f[mt.taskStartDate] ?? "")}" /></div>
+      <div><label>End Date</label><input id="te_end" type="date" value="${escapeAttr(f[mt.taskEndDate] ?? "")}" /></div>
+    </div>
+
+    <div class="input-row3" style="margin-top:10px;">
+      <div><label>Quantity</label><input id="te_qty" type="number" step="any" value="${escapeAttr(f[mt.quantity] ?? "")}" /></div>
+      <div><label>Unit Cost</label><input id="te_unit" type="number" step="any" value="${escapeAttr(f[mt.unitCost] ?? "")}" /></div>
+      <div><label>Total Cost</label><input id="te_total" type="number" step="any" value="${escapeAttr(f[mt.totalCost] ?? "")}" /></div>
+    </div>
+
+    <div class="input-row3" style="margin-top:10px;">
+      <div><label>Allocation</label><input id="te_allocation" type="number" step="any" ${allocationDisabled} value="${escapeAttr(f[mt.allocation] ?? "")}" /></div>
+      <div><label>Sprint</label><input id="te_sprint" type="text" value="${escapeAttr(f[mt.sprint] ?? "")}" /></div>
+      <div><label>Assignee</label><input id="te_assignee" type="text" value="${escapeAttr(f[mt.assignee] ?? "")}" /></div>
+    </div>
+
+    <div class="input-row" style="margin-top:10px;">
+      <div><label>Description</label><textarea id="te_desc">${escapeHtml(f[mt.taskDescription] ?? "")}</textarea></div>
+      <div><label>Notes</label><textarea id="te_notes">${escapeHtml(f[mt.notes] ?? "")}</textarea></div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <label>Photos</label>
+      <input id="te_photos" type="file" multiple accept="image/*" />
+      <div class="muted" style="margin-top:6px;">Uploads go to Documents/TaskPhotos and links are stored in the task "Photos" field.</div>
+    </div>
+
+    <div class="actions" style="margin-top:12px; justify-content:flex-end;">
+      <button class="btn primary" id="btnSaveTask">${isEdit ? "Save" : "Save"}</button>
+      ${(CURRENT.role === "admin" && isEdit) ? `<button class="btn" id="btnDeleteTask">Delete</button>` : ``}
+    </div>
+  `);
+
+  document.getElementById("btnCloseModal").onclick = closeModal;
+
+  document.getElementById("btnSaveTask").onclick = async () => {
+    const payload = {};
+    payload[mt.taskName] = document.getElementById("te_title").value.trim();
+    payload[mt.taskStartDate] = document.getElementById("te_start").value;
+    payload[mt.taskEndDate] = document.getElementById("te_end").value;
+    payload[mt.quantity] = document.getElementById("te_qty").value;
+    payload[mt.unitCost] = document.getElementById("te_unit").value;
+    payload[mt.totalCost] = document.getElementById("te_total").value;
+    if (CURRENT.role === "admin") payload[mt.allocation] = document.getElementById("te_allocation").value;
+    payload[mt.sprint] = document.getElementById("te_sprint").value.trim();
+    payload[mt.assignee] = document.getElementById("te_assignee").value.trim();
+    payload[mt.taskDescription] = document.getElementById("te_desc").value.trim();
+    payload[mt.notes] = document.getElementById("te_notes").value.trim();
+
+    // Duplicate project fields into task on each add/update (as required)
+    const pf = CURRENT.selectedProject.fields;
+    payload[mp.projectAddress] = pf[mp.projectAddress] ?? "";
+    payload[mp.projectOwner] = pf[mp.projectOwner] ?? "";
+    payload[mp.projectStartDate] = pf[mp.projectStartDate] ?? "";
+    payload[mp.expectedSales] = pf[mp.expectedSales] ?? "";
+    payload[mp.active] = pf[mp.active] ?? true;
+    payload[mp.projectDescription] = pf[mp.projectDescription] ?? "";
+
+    // Relationship: lookup to project
+    if (mt.taskProjectLookup) {
+      // Many lookup fields use "LookupId" suffix
+      payload[`${mt.taskProjectLookup}LookupId`] = Number(CURRENT.selectedProject.id);
     }
-  })();
 
-  </script>
+    // Create or update task item
+    let savedId = taskItemId;
+    if (!isEdit) {
+      const created = await graphPOST(`/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items`, { fields: payload });
+      savedId = created.id;
+      addActivity(`Task added: ${payload[mt.taskName]}`);
+    } else {
+      await graphPATCH(`/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items/${taskItemId}/fields`, payload);
+      addActivity(`Task updated: ${payload[mt.taskName]}`);
+    }
+
+    // Photo upload
+    const files = document.getElementById("te_photos").files;
+    if (files && files.length) {
+      const uploadedUrls = await uploadTaskPhotos(savedId, files);
+      if (uploadedUrls.length && mt.photos) {
+        // store JSON array for robustness
+        const cur = safeText(f[mt.photos] ?? "");
+        let arr = [];
+        try { arr = cur ? JSON.parse(cur) : []; } catch { arr = cur ? [cur] : []; }
+        const merged = [...arr, ...uploadedUrls];
+        await graphPATCH(`/sites/${CURRENT.site.task}/lists/${CURRENT.lists.task}/items/${savedId}/fields`, {
+          [mt.photos]: JSON.stringify(merged)
+        });
+      }
+    }
+
+    toast("Task saved");
+    closeModal();
+    await refreshTasks(CURRENT.selectedProject.id);
+    await refreshDashboard();
+  };
+
+  const delBtn = document.getElementById("btnDeleteTask");
+  if (delBtn) delBtn.onclick = async () => { await deleteTask(taskItemId); closeModal(); };
+}
+
+/* ---------- Photos upload to Documents/TaskPhotos ---------- */
+async function ensureFolder(siteId, path) {
+  // Create folder if missing
+  // PUT /drive/root:/path:/content doesn't create folders reliably; use children create
+  const parts = path.split("/").filter(Boolean);
+  let curPath = "";
+  for (const p of parts) {
+    const parentPath = curPath ? curPath : "";
+    const name = p;
+    const test = await tryGetDriveItem(siteId, `${parentPath}/${name}`.replace(/^\/+/,""));
+    if (!test) {
+      const parent = parentPath ? `/sites/${siteId}/drive/root:/${parentPath}:/children` : `/sites/${siteId}/drive/root/children`;
+      await graphPOST(parent, { name, folder: {}, "@microsoft.graph.conflictBehavior": "replace" });
+    }
+    curPath = `${parentPath}/${name}`.replace(/^\/+/,"");
+  }
+}
+
+async function tryGetDriveItem(siteId, path) {
+  try {
+    return await graphGET(`/sites/${siteId}/drive/root:/${encodeURIComponent(path).replace(/%2F/g,"/")}`);
+  } catch {
+    return null;
+  }
+}
+
+async function uploadTaskPhotos(taskItemId, fileList) {
+  const siteId = CURRENT.site.task; // same site as task list
+  const folderBase = `TaskPhotos/${taskItemId}`;
+  await ensureFolder(siteId, folderBase);
+
+  const urls = [];
+  for (const file of fileList) {
+    const dest = `/sites/${siteId}/drive/root:/${folderBase}/${encodeURIComponent(file.name).replace(/%2F/g,"/")}:/content`;
+    const uploaded = await graphPUTBinary(dest, file, file.type);
+    if (uploaded && uploaded.webUrl) urls.push(uploaded.webUrl);
+  }
+  return urls;
+}
+
+/* ---------- Photos grid ---------- */
+async function refreshPhotos(projectItemId) {
+  // Show tasks + photo links
+  const tasks = await loadTasksForProject(projectItemId);
+  const mt = CURRENT.mapping.task;
+
+  const grid = document.getElementById("photosGrid");
+  grid.innerHTML = "";
+
+  if (!tasks.length) {
+    grid.innerHTML = `<div class="muted">No tasks yet.</div>`;
+    return;
+  }
+
+  tasks.forEach(t => {
+    const f = t.fields;
+    const card = document.createElement("div");
+    card.className = "card";
+    const name = escapeHtml(f[mt.taskName] ?? "(Untitled)");
+
+    let photoVal = safeText(f[mt.photos] ?? "");
+    let urls = [];
+    try { urls = photoVal ? JSON.parse(photoVal) : []; } catch { urls = photoVal ? [photoVal] : []; }
+
+    card.innerHTML = `<h3 style="margin-top:0;">${name}</h3>`;
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex; gap:8px; flex-wrap:wrap;";
+
+    if (!urls.length) {
+      wrap.innerHTML = `<span class="muted">No photos</span>`;
+    } else {
+      urls.forEach(u => {
+        const a = document.createElement("a");
+        a.className = "btn small";
+        a.href = u;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = "Open Photo";
+        wrap.appendChild(a);
+      });
+    }
+
+    card.appendChild(wrap);
+    grid.appendChild(card);
+  });
+}
+
+/* ---------- Dashboard ---------- */
+async function refreshDashboard() {
+  const projects = await loadProjectsTop8();
+  const mp = CURRENT.mapping.project;
+  const mt = CURRENT.mapping.task;
+
+  let active = 0, completed = 0;
+  let totalSales = 0;
+  for (const p of projects) {
+    const isActive = boolFromField(p.fields[mp.active]);
+    if (isActive) active++; else completed++;
+    const sales = Number(String(p.fields[mp.expectedSales] ?? "").replace(/[^\d.-]/g,""));
+    if (!Number.isNaN(sales)) totalSales += sales;
+  }
+
+  // Costs from last loaded tasks (for selected project) + best-effort from tasks list if mapped
+  let totalCosts = 0;
+  if (CURRENT._lastTasks && CURRENT._lastTasks.length) {
+    for (const t of CURRENT._lastTasks) {
+      const v = Number(String(t.fields[mt.totalCost] ?? "").replace(/[^\d.-]/g,""));
+      if (!Number.isNaN(v)) totalCosts += v;
+    }
+  }
+
+  document.getElementById("mTotalProjects").textContent = projects.length;
+  document.getElementById("mActiveProjects").textContent = active;
+  document.getElementById("mCompletedProjects").textContent = completed;
+  document.getElementById("mTotalCosts").textContent = money(totalCosts);
+  document.getElementById("mTotalSales").textContent = money(totalSales);
+
+  // Activity
+  const ul = document.getElementById("activityList");
+  ul.innerHTML = (CURRENT.activity.slice(0,10).map(x => `<li>${escapeHtml(x)}</li>`).join("")) || `<li class="muted">No activity yet</li>`;
+}
+
+function addActivity(text) {
+  CURRENT.activity.unshift(`${new Date().toLocaleString()}: ${text}`);
+}
+
+/* ---------- Modal helpers ---------- */
+function openModal(innerHtml) {
+  const b = document.getElementById("modalBackdrop");
+  document.getElementById("modalCard").innerHTML = innerHtml;
+  b.style.display = "flex";
+}
+function closeModal() {
+  document.getElementById("modalBackdrop").style.display = "none";
+  document.getElementById("modalCard").innerHTML = "";
+}
+
+/* ---------- Safe HTML helpers ---------- */
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+}
+function escapeAttr(s) { return escapeHtml(s).replaceAll("\n"," "); }
+
+function tryParseFirstUrl(v) {
+  try {
+    const arr = JSON.parse(v);
+    if (Array.isArray(arr) && arr[0]) return arr[0];
+  } catch {}
+  const m = String(v ?? "").match(/https?:\/\/[^\s"]+/);
+  return m ? m[0] : "#";
+}
+
+/* ---------- Wiring ---------- */
+document.getElementById("btnGateSignIn").onclick = async () => {
+  try {
+    await signInPopup();
+    await startApp();
+  } catch (e) { console.error(e); toast("Sign in failed"); }
+};
+document.getElementById("btnSignIn").onclick = async () => { try { await signInPopup(); await startApp(); } catch(e){ console.error(e); toast("Sign in failed"); } };
+document.getElementById("btnSignOut").onclick = async () => { try { await signOut(); CURRENT.account=null; showAuthGate(false); } catch(e){ console.error(e); toast("Sign out failed"); } };
+
+document.getElementById("projSearch").oninput = () => refreshProjects();
+document.getElementById("projStatusFilter").onchange = () => refreshProjects();
+
+document.getElementById("btnDetect").onclick = async () => { try { await detectListsAndColumns(); } catch(e){ console.error(e); toast(e.message || "Detect failed"); } };
+document.getElementById("btnAutoMap").onclick = () => autoMap();
+document.getElementById("btnSaveSettings").onclick = () => saveAllSettings();
+
+document.getElementById("btnAddProject").onclick = () => openProjectCreator();
+
+/* ---------- Project creator ---------- */
+function openProjectCreator() {
+  if (CURRENT.role === "viewer") return;
+
+  const mp = CURRENT.mapping.project;
+  openModal(`
+    <div class="modal-header">
+      <h3 style="margin:0;">Project editor panel</h3>
+      <button class="btn small link" id="btnCloseModal">✖</button>
+    </div>
+
+    <div class="input-row" style="margin-top:10px;">
+      <div style="grid-column:1/-1;"><label>Title</label><input id="pc_title" type="text" /></div>
+    </div>
+
+    <div class="input-row" style="margin-top:10px;">
+      <div><label>Owner</label><input id="pc_owner" type="text" /></div>
+      <div><label>Start Date</label><input id="pc_start" type="date" /></div>
+    </div>
+
+    <div class="input-row" style="margin-top:10px;">
+      <div><label>Expected Sales</label><input id="pc_sales" type="text" /></div>
+      <div>
+        <label>Active</label>
+        <select id="pc_active">
+          <option value="true" selected>true</option>
+          <option value="false">false</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <label>Description</label>
+      <textarea id="pc_desc"></textarea>
+    </div>
+
+    <div class="actions" style="margin-top:12px; justify-content:flex-end;">
+      <button class="btn primary" id="btnCreateProject">Save</button>
+    </div>
+  `);
+
+  document.getElementById("btnCloseModal").onclick = closeModal;
+  document.getElementById("btnCreateProject").onclick = async () => {
+    const payload = {};
+    payload[mp.projectAddress] = document.getElementById("pc_title").value.trim();
+    payload[mp.projectOwner] = document.getElementById("pc_owner").value.trim();
+    payload[mp.projectStartDate] = document.getElementById("pc_start").value;
+    payload[mp.expectedSales] = document.getElementById("pc_sales").value.trim();
+    payload[mp.active] = document.getElementById("pc_active").value === "true";
+    payload[mp.projectDescription] = document.getElementById("pc_desc").value.trim();
+
+    const created = await graphPOST(`/sites/${CURRENT.site.project}/lists/${CURRENT.lists.project}/items`, { fields: payload });
+    addActivity(`Created project: ${payload[mp.projectAddress]}`);
+    closeModal();
+    toast("Project saved");
+    location.hash = `#project:${created.id}`;
+  };
+}
+
+/* ---------- Start app ---------- */
+async function startApp() {
+  // Account
+  CURRENT.account = await pickAccount();
+  if (!CURRENT.account) { showAuthGate(false); return; }
+
+  // Role
+  const s = loadSettings();
+  CURRENT.role = await resolveRoleFromGroups(s);
+  setRoleBanner();
+
+  // Logo
+  if (s.companyLogoUrl) document.getElementById("companyLogo").src = s.companyLogoUrl;
+
+  // Load settings/mapping
+  CURRENT.mapping = s.mapping || null;
+
+  // Force detect if we can
+  if (s.projectLink && s.taskLink) {
+    try { await detectListsAndColumns(); } catch (e) { console.warn(e); }
+  }
+
+  showAuthGate(true);
+  addActivity("Signed in");
+  route();
+  await refreshDashboard();
+}
+
+/* ---------- Boot ---------- */
+(async function boot() {
+  try {
+    CURRENT.account = await pickAccount();
+    if (!CURRENT.account) {
+      showAuthGate(false);
+      document.getElementById("btnGateSignIn").focus();
+      return;
+    }
+    await startApp();
+  } catch (e) {
+    console.error(e);
+    showAuthGate(false);
+  }
+})();
+</script>
 </body>
 </html>
