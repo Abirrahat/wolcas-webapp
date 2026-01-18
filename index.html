@@ -329,11 +329,15 @@
             <h1>Settings</h1>
             <div class="card">
                 <h2>SharePoint List Configuration</h2>
-                <label for="projectListUrl">Project List URL</label>
-                <input id="projectListUrl" type="url" placeholder="https://{tenant}.sharepoint.com/sites/{site}/Lists/Project/AllItems.aspx" />
+                <!--
+                  Only a single SharePoint list is needed. Users provide the
+                  URL for the task list (which will hold both project and
+                  task items) and the app will detect its site and list
+                  identifiers. The project list URL input has been removed.
+                -->
                 <label for="taskListUrl">Task List URL</label>
-                <input id="taskListUrl" type="url" placeholder="https://{tenant}.sharepoint.com/sites/{site}/Lists/Task/AllItems.aspx" />
-                <button id="detectListsBtn" class="btn primary">Detect Lists</button>
+                <input id="taskListUrl" type="url" placeholder="https://{tenant}.sharepoint.com/sites/{site}/Lists/Tasks/AllItems.aspx" />
+                <button id="detectListsBtn" class="btn primary">Detect List</button>
             </div>
             <div class="card" id="mappingCard" style="display:none;">
                 <h2>Field Mapping</h2>
@@ -375,11 +379,21 @@
         let userRole = 'viewer'; // default role
         // SharePoint context variables
         let siteId = null;
+        // Only one list is used for both projects and tasks. The
+        // taskListId will identify this single SharePoint list. projectListId
+        // is deprecated and always null.
         let projectListId = null;
         let taskListId = null;
+        // Mapping information: project and task sections map to
+        // column internal names within the same list. There is no
+        // projectRef because the project name itself is used to
+        // associate tasks with projects.
         let mapping = {
             project: {},
             task: {},
+            // projectRef will automatically mirror the project name column. It is
+            // used to filter tasks belonging to a project. The UI no longer
+            // exposes this separately to users.
             projectRef: null
         };
         // Data caches
@@ -482,8 +496,8 @@
             document.getElementById('authButton').textContent = 'Sign Out';
             // Determine user role via Graph groups
             await determineUserRole();
-            // If lists already configured load projects
-            if (siteId && projectListId && taskListId) {
+            // If the list has already been detected, load projects from it
+            if (siteId && taskListId) {
                 await loadProjects();
             }
             navigateTo('home');
@@ -577,36 +591,35 @@
         }
         // Detect site and list IDs from URLs
         async function detectLists() {
-            const projInput = document.getElementById('projectListUrl').value.trim();
+            // Only a single URL (task list) is required. Parse the input and
+            // detect the site and list identifiers from it.
             const taskInput = document.getElementById('taskListUrl').value.trim();
-            if (!projInput || !taskInput) {
-                alert('Please enter both project and task list URLs.');
+            if (!taskInput) {
+                alert('Please enter the task list URL.');
                 return;
             }
-            const projInfo = parseListUrl(projInput);
             const taskInfo = parseListUrl(taskInput);
-            if (!projInfo || !taskInfo) {
-                alert('Invalid SharePoint list URLs.');
+            if (!taskInfo) {
+                alert('Invalid SharePoint list URL.');
                 return;
             }
             try {
-                // Get site ID (assume both lists on same site; use project list site)
-                const siteResp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${projInfo.host}:${projInfo.sitePath}`);
+                // Obtain the site identifier from the host/path of the task list
+                const siteResp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${taskInfo.host}:${taskInfo.sitePath}`);
                 siteId = siteResp.id;
-                // Get project list ID
-                const projListResp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projInfo.listName}`);
-                projectListId = projListResp.id;
-                // Get task list ID
+                // Obtain the single list identifier. This list will store both
+                // project and task items.
                 const taskListResp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskInfo.listName}`);
                 taskListId = taskListResp.id;
-                // Fetch columns
+                // Ensure the deprecated projectListId remains null
+                projectListId = null;
+                // Fetch column definitions for mapping
                 await fetchColumns();
-                alert('Lists detected. Please map the fields.');
+                alert('List detected. Please map the fields.');
                 document.getElementById('mappingCard').style.display = '';
             } catch (e) {
-                console.error('Failed to detect lists:', e);
-                let msg = 'Failed to detect lists. Please ensure the SharePoint list URLs are correct and you have permissions.';
-                // If the error message contains "Invalid hostname", give a more specific hint
+                console.error('Failed to detect list:', e);
+                let msg = 'Failed to detect list. Please ensure the SharePoint list URL is correct and you have permissions.';
                 if (e.message && e.message.toLowerCase().includes('invalid hostname')) {
                     msg += '\nThe host portion of the URL might not match your organization\'s tenant. Verify that the URL uses the correct domain (e.g., "contoso.sharepoint.com" instead of "contoso-my.sharepoint.com" if applicable).';
                 }
@@ -618,13 +631,12 @@
         });
         // Fetch columns from project and task lists and build mapping UI
         async function fetchColumns() {
-            const [proj, task] = await Promise.all([
-                graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/columns?$select=id,name,displayName`),
-                graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/columns?$select=id,name,displayName`)
-            ]);
-            const projCols = proj.value || [];
-            const taskCols = task.value || [];
-            buildMappingUI(projCols, taskCols);
+            // Fetch column definitions from the single list. Use the same
+            // set of columns for both project and task field mappings since
+            // all data resides in one list.
+            const listResp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/columns?$select=id,name,displayName`);
+            const cols = listResp.value || [];
+            buildMappingUI(cols, cols);
         }
         // Build the mapping UI allowing users to map fields to SharePoint columns
         function buildMappingUI(projCols, taskCols) {
@@ -681,26 +693,12 @@
             const sectionTask = document.createElement('div');
             sectionTask.innerHTML = '<h3>Task Fields</h3>';
             taskFields.forEach(f => sectionTask.appendChild(createRow(f, taskCols, 'task')));
-            const sectionRef = document.createElement('div');
-            sectionRef.innerHTML = '<h3>Task – Project Link</h3>';
-            const refLabel = document.createElement('label');
-            refLabel.textContent = 'Task list column referencing the project (Lookup or Text)';
-            refLabel.style.display = 'block';
-            const refSelect = document.createElement('select');
-            refSelect.dataset.type = 'ref';
-            refSelect.style.width = '100%';
-            refSelect.innerHTML = `<option value="">-- Not Set --</option>`;
-            taskCols.forEach(col => {
-                const opt = document.createElement('option');
-                opt.value = col.name;
-                opt.textContent = col.displayName;
-                refSelect.appendChild(opt);
-            });
-            sectionRef.appendChild(refLabel);
-            sectionRef.appendChild(refSelect);
+            // There is no separate project-reference column in the single-list
+            // architecture. Tasks are associated with projects via the
+            // project name column itself. Hence, we omit the Task–Project
+            // Link section present in the earlier dual-list design.
             container.appendChild(sectionProj);
             container.appendChild(sectionTask);
-            container.appendChild(sectionRef);
         }
         // Auto map fields based on name similarity
         document.getElementById('autoMapBtn').addEventListener('click', () => {
@@ -708,9 +706,9 @@
             selects.forEach(sel => {
                 const type = sel.dataset.type;
                 const key = sel.dataset.key;
-                // skip ref for now
-                if (type === 'ref') return;
-                // find option whose value or text matches key
+                // Attempt to find an option whose display name contains the key
+                // (ignoring spaces and case). This applies equally to project
+                // and task mappings since there is no separate reference field.
                 for (const opt of sel.options) {
                     const optName = opt.textContent.toLowerCase().replace(/\s/g, '');
                     if (optName.includes(key.toLowerCase().replace(/\s/g, ''))) {
@@ -730,32 +728,66 @@
                     mapping.project[key] = sel.value || null;
                 } else if (type === 'task') {
                     mapping.task[key] = sel.value || null;
-                } else if (type === 'ref') {
-                    mapping.projectRef = sel.value || null;
                 }
             });
+            // Automatically set the project reference column to be the project
+            // name column. This ensures tasks can be filtered by project
+            // without requiring a separate lookup column.
+            mapping.projectRef = mapping.project.name || null;
             alert('Mapping saved. You can now load projects.');
             loadProjects();
         });
         // Load projects from SharePoint list
         async function loadProjects() {
-            if (!siteId || !projectListId) return;
+            // Load distinct projects from the unified list. Projects are
+            // represented by rows whose task name is blank (or by the first
+            // occurrence of a given project name). All rows carry project
+            // columns so we can derive project data from any row.
+            if (!siteId || !taskListId) return;
             try {
-                const data = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items?$expand=fields`);
-                projects = (data.value || []).map(item => {
-                    const fields = item.fields;
-                    return {
-                        id: item.id,
-                        raw: item,
-                        name: fields[mapping.project.name] || fields.Title || '',
-                        address: fields[mapping.project.address] || '',
-                        owner: fields[mapping.project.owner] || '',
-                        startDate: formatDate(fields[mapping.project.startDate] || ''),
-                        sales: fields[mapping.project.sales] || '',
-                        status: fields[mapping.project.status] || '',
-                        description: fields[mapping.project.description] || ''
-                    };
+                const data = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items?$expand=fields`);
+                const items = data.value || [];
+                const projMap = {};
+                items.forEach(item => {
+                    const fields = item.fields || {};
+                    const projectName = fields[mapping.project.name] || fields.Title || '';
+                    if (!projectName) return;
+                    // Determine if this is a project row (task name is blank)
+                    const taskNameValue = fields[mapping.task.name] || '';
+                    if (!projMap[projectName]) {
+                        // Initialize new project entry
+                        projMap[projectName] = {
+                            // representativeId stores the id of the first item for this project. It may not be
+                            // the row where the task name is blank. Used for display and fallback.
+                            id: item.id,
+                            raw: item,
+                            name: projectName,
+                            address: fields[mapping.project.address] || '',
+                            owner: fields[mapping.project.owner] || '',
+                            startDate: formatDate(fields[mapping.project.startDate] || ''),
+                            sales: fields[mapping.project.sales] || '',
+                            status: fields[mapping.project.status] || '',
+                            description: fields[mapping.project.description] || '',
+                            // projectRowId will record the id of the row where the task name is blank. This
+                            // row represents the project itself. If null, a project row does not yet exist.
+                            projectRowId: null
+                        };
+                    }
+                    const proj = projMap[projectName];
+                    // If this row has no task name, prefer it for project metadata
+                    if (!taskNameValue) {
+                        // This item is the dedicated project row. Record its id.
+                        proj.projectRowId = item.id;
+                        // Prefer project metadata from the project row if it exists.
+                        proj.address = fields[mapping.project.address] || proj.address;
+                        proj.owner = fields[mapping.project.owner] || proj.owner;
+                        proj.startDate = formatDate(fields[mapping.project.startDate] || '') || proj.startDate;
+                        proj.sales = fields[mapping.project.sales] || proj.sales;
+                        proj.status = fields[mapping.project.status] || proj.status;
+                        proj.description = fields[mapping.project.description] || proj.description;
+                    }
                 });
+                projects = Object.values(projMap);
                 refreshProjectsTable();
             } catch (err) {
                 console.error('Failed to load projects', err);
@@ -795,8 +827,8 @@
             if (action === 'edit') {
                 openProjectModal(project);
             } else if (action === 'delete') {
-                if (confirm('Delete this project?')) {
-                    deleteProject(project.id);
+                if (confirm('Delete this project and all its tasks?')) {
+                    deleteProject(project);
                 }
             } else if (action === 'viewTasks') {
                 selectedProject = project;
@@ -810,9 +842,9 @@
         });
         // Open modal to add/edit a project
         function openProjectModal(project) {
-            // Guard against attempts to open the modal before lists/mapping are configured.
-            if (!siteId || !projectListId) {
-                alert('Please configure the SharePoint Project list in Settings before adding or editing projects.');
+            // Guard against attempts to open the modal before the list and mapping are configured.
+            if (!siteId || !taskListId) {
+                alert('Please configure the SharePoint list in Settings before adding or editing projects.');
                 return;
             }
             const isEdit = !!project;
@@ -869,10 +901,28 @@
                 });
                 try {
                     if (isEdit) {
-                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items/${project.id}/fields`, 'PATCH', spFields);
+                        // Update the existing project row if it exists. Otherwise,
+                        // create a new project row. Use projectRowId (if defined)
+                        // to identify the dedicated project record.
+                        if (project.projectRowId) {
+                            await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items/${project.projectRowId}/fields`, 'PATCH', spFields);
+                        } else {
+                            // Create a new project row (task name left blank to indicate project)
+                            const fieldsPayload = { ...spFields };
+                            if (mapping.task.name) {
+                                fieldsPayload[mapping.task.name] = '';
+                            }
+                            await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items`, 'POST', { fields: fieldsPayload });
+                        }
                     } else {
-                        // When creating a list item, supply fields property【485116279280963†L70-L104】
-                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items`, 'POST', { fields: spFields });
+                        // Create a new list item representing the project. For projects
+                        // we intentionally leave the task name column blank so it is
+                        // recognized as a project row.
+                        const fieldsPayload = { ...spFields };
+                        if (mapping.task.name) {
+                            fieldsPayload[mapping.task.name] = '';
+                        }
+                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items`, 'POST', { fields: fieldsPayload });
                     }
                     await loadProjects();
                     closeModal();
@@ -886,8 +936,8 @@
                 delBtn.className = 'btn secondary';
                 delBtn.textContent = 'Delete';
                 delBtn.onclick = async () => {
-                    if (confirm('Are you sure you want to delete this project?')) {
-                        await deleteProject(project.id);
+                    if (confirm('Are you sure you want to delete this project and all its tasks?')) {
+                        await deleteProject(project);
                         closeModal();
                     }
                 };
@@ -905,11 +955,45 @@
             document.getElementById('modal').style.display = 'none';
         }
         // Delete a project
-        async function deleteProject(projectId) {
+        async function deleteProject(project) {
+            // Delete all list items (project row and its tasks) associated
+            // with the given project. Filter items by the project name column
+            // and remove each via Graph API. Then update the in-memory
+            // projects list and refresh the UI.
             try {
-                await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items/${projectId}`, 'DELETE');
-                projects = projects.filter(p => p.id !== projectId);
+                const projName = project.name;
+                const projCol = mapping.project.name;
+                let items;
+                if (projCol) {
+                    const filterStr = encodeURIComponent("fields/" + projCol + " eq '" + projName.replace(/'/g, "\\'") + "'");
+                    try {
+                        const resp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items?$expand=fields&$filter=${filterStr}`);
+                        items = resp.value || [];
+                    } catch (e) {
+                        // fallback to loading all items
+                        const respAll = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items?$expand=fields`);
+                        items = (respAll.value || []).filter(i => {
+                            const val = i.fields && i.fields[projCol];
+                            return val && val.toString().toLowerCase() === projName.toLowerCase();
+                        });
+                    }
+                } else {
+                    // If no project name column defined, there is nothing we can delete safely
+                    alert('Project name column is not mapped. Cannot delete project.');
+                    return;
+                }
+                // Delete each item
+                for (const item of items) {
+                    await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items/${item.id}`, 'DELETE');
+                }
+                // Remove from local projects list and refresh UI
+                projects = projects.filter(p => p.name.toLowerCase() !== projName.toLowerCase());
                 refreshProjectsTable();
+                // If the deleted project was selected, reset selectedProject and tasks view
+                if (selectedProject && selectedProject.name.toLowerCase() === projName.toLowerCase()) {
+                    selectedProject = null;
+                    document.getElementById('tasksContent').innerHTML = '<p>Please select a project from the Projects page first.</p>';
+                }
             } catch (err) {
                 alert('Failed to delete project: ' + err.message);
             }
@@ -918,7 +1002,7 @@
         let selectedProject = null;
         async function loadTasksForProject(project) {
             if (!taskListId || !mapping.projectRef) {
-                document.getElementById('tasksContent').innerHTML = '<p>Please configure task list and project reference mapping in Settings.</p>';
+                document.getElementById('tasksContent').innerHTML = '<p>Please configure the SharePoint list and field mappings in Settings.</p>';
                 return;
             }
             try {
@@ -1035,7 +1119,7 @@
         function openTaskModal(project, task) {
             // Ensure the Task list and project reference have been configured before opening.
             if (!taskListId || !mapping.projectRef) {
-                alert('Please configure the SharePoint Task list and mapping (including the project reference) in Settings before adding or editing tasks.');
+                alert('Please configure the SharePoint list and field mappings in Settings before adding or editing tasks.');
                 return;
             }
             const isEdit = !!task;
