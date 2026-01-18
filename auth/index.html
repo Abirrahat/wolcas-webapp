@@ -1,60 +1,1099 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WOLCAS Auth</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial;
-      margin:0; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#fff; color:#111827; }
-    .card { border:1px solid #e5e7eb; border-radius:12px; padding:16px; max-width:560px; width:92vw; }
-    .muted { color:#6b7280; }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WOLCAS</title>
+    <!--
+      Content Security Policy
+      Allow inline scripts (unsafe-inline) for our application logic; restrict connections
+      to Microsoft domains for authentication and Graph; allow images from our own site,
+      data URIs and SharePoint. These directives follow best practices and ensure the
+      application only loads what is required.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline';
+        connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com;
+        img-src 'self' data: https://upload.wikimedia.org https://architektica-my.sharepoint.com;
+        style-src 'self' 'unsafe-inline';
+    ">
+    <link rel="icon" href="./favicon.ico" />
+    <!-- MSAL library loaded locally -->
+    <script src="msal-browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --secondary: #64748b;
+            --accent: #f97316;
+            --background: #f8fafc;
+            --text: #0f172a;
+            --card: #ffffff;
+            --border: #e5e7eb;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+        }
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background-color: var(--card);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
+        .header-inner {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            gap: 12px;
+        }
+        .title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: 24px;
+        }
+        nav a {
+            text-decoration: none;
+            color: var(--primary);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+        nav a.active,
+        nav a:hover {
+            background-color: var(--primary);
+            color: #ffffff;
+        }
+        .account {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: var(--secondary);
+        }
+        .account button {
+            background: var(--primary);
+            border: none;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .view {
+            display: none;
+        }
+        .view.active {
+            display: block;
+        }
+        .card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+        h1 {
+            margin-top: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+        th,
+        td {
+            padding: 8px;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+        th {
+            background-color: var(--background);
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+        .btn.primary {
+            background-color: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+        }
+        .btn.secondary {
+            background-color: #ffffff;
+            color: var(--primary);
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ffffff;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 2000;
+        }
+        .overlay.show {
+            display: flex;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+        .modal .modal-content {
+            background-color: var(--card);
+            padding: 24px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        .modal input,
+        .modal select,
+        .modal textarea {
+            width: 100%;
+            margin-top: 8px;
+            margin-bottom: 16px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+        .photo-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .photo-preview img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+    </style>
 </head>
 <body>
-  <div class="card">
-    <h2 style="margin:0 0 8px 0;">Signing you in…</h2>
-    <div class="muted">This window should close automatically.</div>
-    <div id="status" class="muted" style="margin-top:10px;"></div>
-  </div>
-
-  ../msal-browser.min.js</script>
-  <script>
-    const APP = {
-      clientId: "827656f8-3a21-4d69-b6e5-c35e2ec2fb71",
-      tenantId: "97d84781-b85c-4034-a0d0-588e7b442e45",
-      redirectUriMain: "https://abirrahat.github.io/wolcas-webapp/",
-      redirectUriAuth: "https://abirrahat.github.io/wolcas-webapp/auth"
-    };
-
-    const msalConfig = {
-      auth: {
-        clientId: APP.clientId,
-        authority: `https://login.microsoftonline.com/${APP.tenantId}`,
-        redirectUri: APP.redirectUriAuth,
-        navigateToLoginRequestUrl: false
-      },
-      cache: {
-        cacheLocation: "localStorage",
-        storeAuthStateInCookie: false
-      }
-    };
-
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-    (async function () {
-      const el = document.getElementById("status");
-      try {
-        await msalInstance.handleRedirectPromise();
-        el.textContent = "Done. Closing…";
-        // MSAL stores tokens in the same-origin cache. Close popup.
-        setTimeout(() => window.close(), 250);
-      } catch (e) {
-        console.error(e);
-        el.textContent = "Auth failed. You can close this window.";
-      }
-    })();
-  </script>
+    <header>
+        <div class="header-inner">
+            <div class="title">WOLCAS</div>
+            <nav id="main-nav">
+                <a href="#home" id="nav-home" class="nav-link">Home</a>
+                <a href="#projects" id="nav-projects" class="nav-link">Projects</a>
+                <a href="#tasks" id="nav-tasks" class="nav-link">Tasks</a>
+                <a href="#settings" id="nav-settings" class="nav-link">Settings</a>
+            </nav>
+            <div class="account">
+                <span id="userEmail"></span>
+                <button id="authButton" class="btn primary">Sign In</button>
+            </div>
+        </div>
+    </header>
+    <!-- Sign-in overlay displayed before authentication -->
+    <div id="signinOverlay" class="overlay">
+        <div class="card" style="text-align:center; padding:32px; width:300px;">
+            <h2>Welcome to WOLCAS</h2>
+            <p>Please sign in with your company account to continue.</p>
+            <button id="loginButton" class="btn primary">Sign In</button>
+        </div>
+    </div>
+    <!-- Modal container for editing and creating items -->
+    <div id="modal" class="modal">
+        <div class="modal-content" id="modalContent">
+            <!-- Content inserted dynamically -->
+        </div>
+    </div>
+    <main>
+        <!-- Home/Dashboard Section -->
+        <section id="home" class="view">
+            <h1>Dashboard</h1>
+            <div class="card">
+                <p>Welcome to WOLCAS. Use the navigation above to manage projects and tasks.</p>
+            </div>
+            <div id="dashboardContent"></div>
+        </section>
+        <!-- Projects Section -->
+        <section id="projects" class="view">
+            <h1>Projects</h1>
+            <div class="card">
+                <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:8px;">
+                    <h2 style="margin:0;">Project List</h2>
+                    <button id="addProjectBtn" class="btn primary">Add Project</button>
+                </div>
+                <table id="projectsTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Address</th>
+                            <th>Owner</th>
+                            <th>Start Date</th>
+                            <th>Sales</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projectsBody">
+                        <!-- Rows inserted dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <!-- Tasks Section -->
+        <section id="tasks" class="view">
+            <h1>Tasks</h1>
+            <div id="tasksContent"></div>
+        </section>
+        <!-- Settings Section -->
+        <section id="settings" class="view">
+            <h1>Settings</h1>
+            <div class="card">
+                <h2>SharePoint List Configuration</h2>
+                <label for="projectListUrl">Project List URL</label>
+                <input id="projectListUrl" type="url" placeholder="https://{tenant}.sharepoint.com/sites/{site}/Lists/Project/AllItems.aspx" />
+                <label for="taskListUrl">Task List URL</label>
+                <input id="taskListUrl" type="url" placeholder="https://{tenant}.sharepoint.com/sites/{site}/Lists/Task/AllItems.aspx" />
+                <button id="detectListsBtn" class="btn primary">Detect Lists</button>
+            </div>
+            <div class="card" id="mappingCard" style="display:none;">
+                <h2>Field Mapping</h2>
+                <div id="mappingFields"></div>
+                <button id="autoMapBtn" class="btn secondary">Auto Map Fields</button>
+                <button id="saveMappingBtn" class="btn primary">Save Mapping</button>
+            </div>
+        </section>
+    </main>
+    <script>
+        // MSAL configuration
+        const msalConfig = {
+            auth: {
+                clientId: '827656f8-3a21-4d69-b6e5-c35e2ec2fb71',
+                authority: 'https://login.microsoftonline.com/97d84781-b85c-4034-a0d0-588e7b442e45',
+                // Use a separate redirect page to process the auth response. A blank or simple page is recommended
+                // when using popup APIs【229921885133186†L178-L182】.
+                redirectUri: window.location.origin + '/auth.html'
+            },
+            cache: {
+                cacheLocation: 'sessionStorage', // use sessionStorage for security
+                storeAuthStateInCookie: false
+            }
+        };
+        const loginRequest = {
+            scopes: ['User.Read', 'Sites.ReadWrite.All', 'Files.ReadWrite.All', 'Group.Read.All']
+        };
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+        let currentAccount = null;
+        let userRole = 'viewer'; // default role
+        // SharePoint context variables
+        let siteId = null;
+        let projectListId = null;
+        let taskListId = null;
+        let mapping = {
+            project: {},
+            task: {},
+            projectRef: null
+        };
+        // Data caches
+        let projects = [];
+        let tasks = [];
+        // Initialize the app
+        window.addEventListener('DOMContentLoaded', async () => {
+            setupNavigation();
+            await handleRedirect();
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts && accounts.length > 0) {
+                currentAccount = accounts[0];
+                await onLoginSuccess();
+            } else {
+                showSignInOverlay(true);
+            }
+        });
+        // Process redirect response (should be called on each load)【229921885133186†L178-L182】
+        async function handleRedirect() {
+            try {
+                await msalInstance.initialize();
+                const response = await msalInstance.handleRedirectPromise();
+                if (response && response.account) {
+                    currentAccount = response.account;
+                }
+            } catch (error) {
+                console.error('MSAL redirect error', error);
+            }
+        }
+        // Show or hide the sign-in overlay
+        function showSignInOverlay(show) {
+            const overlay = document.getElementById('signinOverlay');
+            overlay.classList.toggle('show', show);
+        }
+        // Setup navigation links
+        function setupNavigation() {
+            const links = document.querySelectorAll('.nav-link');
+            links.forEach(link => {
+                link.addEventListener('click', ev => {
+                    ev.preventDefault();
+                    const hash = link.getAttribute('href').substring(1);
+                    navigateTo(hash);
+                });
+            });
+        }
+        // Navigate to a view by id
+        function navigateTo(id) {
+            document.querySelectorAll('.view').forEach(view => {
+                view.classList.remove('active');
+            });
+            const view = document.getElementById(id);
+            if (view) view.classList.add('active');
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+            });
+            // When navigating to tasks page ensure a project is selected
+            if (id === 'tasks' && !selectedProject) {
+                document.getElementById('tasksContent').innerHTML = '<p>Please select a project from the Projects page first.</p>';
+            }
+        }
+        // Sign in/out button handler
+        document.getElementById('authButton').addEventListener('click', async () => {
+            if (currentAccount) {
+                // Sign out
+                try {
+                    await msalInstance.logoutPopup({ account: currentAccount });
+                    currentAccount = null;
+                    userRole = 'viewer';
+                    showSignInOverlay(true);
+                    document.getElementById('userEmail').textContent = '';
+                    document.getElementById('authButton').textContent = 'Sign In';
+                    projects = [];
+                    tasks = [];
+                    refreshProjectsTable();
+                    navigateTo('home');
+                } catch (error) {
+                    console.error('Logout failed', error);
+                }
+            } else {
+                // Sign in
+                login();
+            }
+        });
+        document.getElementById('loginButton').addEventListener('click', login);
+        async function login() {
+            try {
+                const response = await msalInstance.loginPopup({ ...loginRequest, redirectUri: msalConfig.auth.redirectUri });
+                if (response.account) {
+                    currentAccount = response.account;
+                    await onLoginSuccess();
+                }
+            } catch (error) {
+                console.error('Login failed', error);
+            }
+        }
+        // Called after successful login
+        async function onLoginSuccess() {
+            showSignInOverlay(false);
+            document.getElementById('userEmail').textContent = currentAccount.username;
+            document.getElementById('authButton').textContent = 'Sign Out';
+            // Determine user role via Graph groups
+            await determineUserRole();
+            // If lists already configured load projects
+            if (siteId && projectListId && taskListId) {
+                await loadProjects();
+            }
+            navigateTo('home');
+        }
+        // Acquire token silently or via popup
+        async function getAccessToken(scopes) {
+            const request = { scopes: scopes || loginRequest.scopes, account: currentAccount };
+            try {
+                const response = await msalInstance.acquireTokenSilent(request);
+                return response.accessToken;
+            } catch (err) {
+                // fallback to popup
+                const response = await msalInstance.acquireTokenPopup(request);
+                return response.accessToken;
+            }
+        }
+        // Generic Graph request helper
+        async function graphRequest(url, method = 'GET', body = null) {
+            const token = await getAccessToken();
+            const headers = { Authorization: `Bearer ${token}` };
+            if (body) {
+                headers['Content-Type'] = 'application/json';
+            }
+            const response = await fetch(url, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`${response.status} ${response.statusText}: ${text}`);
+            }
+            return response.status === 204 ? null : await response.json();
+        }
+        // Determine user role based on group membership
+        async function determineUserRole() {
+            userRole = 'viewer';
+            try {
+                // /me/memberOf requires a signed-in user and delegated permissions【357314754702277†L94-L110】
+                const result = await graphRequest('https://graph.microsoft.com/v1.0/me/memberOf');
+                const groups = result.value || [];
+                const groupNames = groups.map(g => g.displayName?.toLowerCase() || '');
+                // Customize group names as per organization
+                if (groupNames.includes('wolcas_admins')) {
+                    userRole = 'admin';
+                } else if (groupNames.includes('wolcas_editors')) {
+                    userRole = 'editor';
+                } else {
+                    userRole = 'viewer';
+                }
+            } catch (err) {
+                console.warn('Failed to determine user groups:', err);
+            }
+        }
+        // Parse a SharePoint list URL and return site host, site path and list name
+        function parseListUrl(listUrl) {
+            try {
+                const urlObj = new URL(listUrl);
+                const host = urlObj.hostname;
+                const pathSegments = urlObj.pathname.split('/').filter(Boolean);
+                const listsIndex = pathSegments.findIndex(p => p.toLowerCase() === 'lists');
+                if (listsIndex < 0 || listsIndex + 1 >= pathSegments.length) return null;
+                const listName = pathSegments[listsIndex + 1];
+                const sitePath = '/' + pathSegments.slice(0, listsIndex).join('/');
+                return { host, sitePath, listName };
+            } catch (e) {
+                return null;
+            }
+        }
+        // Detect site and list IDs from URLs
+        async function detectLists() {
+            const projInput = document.getElementById('projectListUrl').value.trim();
+            const taskInput = document.getElementById('taskListUrl').value.trim();
+            if (!projInput || !taskInput) {
+                alert('Please enter both project and task list URLs.');
+                return;
+            }
+            const projInfo = parseListUrl(projInput);
+            const taskInfo = parseListUrl(taskInput);
+            if (!projInfo || !taskInfo) {
+                alert('Invalid SharePoint list URLs.');
+                return;
+            }
+            try {
+                // Get site ID (assume both lists on same site; use project list site)
+                const siteResp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${projInfo.host}:${projInfo.sitePath}`);
+                siteId = siteResp.id;
+                // Get project list ID
+                const projListResp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projInfo.listName}`);
+                projectListId = projListResp.id;
+                // Get task list ID
+                const taskListResp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskInfo.listName}`);
+                taskListId = taskListResp.id;
+                // Fetch columns
+                await fetchColumns();
+                alert('Lists detected. Please map the fields.');
+                document.getElementById('mappingCard').style.display = '';
+            } catch (e) {
+                console.error('Failed to detect lists:', e);
+                alert('Failed to detect lists. Ensure the URLs are correct and you have permissions.');
+            }
+        }
+        document.getElementById('detectListsBtn').addEventListener('click', () => {
+            detectLists();
+        });
+        // Fetch columns from project and task lists and build mapping UI
+        async function fetchColumns() {
+            const [proj, task] = await Promise.all([
+                graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/columns?$select=id,name,displayName`),
+                graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/columns?$select=id,name,displayName`)
+            ]);
+            const projCols = proj.value || [];
+            const taskCols = task.value || [];
+            buildMappingUI(projCols, taskCols);
+        }
+        // Build the mapping UI allowing users to map fields to SharePoint columns
+        function buildMappingUI(projCols, taskCols) {
+            const container = document.getElementById('mappingFields');
+            container.innerHTML = '';
+            const projFields = [
+                { key: 'name', label: 'Project Name' },
+                { key: 'address', label: 'Project Address' },
+                { key: 'owner', label: 'Project Owner' },
+                { key: 'startDate', label: 'Start Date' },
+                { key: 'sales', label: 'Expected Sales' },
+                { key: 'status', label: 'Active (Yes/No)' },
+                { key: 'description', label: 'Description' }
+            ];
+            const taskFields = [
+                { key: 'name', label: 'Task Name' },
+                { key: 'startDate', label: 'Start Date' },
+                { key: 'endDate', label: 'End Date' },
+                { key: 'quantity', label: 'Quantity' },
+                { key: 'unit', label: 'Unit' },
+                { key: 'unitCost', label: 'Unit Cost' },
+                { key: 'totalCost', label: 'Total Cost' },
+                { key: 'allocation', label: 'Allocation' },
+                { key: 'sprint', label: 'Sprint' },
+                { key: 'assignee', label: 'Assignee' },
+                { key: 'description', label: 'Description' },
+                { key: 'notes', label: 'Notes' }
+            ];
+            // Build mapping row helper
+            const createRow = (field, options, type) => {
+                const div = document.createElement('div');
+                div.style.marginBottom = '8px';
+                const label = document.createElement('label');
+                label.textContent = `${field.label}`;
+                label.style.display = 'block';
+                const select = document.createElement('select');
+                select.dataset.type = type;
+                select.dataset.key = field.key;
+                select.style.width = '100%';
+                select.innerHTML = `<option value="">-- Not Mapped --</option>`;
+                options.forEach(col => {
+                    const opt = document.createElement('option');
+                    opt.value = col.name;
+                    opt.textContent = col.displayName;
+                    select.appendChild(opt);
+                });
+                div.appendChild(label);
+                div.appendChild(select);
+                return div;
+            };
+            const sectionProj = document.createElement('div');
+            sectionProj.innerHTML = '<h3>Project Fields</h3>';
+            projFields.forEach(f => sectionProj.appendChild(createRow(f, projCols, 'project')));
+            const sectionTask = document.createElement('div');
+            sectionTask.innerHTML = '<h3>Task Fields</h3>';
+            taskFields.forEach(f => sectionTask.appendChild(createRow(f, taskCols, 'task')));
+            const sectionRef = document.createElement('div');
+            sectionRef.innerHTML = '<h3>Task – Project Link</h3>';
+            const refLabel = document.createElement('label');
+            refLabel.textContent = 'Task list column referencing the project (Lookup or Text)';
+            refLabel.style.display = 'block';
+            const refSelect = document.createElement('select');
+            refSelect.dataset.type = 'ref';
+            refSelect.style.width = '100%';
+            refSelect.innerHTML = `<option value="">-- Not Set --</option>`;
+            taskCols.forEach(col => {
+                const opt = document.createElement('option');
+                opt.value = col.name;
+                opt.textContent = col.displayName;
+                refSelect.appendChild(opt);
+            });
+            sectionRef.appendChild(refLabel);
+            sectionRef.appendChild(refSelect);
+            container.appendChild(sectionProj);
+            container.appendChild(sectionTask);
+            container.appendChild(sectionRef);
+        }
+        // Auto map fields based on name similarity
+        document.getElementById('autoMapBtn').addEventListener('click', () => {
+            const selects = document.querySelectorAll('#mappingFields select');
+            selects.forEach(sel => {
+                const type = sel.dataset.type;
+                const key = sel.dataset.key;
+                // skip ref for now
+                if (type === 'ref') return;
+                // find option whose value or text matches key
+                for (const opt of sel.options) {
+                    const optName = opt.textContent.toLowerCase().replace(/\s/g, '');
+                    if (optName.includes(key.toLowerCase().replace(/\s/g, ''))) {
+                        opt.selected = true;
+                        break;
+                    }
+                }
+            });
+        });
+        // Save mapping from UI to mapping object
+        document.getElementById('saveMappingBtn').addEventListener('click', () => {
+            const selects = document.querySelectorAll('#mappingFields select');
+            selects.forEach(sel => {
+                const type = sel.dataset.type;
+                const key = sel.dataset.key;
+                if (type === 'project') {
+                    mapping.project[key] = sel.value || null;
+                } else if (type === 'task') {
+                    mapping.task[key] = sel.value || null;
+                } else if (type === 'ref') {
+                    mapping.projectRef = sel.value || null;
+                }
+            });
+            alert('Mapping saved. You can now load projects.');
+            loadProjects();
+        });
+        // Load projects from SharePoint list
+        async function loadProjects() {
+            if (!siteId || !projectListId) return;
+            try {
+                const data = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items?$expand=fields`);
+                projects = (data.value || []).map(item => {
+                    const fields = item.fields;
+                    return {
+                        id: item.id,
+                        raw: item,
+                        name: fields[mapping.project.name] || fields.Title || '',
+                        address: fields[mapping.project.address] || '',
+                        owner: fields[mapping.project.owner] || '',
+                        startDate: fields[mapping.project.startDate] || '',
+                        sales: fields[mapping.project.sales] || '',
+                        status: fields[mapping.project.status] || '',
+                        description: fields[mapping.project.description] || ''
+                    };
+                });
+                refreshProjectsTable();
+            } catch (err) {
+                console.error('Failed to load projects', err);
+                alert('Failed to load projects: ' + err.message);
+            }
+        }
+        // Refresh the projects table UI
+        function refreshProjectsTable() {
+            const tbody = document.getElementById('projectsBody');
+            tbody.innerHTML = '';
+            projects.forEach(project => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${project.name || ''}</td>
+                    <td>${project.address || ''}</td>
+                    <td>${project.owner || ''}</td>
+                    <td>${project.startDate || ''}</td>
+                    <td>${project.sales || ''}</td>
+                    <td>${project.status || ''}</td>
+                    <td>
+                        <button class="btn secondary" data-id="${project.id}" data-action="edit">Edit</button>
+                        ${userRole === 'admin' ? `<button class="btn secondary" data-id="${project.id}" data-action="delete">Delete</button>` : ''}
+                        <button class="btn secondary" data-id="${project.id}" data-action="viewTasks">Tasks</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        // Handle clicks on project actions
+        document.getElementById('projectsBody').addEventListener('click', ev => {
+            const target = ev.target;
+            if (target.tagName !== 'BUTTON') return;
+            const id = target.dataset.id;
+            const action = target.dataset.action;
+            const project = projects.find(p => p.id === id);
+            if (!project) return;
+            if (action === 'edit') {
+                openProjectModal(project);
+            } else if (action === 'delete') {
+                if (confirm('Delete this project?')) {
+                    deleteProject(project.id);
+                }
+            } else if (action === 'viewTasks') {
+                selectedProject = project;
+                navigateTo('tasks');
+                loadTasksForProject(project);
+            }
+        });
+        // Add Project button
+        document.getElementById('addProjectBtn').addEventListener('click', () => {
+            openProjectModal();
+        });
+        // Open modal to add/edit a project
+        function openProjectModal(project) {
+            const isEdit = !!project;
+            const modal = document.getElementById('modal');
+            const modalContent = document.getElementById('modalContent');
+            modalContent.innerHTML = '';
+            const title = document.createElement('h3');
+            title.textContent = isEdit ? 'Edit Project' : 'Add Project';
+            modalContent.appendChild(title);
+            // Build form fields based on mapping
+            const form = document.createElement('div');
+            form.innerHTML = '';
+            const createInput = (labelText, value) => {
+                const label = document.createElement('label');
+                label.textContent = labelText;
+                const input = document.createElement('input');
+                input.value = value || '';
+                input.style.width = '100%';
+                return { label, input };
+            };
+            const fields = {};
+            ['name','address','owner','startDate','sales','status','description'].forEach(key => {
+                const label = mapping.project[key] ? key.charAt(0).toUpperCase() + key.slice(1) : key;
+                const { label: lbl, input } = createInput(label.replace(/([A-Z])/g, ' $1'), project ? project[key] : '');
+                fields[key] = input;
+                form.appendChild(lbl);
+                form.appendChild(input);
+            });
+            modalContent.appendChild(form);
+            // Buttons
+            const btnBar = document.createElement('div');
+            btnBar.style.display = 'flex';
+            btnBar.style.justifyContent = 'flex-end';
+            btnBar.style.gap = '8px';
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn primary';
+            saveBtn.textContent = 'Save';
+            saveBtn.onclick = async () => {
+                // Build fields object for SharePoint
+                const spFields = {};
+                Object.keys(fields).forEach(k => {
+                    const col = mapping.project[k];
+                    if (col) {
+                        spFields[col] = fields[k].value;
+                    }
+                });
+                try {
+                    if (isEdit) {
+                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items/${project.id}/fields`, 'PATCH', spFields);
+                    } else {
+                        // When creating a list item, supply fields property【485116279280963†L70-L104】
+                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items`, 'POST', { fields: spFields });
+                    }
+                    await loadProjects();
+                    closeModal();
+                } catch (err) {
+                    alert('Failed to save project: ' + err.message);
+                }
+            };
+            btnBar.appendChild(saveBtn);
+            if (isEdit && userRole === 'admin') {
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn secondary';
+                delBtn.textContent = 'Delete';
+                delBtn.onclick = async () => {
+                    if (confirm('Are you sure you want to delete this project?')) {
+                        await deleteProject(project.id);
+                        closeModal();
+                    }
+                };
+                btnBar.appendChild(delBtn);
+            }
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn secondary';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = () => closeModal();
+            btnBar.appendChild(cancelBtn);
+            modalContent.appendChild(btnBar);
+            modal.style.display = 'flex';
+        }
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+        // Delete a project
+        async function deleteProject(projectId) {
+            try {
+                await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${projectListId}/items/${projectId}`, 'DELETE');
+                projects = projects.filter(p => p.id !== projectId);
+                refreshProjectsTable();
+            } catch (err) {
+                alert('Failed to delete project: ' + err.message);
+            }
+        }
+        // Task logic
+        let selectedProject = null;
+        async function loadTasksForProject(project) {
+            if (!taskListId || !mapping.projectRef) {
+                document.getElementById('tasksContent').innerHTML = '<p>Please configure task list and project reference mapping in Settings.</p>';
+                return;
+            }
+            try {
+                // Filter tasks where fields[mapping.projectRef] equals the project identifier (e.g. project name or ID)
+                // Note: Filtering on Graph via $filter is only supported on certain columns; if not supported, we load all tasks and filter client side.
+                const filter = encodeURIComponent(`fields/${mapping.projectRef} eq '${project.name.replace(/'/g, "\'" )}'`);
+                let items;
+                try {
+                    const resp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items?$expand=fields&$filter=${filter}`);
+                    items = resp.value || [];
+                } catch (e) {
+                    // fallback: load all tasks
+                    const resp = await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items?$expand=fields`);
+                    items = resp.value || [];
+                }
+                tasks = items.filter(item => {
+                    const value = item.fields[mapping.projectRef];
+                    return value && value.toString().toLowerCase() === project.name.toLowerCase();
+                }).map(item => {
+                    const fields = item.fields;
+                    return {
+                        id: item.id,
+                        name: fields[mapping.task.name] || '',
+                        startDate: fields[mapping.task.startDate] || '',
+                        endDate: fields[mapping.task.endDate] || '',
+                        quantity: fields[mapping.task.quantity] || '',
+                        unit: fields[mapping.task.unit] || '',
+                        unitCost: fields[mapping.task.unitCost] || '',
+                        totalCost: fields[mapping.task.totalCost] || '',
+                        allocation: fields[mapping.task.allocation] || '',
+                        sprint: fields[mapping.task.sprint] || '',
+                        assignee: fields[mapping.task.assignee] || '',
+                        description: fields[mapping.task.description] || '',
+                        notes: fields[mapping.task.notes] || ''
+                    };
+                });
+                renderTasksUI(project);
+            } catch (err) {
+                document.getElementById('tasksContent').innerHTML = '<p>Failed to load tasks: ' + err.message + '</p>';
+            }
+        }
+        function renderTasksUI(project) {
+            const container = document.getElementById('tasksContent');
+            container.innerHTML = '';
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.justifyContent = 'space-between';
+            header.style.alignItems = 'center';
+            const h2 = document.createElement('h2');
+            h2.textContent = 'Tasks for ' + project.name;
+            header.appendChild(h2);
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn primary';
+            addBtn.textContent = 'Add Task';
+            addBtn.onclick = () => openTaskModal(project);
+            if (userRole !== 'viewer') header.appendChild(addBtn);
+            container.appendChild(header);
+            // Table of tasks
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            thead.innerHTML = `<tr>
+                <th>Name</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Quantity</th>
+                <th>Unit Cost</th>
+                <th>Total Cost</th>
+                <th>Allocation</th>
+                <th>Sprint</th>
+                <th>Assignee</th>
+                <th>Actions</th>
+            </tr>`;
+            table.appendChild(thead);
+            const tbody = document.createElement('tbody');
+            tasks.forEach(task => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${task.name}</td>
+                    <td>${task.startDate}</td>
+                    <td>${task.endDate}</td>
+                    <td>${task.quantity}</td>
+                    <td>${task.unitCost}</td>
+                    <td>${task.totalCost}</td>
+                    <td>${task.allocation}</td>
+                    <td>${task.sprint}</td>
+                    <td>${task.assignee}</td>
+                    <td>
+                        <button class="btn secondary" data-id="${task.id}" data-action="edit">Edit</button>
+                        ${userRole === 'admin' ? `<button class="btn secondary" data-id="${task.id}" data-action="delete">Delete</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+            container.appendChild(table);
+            // Handle clicks for edit/delete
+            tbody.addEventListener('click', ev => {
+                const btn = ev.target;
+                if (btn.tagName !== 'BUTTON') return;
+                const id = btn.dataset.id;
+                const action = btn.dataset.action;
+                const task = tasks.find(t => t.id === id);
+                if (!task) return;
+                if (action === 'edit') {
+                    openTaskModal(project, task);
+                } else if (action === 'delete') {
+                    if (confirm('Delete this task?')) {
+                        deleteTask(task.id);
+                    }
+                }
+            });
+        }
+        // Open modal to add/edit a task
+        function openTaskModal(project, task) {
+            const isEdit = !!task;
+            const modal = document.getElementById('modal');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = '';
+            const title = document.createElement('h3');
+            title.textContent = isEdit ? 'Edit Task' : 'Add Task';
+            content.appendChild(title);
+            const fields = {};
+            const addField = (label, value) => {
+                const lbl = document.createElement('label');
+                lbl.textContent = label;
+                const inp = document.createElement('input');
+                inp.value = value || '';
+                inp.style.width = '100%';
+                content.appendChild(lbl);
+                content.appendChild(inp);
+                return inp;
+            };
+            fields.name = addField('Task Name', task ? task.name : '');
+            fields.startDate = addField('Start Date', task ? task.startDate : '');
+            fields.endDate = addField('End Date', task ? task.endDate : '');
+            fields.quantity = addField('Quantity', task ? task.quantity : '');
+            fields.unit = addField('Unit', task ? task.unit : '');
+            fields.unitCost = addField('Unit Cost', task ? task.unitCost : '');
+            fields.totalCost = addField('Total Cost', task ? task.totalCost : '');
+            fields.allocation = addField('Allocation', task ? task.allocation : '');
+            fields.sprint = addField('Sprint', task ? task.sprint : '');
+            fields.assignee = addField('Assignee', task ? task.assignee : '');
+            fields.description = addField('Description', task ? task.description : '');
+            fields.notes = addField('Notes', task ? task.notes : '');
+            // Photo upload
+            const photoLabel = document.createElement('label');
+            photoLabel.textContent = 'Upload Photos';
+            const photoInput = document.createElement('input');
+            photoInput.type = 'file';
+            photoInput.multiple = true;
+            content.appendChild(photoLabel);
+            content.appendChild(photoInput);
+            const preview = document.createElement('div');
+            preview.className = 'photo-preview';
+            content.appendChild(preview);
+            photoInput.addEventListener('change', () => {
+                preview.innerHTML = '';
+                Array.from(photoInput.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        preview.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+            // Buttons
+            const btnBar = document.createElement('div');
+            btnBar.style.display = 'flex';
+            btnBar.style.justifyContent = 'flex-end';
+            btnBar.style.gap = '8px';
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn primary';
+            saveBtn.textContent = 'Save';
+            saveBtn.onclick = async () => {
+                // Build SharePoint fields
+                const spFields = {};
+                Object.keys(fields).forEach(k => {
+                    const col = mapping.task[k];
+                    if (col) {
+                        spFields[col] = fields[k].value;
+                    }
+                });
+                // Duplicate project info into task fields (for address, owner, etc.)
+                Object.keys(mapping.project).forEach(k => {
+                    const col = mapping.project[k];
+                    const taskCol = mapping.task[k];
+                    if (col && taskCol && project[k]) {
+                        spFields[taskCol] = spFields[taskCol] || project[k];
+                    }
+                });
+                // Set project reference field
+                if (mapping.projectRef) {
+                    spFields[mapping.projectRef] = project.name;
+                }
+                try {
+                    if (isEdit) {
+                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items/${task.id}/fields`, 'PATCH', spFields);
+                    } else {
+                        await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items`, 'POST', { fields: spFields });
+                    }
+                    // Handle photo uploads
+                    if (photoInput.files && photoInput.files.length > 0) {
+                        await uploadTaskPhotos(task ? task.id : null, photoInput.files);
+                    }
+                    await loadTasksForProject(project);
+                    closeModal();
+                } catch (err) {
+                    alert('Failed to save task: ' + err.message);
+                }
+            };
+            btnBar.appendChild(saveBtn);
+            if (isEdit && userRole === 'admin') {
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn secondary';
+                delBtn.textContent = 'Delete';
+                delBtn.onclick = async () => {
+                    if (confirm('Delete this task?')) {
+                        await deleteTask(task.id);
+                        closeModal();
+                    }
+                };
+                btnBar.appendChild(delBtn);
+            }
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn secondary';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = () => closeModal();
+            btnBar.appendChild(cancelBtn);
+            content.appendChild(btnBar);
+            modal.style.display = 'flex';
+        }
+        // Delete a task
+        async function deleteTask(taskId) {
+            try {
+                await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${taskListId}/items/${taskId}`, 'DELETE');
+                tasks = tasks.filter(t => t.id !== taskId);
+                renderTasksUI(selectedProject);
+            } catch (err) {
+                alert('Failed to delete task: ' + err.message);
+            }
+        }
+        // Upload files to SharePoint library under TaskPhotos folder
+        async function uploadTaskPhotos(taskId, files) {
+            if (!files || files.length === 0) return;
+            // Ensure folder exists
+            const folderName = 'TaskPhotos';
+            try {
+                await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/` + folderName);
+            } catch (err) {
+                // Folder does not exist, create it
+                await graphRequest(`https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root/children`, 'POST', { name: folderName, folder: {}, '@microsoft.graph.conflictBehavior': 'replace' });
+            }
+            // Upload each file; optionally prefix with project name and timestamp to avoid collisions
+            for (const file of files) {
+                const uniqueName = `${Date.now()}_${file.name}`;
+                const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/` + folderName + '/' + encodeURIComponent(uniqueName) + ':/content';
+                await uploadFile(url, file);
+            }
+        }
+        async function uploadFile(url, file) {
+            const token = await getAccessToken();
+            await fetch(url, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': file.type },
+                body: file
+            });
+        }
+    </script>
 </body>
 </html>
