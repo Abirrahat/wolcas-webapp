@@ -779,7 +779,21 @@
                             owner: fields[mapping.project.owner] || '',
                             startDate: formatDate(fields[mapping.project.startDate] || ''),
                             sales: fields[mapping.project.sales] || '',
-                            status: fields[mapping.project.status] || '',
+                            // Normalize boolean status values into human-readable strings. If
+                            // the status field contains true/false or 'true'/'false', we
+                            // convert it to 'Yes'/'No' for display purposes.
+                            status: (() => {
+                                let s = fields[mapping.project.status];
+                                if (typeof s === 'boolean') {
+                                    return s ? 'Yes' : 'No';
+                                }
+                                if (typeof s === 'string') {
+                                    const lower = s.toLowerCase();
+                                    if (lower === 'true') return 'Yes';
+                                    if (lower === 'false') return 'No';
+                                }
+                                return s || '';
+                            })(),
                             description: fields[mapping.project.description] || '',
                             // projectRowId will record the id of the row where the task name is blank. This
                             // row represents the project itself. If null, a project row does not yet exist.
@@ -796,7 +810,22 @@
                         proj.owner = fields[mapping.project.owner] || proj.owner;
                         proj.startDate = formatDate(fields[mapping.project.startDate] || '') || proj.startDate;
                         proj.sales = fields[mapping.project.sales] || proj.sales;
-                        proj.status = fields[mapping.project.status] || proj.status;
+                        // Normalize boolean status values into Yes/No strings when updating
+                        // project metadata. This ensures the UI displays 'Yes'/'No'
+                        // instead of true/false.
+                        {
+                            let s = fields[mapping.project.status];
+                            if (typeof s === 'boolean') {
+                                s = s ? 'Yes' : 'No';
+                            } else if (typeof s === 'string') {
+                                const lower = s.toLowerCase();
+                                if (lower === 'true') s = 'Yes';
+                                else if (lower === 'false') s = 'No';
+                            }
+                            if (s !== undefined && s !== null) {
+                                proj.status = s || proj.status;
+                            }
+                        }
                         proj.description = fields[mapping.project.description] || proj.description;
                     }
                 });
@@ -871,13 +900,45 @@
             const form = document.createElement('div');
             form.innerHTML = '';
             const createInput = (labelText, value, typeHint = '') => {
-                // Create a label/field pair. If the label suggests a date,
-                // use a date input to surface the browser's native date picker.
+                // Create a label/field pair. For date and boolean (status) fields
+                // we surface appropriate input controls. Date fields use
+                // <input type="date"> for native pickers, and status uses a
+                // <select> with Yes/No options to enforce valid entries.
                 const label = document.createElement('label');
                 label.textContent = labelText;
+                // If the key or label indicates a boolean status, use a select
+                // with Yes/No options. We check both the provided type hint and
+                // the label text for the substring "status" to determine this.
+                if (/status/i.test(typeHint) || /status/i.test(labelText)) {
+                    const select = document.createElement('select');
+                    select.style.width = '100%';
+                    // Provide a blank option for clearing values
+                    const blank = document.createElement('option');
+                    blank.value = '';
+                    blank.textContent = '--';
+                    select.appendChild(blank);
+                    ['Yes', 'No'].forEach(optVal => {
+                        const opt = document.createElement('option');
+                        opt.value = optVal;
+                        opt.textContent = optVal;
+                        select.appendChild(opt);
+                    });
+                    // Normalize incoming values: if value is true/false, convert
+                    // to Yes/No; otherwise use the provided string.
+                    let normalized = '';
+                    if (typeof value === 'boolean') {
+                        normalized = value ? 'Yes' : 'No';
+                    } else if (typeof value === 'string') {
+                        if (/true/i.test(value)) normalized = 'Yes';
+                        else if (/false/i.test(value)) normalized = 'No';
+                        else normalized = value;
+                    }
+                    select.value = normalized || '';
+                    return { label, input: select };
+                }
+                // Use a date input for fields containing "date" to enable
+                // native calendar selection. Otherwise default to a text input.
                 const input = document.createElement('input');
-                // Use a date input for fields containing "date" in their key
-                // (e.g. Start Date) to enable date selection via a calendar UI.
                 if (/date/i.test(typeHint) || /date/i.test(labelText)) {
                     input.type = 'date';
                 }
@@ -911,7 +972,25 @@
                 Object.keys(fields).forEach(k => {
                     const col = mapping.project[k];
                     if (col && !/^Link/.test(col)) {
-                        spFields[col] = fields[k].value;
+                        let v = fields[k].value;
+                        // Convert the status field to a boolean if possible. If
+                        // the user selected "Yes" or "No", translate this
+                        // into true/false. Otherwise leave the value as-is.
+                        if (k === 'status') {
+                            if (typeof v === 'string') {
+                                const lower = v.toLowerCase();
+                                if (lower === 'yes' || lower === 'true') {
+                                    v = true;
+                                } else if (lower === 'no' || lower === 'false') {
+                                    v = false;
+                                } else if (lower === '') {
+                                    v = undefined;
+                                }
+                            }
+                        }
+                        if (v !== undefined) {
+                            spFields[col] = v;
+                        }
                     }
                 });
                 try {
@@ -1220,12 +1299,27 @@
                     }
                 });
                 // Duplicate project info into task fields (for address, owner, etc.).
-                // Only copy into columns that are not read-only.
+                // Only copy into columns that are not read-only. Convert
+                // status values from Yes/No strings into booleans to satisfy
+                // Graph API for Yes/No columns. If project[k] is 'Yes'/'No',
+                // translate to true/false accordingly.
                 Object.keys(mapping.project).forEach(k => {
                     const col = mapping.project[k];
                     const taskCol = mapping.task[k];
                     if (col && taskCol && project[k] && !/^Link/.test(taskCol)) {
-                        spFields[taskCol] = spFields[taskCol] || project[k];
+                        let val = project[k];
+                        // Convert boolean-like strings for status to true/false
+                        if (k === 'status' && typeof val === 'string') {
+                            const lower = val.toLowerCase();
+                            if (lower === 'yes' || lower === 'true') {
+                                val = true;
+                            } else if (lower === 'no' || lower === 'false') {
+                                val = false;
+                            }
+                        }
+                        if (spFields[taskCol] === undefined) {
+                            spFields[taskCol] = val;
+                        }
                     }
                 });
                 // Set project reference field if not read-only. This duplicates the
