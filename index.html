@@ -665,6 +665,19 @@
                 { key: 'description', label: 'Description' },
                 { key: 'notes', label: 'Notes' }
             ];
+            // Filter out read-only or system columns from the options. Columns
+            // whose internal names begin with "Link", "File", "ContentType", "ID",
+            // "UniqueId", "Path", "ProgId", "Thread", or are exactly
+            // "Editor", "Author", "Modified", "Created", "Attachments" are
+            // excluded. These fields are often read-only or managed by SharePoint
+            // and cannot be updated via Graph.
+            const filterCols = (cols) => cols.filter(col => {
+                const name = col.name || '';
+                return !/^(Link|File|ContentType|ID|UniqueId|Path|ProgId|Thread|Editor|Author|Modified|Created|Attachments)/i.test(name);
+            });
+            projCols = filterCols(projCols);
+            taskCols = filterCols(taskCols);
+
             // Build mapping row helper
             const createRow = (field, options, type) => {
                 const div = document.createElement('div');
@@ -891,11 +904,13 @@
             saveBtn.className = 'btn primary';
             saveBtn.textContent = 'Save';
             saveBtn.onclick = async () => {
-                // Build fields object for SharePoint
+                // Build fields object for SharePoint. Skip read-only columns such as
+                // those beginning with "Link" to avoid update errors. Only map
+                // columns with names that are not likely read-only.
                 const spFields = {};
                 Object.keys(fields).forEach(k => {
                     const col = mapping.project[k];
-                    if (col) {
+                    if (col && !/^Link/.test(col)) {
                         spFields[col] = fields[k].value;
                     }
                 });
@@ -1195,24 +1210,27 @@
             saveBtn.className = 'btn primary';
             saveBtn.textContent = 'Save';
             saveBtn.onclick = async () => {
-                // Build SharePoint fields
+                // Build SharePoint fields. Skip read-only system columns such as
+                // those beginning with "Link" to avoid update errors.
                 const spFields = {};
                 Object.keys(fields).forEach(k => {
                     const col = mapping.task[k];
-                    if (col) {
+                    if (col && !/^Link/.test(col)) {
                         spFields[col] = fields[k].value;
                     }
                 });
-                // Duplicate project info into task fields (for address, owner, etc.)
+                // Duplicate project info into task fields (for address, owner, etc.).
+                // Only copy into columns that are not read-only.
                 Object.keys(mapping.project).forEach(k => {
                     const col = mapping.project[k];
                     const taskCol = mapping.task[k];
-                    if (col && taskCol && project[k]) {
+                    if (col && taskCol && project[k] && !/^Link/.test(taskCol)) {
                         spFields[taskCol] = spFields[taskCol] || project[k];
                     }
                 });
-                // Set project reference field
-                if (mapping.projectRef) {
+                // Set project reference field if not read-only. This duplicates the
+                // project name into the designated column used for filtering tasks.
+                if (mapping.projectRef && !/^Link/.test(mapping.projectRef)) {
                     spFields[mapping.projectRef] = project.name;
                 }
                 try {
